@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "source_repository": "https://github.com/Daarko/sparkstream-sounds",
+  "source_commit": "a7a3ee178d2ec48f4354782f244ab777a0e238df",
+  "author": "Kenney (kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "sounds": [
+    {
+      "local_file": "warm-chime.wav",
+      "display_name": "暖木铃 · Warm Chime",
+      "original_file": "sounds/ui-clicks/interface-sounds-confirmation_001.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "0858aba1d06d933f1b91c251c336161eb775439e22ab7f4480bc172c19b7630d"
+    },
+    {
+      "local_file": "arcade-win.wav",
+      "display_name": "街机胜利 · Arcade Win",
+      "original_file": "sounds/digital-beeps/digital-audio-powerUp7.wav",
+      "source_pack": "Digital Audio",
+      "source_url": "https://kenney.nl/assets/digital-audio",
+      "sha256": "27a207ee139cc6f704fdd25645df51f61d830c16520948d5d2d283d4fdad3a53"
+    },
+    {
+      "local_file": "soft-pop.wav",
+      "display_name": "轻轻一弹 · Soft Pop",
+      "original_file": "sounds/ui-clicks/interface-sounds-pluck_001.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "967d07b6683793bae291673c9e6417739a3b0ef640b7a3e8fa476b0f43ac24fd"
+    },
+    {
+      "local_file": "quiet-tap.wav",
+      "display_name": "轻轻一点 · Quiet Tap",
+      "original_file": "sounds/ui-clicks/interface-sounds-select_004.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "8875f94eb7c6ad703835ee53bc4ba7f19c93d8514cff421efa6c1972e89cce12"
+    },
+    {
+      "local_file": "glass-ping.wav",
+      "display_name": "玻璃轻响 · Glass Ping",
+      "original_file": "sounds/ui-clicks/interface-sounds-glass_003.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "ce43bf4cdb5185befaa2002b9298df8c034a89422832430c5441ee741f017f0d"
+    },
+    {
+      "local_file": "gentle-knock.wav",
+      "display_name": "温柔敲门 · Gentle Knock",
+      "original_file": "sounds/ui-clicks/interface-sounds-bong_001.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "43208eeb488a282a9109cffdc858bd7e2bad7bf3f5f19fda1ef19560ea949fda"
+    },
+    {
+      "local_file": "sparkle-confirm.wav",
+      "display_name": "闪光确认 · Sparkle",
+      "original_file": "sounds/ui-clicks/interface-sounds-confirmation_002.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "eb83c0540f41c86f44341de2aeb3bf3cf96f0d16518e8f82ff93ff7f16522cf3"
+    },
+    {
+      "local_file": "quick-done.wav",
+      "display_name": "快速完成 · Quick Done",
+      "original_file": "sounds/ui-clicks/interface-sounds-confirmation_003.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "1f7af2e025d3cc5adaa571578e400da40c201c911028f8962afcf02143224d14"
+    },
+    {
+      "local_file": "bright-bell.wav",
+      "display_name": "明亮铃声 · Bright Bell",
+      "original_file": "sounds/ui-clicks/interface-sounds-confirmation_004.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "2c2a2d7f5bcbbf56abf7cd431664dc661ee8580b72d1be7c8ebddef910e6695b"
+    },
+    {
+      "local_file": "level-up.wav",
+      "display_name": "升级啦 · Level Up",
+      "original_file": "sounds/digital-beeps/digital-audio-powerUp1.wav",
+      "source_pack": "Digital Audio",
+      "source_url": "https://kenney.nl/assets/digital-audio",
+      "sha256": "0337c6116c707eddc8481ff3d700e8414a122538effedf10ff2297ee3e7a2c0e"
+    },
+    {
+      "local_file": "energy-rise.wav",
+      "display_name": "能量上升 · Energy Rise",
+      "original_file": "sounds/digital-beeps/digital-audio-powerUp3.wav",
+      "source_pack": "Digital Audio",
+      "source_url": "https://kenney.nl/assets/digital-audio",
+      "sha256": "e801136060f3a90e96cde4ec6ee4cf0bb424363b280e7c3ff79e784ab158b28d"
+    },
+    {
+      "local_file": "question-bloom.wav",
+      "display_name": "问号绽放 · Question",
+      "original_file": "sounds/ui-clicks/interface-sounds-question_001.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "fde5277159626083d21622421301fead173312f0f61766f6421e5bb896ffbdcf"
+    },
+    {
+      "local_file": "double-check.wav",
+      "display_name": "再确认一下 · Double Check",
+      "original_file": "sounds/ui-clicks/interface-sounds-question_002.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "24c4b44cdd1f021b7749a8730fdeed1e5617cef41513bde8876964b317a7ca9c"
+    },
+    {
+      "local_file": "curious-blip.wav",
+      "display_name": "好奇一声 · Curious Blip",
+      "original_file": "sounds/ui-clicks/interface-sounds-question_003.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "03fbb4d7c685fc61436352e08de6963fdee006f80dc1236308a271b4c2a64c4a"
+    },
+    {
+      "local_file": "review-ping.wav",
+      "display_name": "请检查 · Review Ping",
+      "original_file": "sounds/ui-clicks/interface-sounds-question_004.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "48dbed2408b1cf0eb79b167261247f5b42baa7bc6bb0c8ef53b42ae22bc1f731"
+    },
+    {
+      "local_file": "soft-alert.wav",
+      "display_name": "柔和警示 · Soft Alert",
+      "original_file": "sounds/ui-clicks/interface-sounds-error_001.wav",
+      "source_pack": "Interface Sounds",
+      "source_url": "https://kenney.nl/assets/interface-sounds",
+      "sha256": "5e47ddbcfa24ef803c135b8a35170bd6746d160cdccd3f31d12ae9f9f7b3e346"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+Kenney Interface Sounds and Digital Audio
+
+Original author: Kenney (https://kenney.nl)
+License: Creative Commons Zero 1.0 Universal (CC0 1.0)
+License URL: https://creativecommons.org/publicdomain/zero/1.0/
+
+These assets may be used in personal and commercial projects. Attribution is
+not required. The friendly filenames in this folder are local product labels;
+manifest.json preserves each original filename, source pack, and checksum.
