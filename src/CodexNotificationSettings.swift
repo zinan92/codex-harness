@@ -656,7 +656,7 @@ struct SpeechSettingsRow: View {
                     Text("语音播报")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(ink)
-                    Text("零费用 · 本机增强语音 · 自动缓存")
+                    Text("仅主任务 · 本机增强语音 · 自动缓存")
                         .font(.system(size: 9.5, weight: .medium))
                         .foregroundStyle(inkFaint)
                 }

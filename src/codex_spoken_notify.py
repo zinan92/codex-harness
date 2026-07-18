@@ -501,6 +501,63 @@ def resolve_session_index_title(thread_id: str) -> str:
     return matched_title
 
 
+def source_marks_subagent(source: str) -> bool:
+    """Return whether Codex's source metadata identifies an internal subagent."""
+    if not source:
+        return False
+    try:
+        value = json.loads(source)
+    except (json.JSONDecodeError, TypeError):
+        return False
+    return isinstance(value, dict) and isinstance(value.get("subagent"), dict)
+
+
+def is_internal_thread(thread_id: str) -> bool:
+    """Suppress spawned agent turns; only user-visible task threads should speak."""
+    if not thread_id:
+        return False
+    for database in STATE_DATABASES:
+        if not database.is_file():
+            continue
+        try:
+            uri = f"file:{database}?mode=ro"
+            connection = sqlite3.connect(uri, uri=True, timeout=0.15)
+            try:
+                connection.execute("PRAGMA query_only = ON")
+                connection.execute("PRAGMA busy_timeout = 150")
+                try:
+                    spawned = connection.execute(
+                        "SELECT 1 FROM thread_spawn_edges "
+                        "WHERE child_thread_id = ? LIMIT 1",
+                        (thread_id,),
+                    ).fetchone()
+                except sqlite3.OperationalError:
+                    spawned = None
+                if spawned:
+                    return True
+                try:
+                    row = connection.execute(
+                        "SELECT thread_source, source FROM threads "
+                        "WHERE id = ? LIMIT 1",
+                        (thread_id,),
+                    ).fetchone()
+                except sqlite3.OperationalError:
+                    row = connection.execute(
+                        "SELECT '', source FROM threads WHERE id = ? LIMIT 1",
+                        (thread_id,),
+                    ).fetchone()
+            finally:
+                connection.close()
+            if row:
+                thread_source = str(row[0] or "").casefold()
+                return thread_source == "subagent" or source_marks_subagent(
+                    str(row[1] or "")
+                )
+        except (OSError, sqlite3.Error):
+            continue
+    return False
+
+
 def resolve_thread_title(thread_id: str, cwd: str) -> tuple[str, str]:
     index_title = resolve_session_index_title(thread_id)
     if index_title:
@@ -516,16 +573,17 @@ def resolve_thread_title(thread_id: str, cwd: str) -> tuple[str, str]:
                     connection.execute("PRAGMA query_only = ON")
                     connection.execute("PRAGMA busy_timeout = 150")
                     row = connection.execute(
-                        "SELECT title, cwd FROM threads WHERE id = ? LIMIT 1",
+                        "SELECT cwd FROM threads WHERE id = ? LIMIT 1",
                         (thread_id,),
                     ).fetchone()
                 finally:
                     connection.close()
                 if row:
-                    title = normalize_title(str(row[0] or ""))
-                    if title:
-                        return title, "thread_db"
-                    db_cwd = str(row[1] or "")
+                    # The database `title` frequently contains the first user
+                    # prompt rather than a product name. Never speak it. The
+                    # explicit Desktop/session-index name is trusted above;
+                    # otherwise use only the project directory as a fallback.
+                    db_cwd = str(row[0] or "")
                     return fallback_title(db_cwd or cwd), "thread_db_cwd"
             except (OSError, sqlite3.Error):
                 continue
@@ -977,6 +1035,17 @@ def handle_notify(raw_payload: str, dry_run: bool = False) -> int:
                 "thread_id": thread_id,
             }
         )
+        return 0
+    if is_internal_thread(thread_id):
+        result = {
+            "status": "ignored_internal_thread",
+            "turn_id": turn_id,
+            "thread_id": thread_id,
+        }
+        if dry_run:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            append_event(result)
         return 0
     title, title_source = resolve_thread_title(thread_id, cwd)
     classification, classifier_marker = classify_outcome(final_message)

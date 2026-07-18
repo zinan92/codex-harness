@@ -21,6 +21,7 @@ out  completion/attention sound → local task-name speech
 fail missing or invalid event ID → ignore safely; do not risk duplicate speech
 fail enhanced macOS voice unavailable → fall back to Tingting
 fail multiple tasks finish together → serialize playback instead of overlapping
+fail subagent/internal turn completes → stay silent; notify the parent task only
 fail existing Codex notify config → back it up, then install the Jingle callback
 ```
 
@@ -53,6 +54,7 @@ API Key，也不常驻一个语音模型。设置窗口可以关掉；Codex 完�
 - **零费用**：使用 macOS 本机语音和本地音效，没有 API 账单。
 - **轻量**：设置页是原生 SwiftUI 小窗口，通知引擎是单文件 Python callback。
 - **可辨认**：先用音效区分状态，再播报 Codex 任务名。
+- **只报主任务**：subagent 与内部 code-review turn 静默，不朗读派发指令。
 - **不打架**：多任务同时完成时排队播放，不让几段语音重叠。
 - **可关闭**：设置 App 不需要一直运行，Codex callback 独立工作。
 - **本地优先**：设置、缓存和事件记录只保存在 `~/.codex/spoken-notify/`。
@@ -136,6 +138,7 @@ python3 "$HOME/.codex/hooks/codex_spoken_notify.py" --setup
 | 本地缓存 | 相同播报复用 AIFF，最多保留 96 条 | 已完成 |
 | 并发排队 | 多任务完成时串行播放 | 已完成 |
 | 去重 | 相同 turn ID 跨重启只通知一次 | 已完成 |
+| 主任务过滤 | subagent completion 静默，只播报用户可见任务 | 已完成 |
 
 ## 状态判断
 
@@ -241,7 +244,7 @@ codex-jingle/
 
 ```yaml
 name: codex-jingle
-version: 0.7.0
+version: 0.7.1
 capability:
   summary: Play a local status sound and announce which Codex task completed.
   in: Codex agent-turn-complete JSON event
@@ -250,6 +253,7 @@ capability:
     - "invalid or missing turn ID → ignore without speaking"
     - "enhanced voice unavailable → use Tingting fallback"
     - "concurrent completions → serialize under a local file lock"
+    - "subagent completion → ignore and wait for the parent task"
     - "sound playback fails → continue to speech and record the result"
   adapters: [afplay, macOS-say]
 install_command: ./scripts/install.sh

@@ -302,7 +302,7 @@ class SpokenNotifyTests(unittest.TestCase):
             (notifier.STATUS_ATTENTION, "missing_message"),
         )
 
-    def test_resolve_title_from_read_only_database(self) -> None:
+    def test_database_fallback_never_speaks_raw_user_prompt_title(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             database = Path(temp_dir) / "state.sqlite"
             connection = notifier.sqlite3.connect(database)
@@ -315,8 +315,8 @@ class SpokenNotifyTests(unittest.TestCase):
             connection.close()
             with mock.patch.object(notifier, "STATE_DATABASES", (database,)):
                 title, source = notifier.resolve_thread_title("thread-1", "/tmp/fallback")
-            self.assertEqual(title, "交易系统任务")
-            self.assertEqual(source, "thread_db")
+            self.assertEqual(title, "trading")
+            self.assertEqual(source, "thread_db_cwd")
 
     def test_session_index_title_has_priority_and_uses_latest_name(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -346,6 +346,69 @@ class SpokenNotifyTests(unittest.TestCase):
                 )
             self.assertEqual(title, "修复 Codex 完成通知")
             self.assertEqual(source, "session_index")
+
+    def test_internal_thread_detection_covers_spawn_edge_and_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            database = Path(temp_dir) / "state.sqlite"
+            connection = notifier.sqlite3.connect(database)
+            connection.execute(
+                "CREATE TABLE threads ("
+                "id TEXT PRIMARY KEY, thread_source TEXT, source TEXT)"
+            )
+            connection.execute(
+                "CREATE TABLE thread_spawn_edges ("
+                "parent_thread_id TEXT, child_thread_id TEXT PRIMARY KEY, status TEXT)"
+            )
+            connection.executemany(
+                "INSERT INTO threads VALUES (?, ?, ?)",
+                (
+                    ("root", "user", "vscode"),
+                    ("source-child", "subagent", "vscode"),
+                    (
+                        "json-child",
+                        "",
+                        json.dumps({"subagent": {"thread_spawn": {}}}),
+                    ),
+                    ("edge-child", "", "vscode"),
+                ),
+            )
+            connection.execute(
+                "INSERT INTO thread_spawn_edges VALUES (?, ?, ?)",
+                ("root", "edge-child", "open"),
+            )
+            connection.commit()
+            connection.close()
+            with mock.patch.object(notifier, "STATE_DATABASES", (database,)):
+                self.assertFalse(notifier.is_internal_thread("root"))
+                self.assertTrue(notifier.is_internal_thread("source-child"))
+                self.assertTrue(notifier.is_internal_thread("json-child"))
+                self.assertTrue(notifier.is_internal_thread("edge-child"))
+
+    def test_internal_thread_completion_is_silent(self) -> None:
+        payload = json.dumps(
+            {
+                "type": "agent-turn-complete",
+                "thread-id": "subagent-thread",
+                "turn-id": "subagent-turn",
+                "last-assistant-message": "任务已完成。",
+            }
+        )
+        with (
+            mock.patch.object(notifier, "is_internal_thread", return_value=True),
+            mock.patch.object(notifier, "resolve_thread_title") as resolve_title,
+            mock.patch.object(notifier, "append_event") as append_event,
+            mock.patch.object(notifier, "launch_worker") as launch_worker,
+        ):
+            self.assertEqual(notifier.handle_notify(payload), 0)
+        resolve_title.assert_not_called()
+        launch_worker.assert_not_called()
+        append_event.assert_called_once_with(
+            {
+                "status": "ignored_internal_thread",
+                "turn_id": "subagent-turn",
+                "thread_id": "subagent-thread",
+            }
+        )
 
     def test_missing_thread_falls_back_to_cwd(self) -> None:
         with mock.patch.object(notifier, "STATE_DATABASES", (Path("/missing"),)):
