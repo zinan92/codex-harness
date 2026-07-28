@@ -219,6 +219,9 @@
   .settings-scroll { overflow-y: auto; overscroll-behavior: contain; padding: 10px 12px; }
   .settings-actions { border-bottom: 0; border-top: 1px solid var(--track); }
   .settings-actions #s-msg { margin-left: auto; }
+  body[data-theme="focus"] .eggsec, body[data-theme="focus"] .share-box { display: none; }
+  body[data-theme="focus"] .panel { border-top-color: color-mix(in oklch, var(--track) 55%, transparent); }
+  body[data-reduced-motion="true"] *, body[data-reduced-motion="true"] *::before, body[data-reduced-motion="true"] *::after { animation: none !important; transition-duration: 0.01ms !important; }
 
   /* ── tool rows ── */
   .tools { margin-top: 15px; display: flex; flex-direction: column; gap: 11px; }
@@ -595,6 +598,8 @@
         <div class="srow"><span class="slbl">烧量榜</span><label class="consent"><input type="checkbox" id="s-rank"> 加入排名</label><i>勾选=同意上传 handle + 烧量参与排名；不勾只留本地</i></div>
         <div class="srow"><span class="slbl">桌面占用</span><select id="s-display-mode"><option value="full">完整 widget</option><option value="compact">一行紧凑</option></select></div>
         <div class="srow"><span class="slbl">展示位置</span><select id="s-display-placement"><option value="desktop">桌面浮窗</option><option value="menu_bar">菜单栏</option></select><i id="layout-preview">预览中：桌面浮窗</i></div>
+        <div class="srow"><span class="slbl">界面主题</span><select id="s-theme"><option value="focus">Focus · 安静专注</option><option value="growth">Growth · 成长激励</option></select></div>
+        <div class="srow"><span class="slbl">动效</span><label class="consent"><input type="checkbox" id="s-reduced-motion"> 减少动效</label><i>优先于成长主题动效</i></div>
         <div class="srow"><button id="s-reset-layout" type="button">恢复默认布局</button><i>只预览，点击保存后才生效</i></div>
         <div class="srow"><span class="slbl">追踪厂商</span><i>勾选要统计的厂商；只有 tokens 计入烧量</i></div>
         <div id="s-providers" class="provs"></div>
@@ -670,6 +675,7 @@
   let _metricScope = "combined";
   let _lastCorePayload = null, _lastCostPayload = null, _lastPanelPayload = null;
   let _savedLayout = {mode: "full", placement: "desktop"};
+  let _savedAppearance = {theme: "focus", reduced_motion: false};
   const scopeLabel = scope => ({combined: "Codex + Claude", codex: "Codex", claude: "Claude"}[scope] || "Codex + Claude");
   function scopedCore(d) {
     if (_metricScope === "combined") return {...d.combined, label: scopeLabel(_metricScope)};
@@ -1095,6 +1101,11 @@
     $("s-display-placement").value = display.placement || "desktop";
     _savedLayout = {mode: display.mode || "full", placement: display.placement || "desktop"};
     document.body.classList.toggle("compact", (display.mode || "full") === "compact");
+    const appearance = c.appearance || {};
+    $("s-theme").value = appearance.theme === "growth" ? "growth" : "focus";
+    $("s-reduced-motion").checked = !!appearance.reduced_motion;
+    _savedAppearance = {theme: $("s-theme").value, reduced_motion: $("s-reduced-motion").checked};
+    applyAppearancePreview();
   }
   async function loadConfig() {
     try { populateSettings(JSON.parse(await window.pywebview.api.config())); } catch (e) {}
@@ -1143,6 +1154,7 @@
       mode: $("s-display-mode").value,
       placement: $("s-display-placement").value,
     };
+    partial.appearance = { theme: $("s-theme").value, reduced_motion: $("s-reduced-motion").checked };
     await saveProviders();   // enabled set -> config, keys -> keychain
     try {
       const r = JSON.parse(await window.pywebview.api.save_config(JSON.stringify(partial)));
@@ -1177,6 +1189,10 @@
     document.body.classList.toggle("compact", mode === "compact");
     $("layout-preview").textContent = `预览中：${placement === "menu_bar" ? "菜单栏" : "桌面浮窗"} · ${mode === "compact" ? "一行紧凑" : "完整 widget"}`;
   }
+  function applyAppearancePreview() {
+    document.body.dataset.theme = $("s-theme").value;
+    document.body.dataset.reducedMotion = String($("s-reduced-motion").checked);
+  }
   async function openSettings(e) {
     if (e) e.stopPropagation();
     $("settings-sheet").hidden = false;
@@ -1187,6 +1203,9 @@
     if (e) e.stopPropagation();
     $("settings-sheet").hidden = true;
     document.body.classList.toggle("compact", _savedLayout.mode === "compact");
+    $("s-theme").value = _savedAppearance.theme;
+    $("s-reduced-motion").checked = _savedAppearance.reduced_motion;
+    applyAppearancePreview();
     setTimeout(fitWindow, 20);
   }
   function resetLayoutPreview(e) {
@@ -1253,6 +1272,8 @@
     $("s-reset-layout").addEventListener("click", resetLayoutPreview);
     $("s-display-mode").addEventListener("change", applyLayoutPreview);
     $("s-display-placement").addEventListener("change", applyLayoutPreview);
+    $("s-theme").addEventListener("change", applyAppearancePreview);
+    $("s-reduced-motion").addEventListener("change", applyAppearancePreview);
     $("settings-sheet").addEventListener("mousedown", e => e.stopPropagation());
     document.querySelectorAll("#scope-switch button").forEach(btn => {
       btn.addEventListener("click", e => { e.stopPropagation(); setMetricScope(btn.dataset.scope); });

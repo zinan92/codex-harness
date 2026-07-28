@@ -70,6 +70,13 @@ def test_display_accepts_compact_and_menu_bar_only():
     assert "display.metric_scope" in configio.validate_partial({"display": {"metric_scope": "all"}})
 
 
+def test_appearance_accepts_only_local_focus_growth_and_boolean_motion_preference():
+    assert configio.validate_partial({"appearance": {"theme": "focus", "reduced_motion": False}}) == []
+    assert configio.validate_partial({"appearance": {"theme": "growth", "reduced_motion": True}}) == []
+    assert "appearance.theme" in configio.validate_partial({"appearance": {"theme": "rage"}})
+    assert "appearance.reduced_motion" in configio.validate_partial({"appearance": {"reduced_motion": "yes"}})
+
+
 def test_save_partial_ranking_consent_preserves_url(tmp_path, monkeypatch):
     """Toggling consent must flip enabled but KEEP the shipped board url (the UI
     only sends {ranking:{enabled:...}}; the deep-merge preserves url)."""

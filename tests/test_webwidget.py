@@ -132,6 +132,11 @@ def test_widget_exposes_compact_and_menu_bar_display_controls():
     assert "openSettings" in html
     assert "applyLayoutPreview" in html
     assert "resetLayoutPreview" in html
+    assert 'id="s-theme"' in html
+    assert 'id="s-reduced-motion"' in html
+    assert "applyAppearancePreview" in html
+    assert 'data-theme="focus"' in html
+    assert 'data-reduced-motion="true"' in html
     assert "overflow-y: auto" in html
     assert 'id="s-save">保存并重启' in html
     assert "restart_widget" in html
