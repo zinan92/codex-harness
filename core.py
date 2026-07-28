@@ -343,6 +343,10 @@ DEFAULT_CONFIG = {
         "placement": "desktop",  # desktop widget or native macOS menu bar
         "metric_scope": "combined",  # combined, codex, or claude
     },
+    "appearance": {
+        "theme": "focus",  # quiet decision/work review or growth gamification
+        "reduced_motion": False,
+    },
     "handle": "",  # your X/Twitter @handle for the share card (blank -> git user / "you")
     "xhs_id": "",  # your 小红书号 (RED ID) for the share card (blank -> hidden)
     "checkpoints": ["15:00", "20:00", "23:00"],
