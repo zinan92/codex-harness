@@ -189,6 +189,15 @@
   .decision-pace { color: var(--heat); font-size: 9.5px; font-weight: 700; }
   .decision-card.unavailable { border-color: var(--alarm); background: color-mix(in oklch, var(--panel) 92%, var(--alarm) 8%); }
   .decision-card.unavailable .decision-pace { color: var(--alarm); }
+  .session-list { display: grid; gap: 7px; }
+  .session-note { border: 1px solid var(--track); border-radius: 8px; padding: 8px; display: grid; gap: 6px; }
+  .session-head { display: flex; justify-content: space-between; gap: 8px; color: var(--ink-dim); font-size: 10.5px; }
+  .session-head b { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .session-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .session-fields input { min-width: 0; }
+  .session-outcome { width: 100%; box-sizing: border-box; }
+  .session-save { justify-self: start; font-size: 10px; padding: 4px 7px; }
+  .session-empty { color: var(--ink-faint); font-size: 10.5px; }
 
   /* ── tool rows ── */
   .tools { margin-top: 15px; display: flex; flex-direction: column; gap: 11px; }
@@ -541,6 +550,10 @@
         <div class="cstats" id="cstats"></div>
       </div>
       <div class="psec">
+        <div class="ptitle">会话与产出 <span class="psub">仅本机</span></div>
+        <div class="session-list" id="session-list"><span class="session-empty">正在读取近期本地会话…</span></div>
+      </div>
+      <div class="psec">
         <div class="ptitle">设置</div>
         <div class="srow"><span class="slbl">每日目标 M</span>
           <input id="s-tc" type="number" min="1"><i>Claude</i>
@@ -800,8 +813,48 @@
   async function loadPanel() {
     loadConfig();   // keep the settings inputs in sync whenever the panel loads
     loadBadges();
+    loadSessions();
     try { renderPanel(JSON.parse(await window.pywebview.api.panel())); }
     catch (e) {}
+    setTimeout(fitWindow, 40);
+  }
+
+  function field(value, placeholder) {
+    const input = document.createElement("input");
+    input.value = value || ""; input.placeholder = placeholder;
+    return input;
+  }
+  async function loadSessions() {
+    const box = $("session-list"); if (!box) return;
+    try {
+      const data = JSON.parse(await window.pywebview.api.sessions());
+      const rows = data && data.sessions;
+      box.replaceChildren();
+      if (!rows || !rows.length) {
+        const empty = document.createElement("span"); empty.className = "session-empty";
+        empty.textContent = "暂无近期本地会话；开始一次 Claude 或 Codex 工作后会出现在这里。";
+        box.appendChild(empty); return;
+      }
+      rows.forEach(row => {
+        const note = row.annotation || {}, card = document.createElement("article"); card.className = "session-note";
+        const head = document.createElement("div"); head.className = "session-head";
+        const name = document.createElement("b"); name.textContent = `${row.tool === "codex" ? "Codex" : "Claude"} · ${row.name || "未命名会话"}`;
+        const age = document.createElement("span"); age.textContent = row.age || ""; head.append(name, age);
+        const fields = document.createElement("div"); fields.className = "session-fields";
+        const project = field(note.project, "项目"); const type = field(note.work_type, "工作类型"); fields.append(project, type);
+        const outcome = field(note.outcome, "实际产出（可留空）"); outcome.className = "session-outcome";
+        const save = document.createElement("button"); save.className = "session-save"; save.type = "button"; save.textContent = "保存标记";
+        save.addEventListener("click", async e => {
+          e.stopPropagation(); save.disabled = true; save.textContent = "保存中…";
+          try {
+            const r = JSON.parse(await window.pywebview.api.save_session_annotation(row.id, project.value, type.value, outcome.value));
+            save.textContent = r.ok ? "已保存 ✓" : "保存失败";
+          } catch (err) { save.textContent = "保存失败"; }
+          setTimeout(() => { save.disabled = false; save.textContent = "保存标记"; }, 1500);
+        });
+        card.append(head, fields, outcome, save); box.append(card);
+      });
+    } catch (e) { box.innerHTML = '<span class="session-empty">近期会话暂不可读。</span>'; }
     setTimeout(fitWindow, 40);
   }
 

@@ -30,6 +30,7 @@ import history
 import lifetime
 import providers
 import share
+import sessions
 import webdata
 
 HTML = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "widget.html")
@@ -62,6 +63,19 @@ class Api:
             return json.dumps(webdata.panel_payload(), default=str)
         except Exception as exc:  # noqa: BLE001
             return json.dumps({"error": str(exc)})
+
+    def sessions(self) -> str:
+        try:
+            return json.dumps({"sessions": sessions.annotated_sessions()}, default=str)
+        except Exception as exc:  # noqa: BLE001
+            return json.dumps({"error": str(exc)})
+
+    def save_session_annotation(self, session_id: str, project: str = "", work_type: str = "", outcome: str = "") -> str:
+        try:
+            note = sessions.save_annotation(session_id, project, work_type, outcome)
+            return json.dumps({"ok": True, "annotation": note})
+        except (TypeError, ValueError, OSError) as exc:
+            return json.dumps({"ok": False, "error": str(exc)})
 
     def badges(self) -> str:
         try:
