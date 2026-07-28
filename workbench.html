@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PARK INTEL · Workbench</title>
+<style>
+:root{
+  --paper:#fff; --panel:#fafaf9; --ink:#101216; --mut:#666d76; --fnt:#98a0a8;
+  --line:#e3e5e2; --soft:#f3f4f1; --rule:#101216;
+  --acc:#1b3ee8; --acc-bg:#ecefff;
+  --ok:#1a7a4c; --warn:#a8600c; --warn-bg:#fdf4e5; --dead:#b6bac0;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#0e1013; --panel:#15181c; --ink:#e9ecef; --mut:#8d939b; --fnt:#636971;
+  --line:#252a30; --soft:#1a1e23; --rule:#e9ecef;
+  --acc:#829aff; --acc-bg:#161d38;
+  --ok:#50b985; --warn:#d59448; --warn-bg:#2a2114; --dead:#484d55;
+}}
+:root[data-theme="light"]{
+  --paper:#fff; --panel:#fafaf9; --ink:#101216; --mut:#666d76; --fnt:#98a0a8;
+  --line:#e3e5e2; --soft:#f3f4f1; --rule:#101216;
+  --acc:#1b3ee8; --acc-bg:#ecefff;
+  --ok:#1a7a4c; --warn:#a8600c; --warn-bg:#fdf4e5; --dead:#b6bac0;
+}
+:root[data-theme="dark"]{
+  --paper:#0e1013; --panel:#15181c; --ink:#e9ecef; --mut:#8d939b; --fnt:#636971;
+  --line:#252a30; --soft:#1a1e23; --rule:#e9ecef;
+  --acc:#829aff; --acc-bg:#161d38;
+  --ok:#50b985; --warn:#d59448; --warn-bg:#2a2114; --dead:#484d55;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:-apple-system,"PingFang SC","Hiragino Sans GB",system-ui,sans-serif;
+  font-size:13px;line-height:1.55}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace}
+.kick{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:9px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--fnt)}
+.num{font-variant-numeric:tabular-nums}
+
+/* masthead */
+.mast{display:flex;align-items:center;gap:12px;padding:9px 18px;
+  border-bottom:2px solid var(--rule);flex-wrap:wrap}
+.mast .lg{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13.5px}
+.mast .lg i{width:10px;height:10px;background:var(--acc);display:block}
+.mast .sp{flex:1}
+.mast .st{text-align:right;padding-left:15px}
+.mast .st .v{font-weight:650;font-size:13px;font-variant-numeric:tabular-nums}
+.mast .st .k{font-family:ui-monospace,Menlo,monospace;font-size:8.5px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--fnt)}
+
+/* shell */
+.shell{display:grid;grid-template-columns:206px minmax(0,1fr) 320px;
+  min-height:calc(100vh - 40px)}
+.nav{border-right:1px solid var(--line);background:var(--panel);
+  padding:12px 0 30px;overflow:auto}
+.main{display:flex;flex-direction:column;min-width:0;padding:0 0 18px}
+.aside{border-left:1px solid var(--line);background:var(--panel);
+  padding:12px 15px 34px;overflow:auto}
+
+/* left nav */
+.grp{margin-bottom:14px}
+.grp>.h{display:flex;align-items:baseline;gap:6px;padding:0 13px 4px}
+.grp>.h .n{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:var(--acc);font-weight:700}
+.grp>.h .t{font-size:11px;font-weight:650}
+.it{display:grid;grid-template-columns:6px 1fr auto;gap:7px;align-items:center;
+  padding:4px 13px;cursor:pointer;color:var(--mut);font-size:12px}
+.it:hover{background:var(--soft);color:var(--ink)}
+.it.on{background:var(--acc-bg);color:var(--ink);font-weight:650;
+  box-shadow:inset 2px 0 0 var(--acc)}
+.it .d{width:6px;height:6px;border-radius:50%;background:var(--dead)}
+.it .d.live{background:var(--ok)} .it .d.warm{background:var(--warn)}
+.it .d.cool{background:var(--fnt)}
+.it .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it .c{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:var(--fnt);
+  font-variant-numeric:tabular-nums}
+.it.on .c{color:var(--mut)}
+.navfoot{padding:9px 13px 0;margin-top:6px;border-top:1px solid var(--line)}
+.lgd{font-size:10px;color:var(--fnt);display:flex;align-items:center;gap:6px;margin-top:4px}
+.lgd i{width:6px;height:6px;border-radius:50%;display:block;flex:none}
+
+/* project head */
+.phd{display:flex;align-items:center;gap:10px;padding:11px 19px 9px;flex-wrap:wrap}
+.phd h1{margin:0;font-size:16px;font-weight:700;letter-spacing:-.01em}
+.phd .badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;
+  border:1px solid var(--warn);color:var(--warn);background:var(--warn-bg);
+  border-radius:2px;padding:1px 7px;font-family:ui-monospace,Menlo,monospace;font-weight:700}
+.phd .sp{flex:1}
+.phd a{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--mut);
+  border:1px solid var(--line);border-radius:3px;padding:2px 7px;text-decoration:none}
+.phd a:hover{border-color:var(--acc);color:var(--acc)}
+.phd a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* timeline box */
+.tlbox{margin:0 19px 12px;border:1px solid var(--line);background:var(--panel)}
+.tlhd{display:flex;align-items:baseline;gap:9px;padding:7px 12px 6px;
+  border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tlhd .t{font-size:12px;font-weight:650}
+.tlhd .ct{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;
+  font-weight:700;font-variant-numeric:tabular-nums}
+.tlhd .ct b{color:var(--ok)}
+.track{padding:9px 12px 4px}
+.trk{display:flex;gap:3px}
+.seg{flex:1;min-width:0}
+.seg .bar{height:4px;background:var(--line);border-radius:1px}
+.seg.done .bar{background:var(--acc)}
+.seg.part .bar{background:linear-gradient(90deg,var(--acc) 55%,var(--line) 55%)}
+.seg.gate .bar{background:repeating-linear-gradient(90deg,var(--dead) 0 4px,transparent 4px 8px)}
+.seg .nm{font-size:10px;margin-top:6px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;color:var(--mut)}
+.seg .ct{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:var(--fnt);margin-top:1px}
+.seg.done .ct{color:var(--ok)}
+.trow2{padding:2px 12px 9px;margin-top:7px;border-top:1px solid var(--line)}
+.trow2 .lb{margin:7px 0 6px}
+.ph .seg .bar{height:3px}
+.tlnote{font-size:11px;color:var(--mut);border-top:1px solid var(--line);
+  padding:7px 12px;background:var(--soft)}
+.tlnote b{color:var(--ink);font-weight:600}
+
+/* embed */
+.emwrap{flex:1;display:flex;flex-direction:column;padding:0 19px;min-height:0}
+.emlab{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.emlab .l{flex:1;height:1px;background:var(--line)}
+.frame{border:1px solid var(--rule);flex:1;min-height:620px;display:flex;
+  flex-direction:column;background:var(--paper)}
+.fbar{display:flex;align-items:center;gap:8px;padding:5px 10px;
+  border-bottom:1px solid var(--line);background:var(--soft);flex-wrap:wrap}
+.fbar .u{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:var(--fnt);
+  border:1px solid var(--line);border-radius:2px;padding:1px 6px;background:var(--paper)}
+.fbar .sp{flex:1}
+.fbar .st{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ok)}
+.fbar .st i{width:6px;height:6px;border-radius:50%;background:var(--ok);
+  animation:pl 1.9s infinite}
+@keyframes pl{0%,100%{opacity:1}50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.fbar .st i{animation:none}}
+iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
+.fallback{padding:26px 20px;font-size:12px;color:var(--mut);display:none}
+.fallback code{font-size:11px;background:var(--soft);padding:1px 5px;border-radius:2px}
+
+/* aside */
+.sec{margin-bottom:15px}
+.sec>.h{display:flex;align-items:baseline;gap:8px;border-bottom:2px solid var(--rule);
+  padding-bottom:3px;margin-bottom:8px}
+.sec>.h .t{font-size:11px;font-weight:700}
+.sec>.h .k{margin-left:auto}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3.5px 0;
+  border-bottom:1px solid var(--line);font-size:11.5px}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--mut)}
+.kv .v{font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;
+  font-weight:600;text-align:right;white-space:nowrap}
+.kv .v small{font-weight:400;color:var(--fnt);font-size:9.5px}
+.kv .v.ok{color:var(--ok)}
+.pos{background:var(--soft);border-left:2px solid var(--acc);padding:7px 10px;
+  font-size:11px;color:var(--mut)}
+.pos b{color:var(--ink);font-weight:600}
+.pos+.pos{margin-top:5px}
+.mrow{display:grid;grid-template-columns:70px 1fr 40px;gap:7px;align-items:center;
+  padding:3px 0;font-size:11px}
+.mrow .n{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--mut);
+  overflow:hidden;text-overflow:ellipsis}
+.mrow .t{height:6px;background:var(--soft);border:1px solid var(--line)}
+.mrow .t i{display:block;height:100%;background:var(--dead)}
+.mrow.hi .t i{background:var(--warn)}
+.mrow .p{font-family:ui-monospace,Menlo,monospace;font-size:10px;
+  font-variant-numeric:tabular-nums;text-align:right;color:var(--mut)}
+.mrow.hi .p{color:var(--warn);font-weight:700}
+.note{font-size:10.5px;color:var(--warn);background:var(--warn-bg);
+  border:1px dashed var(--warn);padding:6px 9px;margin-top:8px}
+.gt{display:flex;align-items:center;gap:6px;padding:3.5px 0;
+  border-bottom:1px solid var(--line);font-size:11.5px}
+.gt:last-child{border-bottom:none}
+.gt i{width:13px;text-align:center;font-size:10px;flex:none;color:var(--ok)}
+.gt i.off{color:var(--dead)}
+.gt .t{flex:1;color:var(--mut)}
+.gt .s{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:var(--fnt)}
+.pr{display:grid;grid-template-columns:11px 1fr auto;gap:6px;padding:3.5px 0;
+  border-bottom:1px solid var(--line);font-size:11px;align-items:baseline}
+.pr:last-child{border-bottom:none}
+.pr .g{color:var(--ok);font-size:9.5px}
+.pr .id{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:var(--fnt);margin-right:4px}
+.pr .tm{font-family:ui-monospace,Menlo,monospace;font-size:9px;color:var(--fnt)}
+
+.foot{padding:10px 18px;border-top:1px solid var(--line);font-size:10px;
+  color:var(--fnt);line-height:1.7}
+.foot b{color:var(--mut);font-weight:600}
+
+@media (max-width:1000px){
+  .shell{grid-template-columns:1fr}
+  .nav,.aside{border:none;border-top:1px solid var(--line)}
+  .frame{min-height:520px}
+}
+</style>
+</head>
+<body>
+
+<div class="mast">
+  <div class="lg"><i></i>PARK INTEL</div>
+  <span class="kick">Workbench</span>
+  <span class="sp"></span>
+  <div class="st"><div class="v num">22</div><div class="k">项目</div></div>
+  <div class="st"><div class="v num">$10,343</div><div class="k">Claude</div></div>
+  <div class="st"><div class="v num">$7,676</div><div class="k">Codex</div></div>
+  <div class="st"><div class="v num">$18,019</div><div class="k">合计（下限）</div></div>
+</div>
+
+<div class="shell">
+  <!-- 左栏：真实项目清单 -->
+  <nav class="nav">
+    <div class="grp">
+      <div class="h"><span class="n">01</span><span class="t">交易</span></div>
+      <div class="it on"><i class="d warm"></i><span class="nm">网格交易机器人</span><span class="c">$4,123</span></div>
+      <div class="it"><i class="d"></i><span class="nm">投研面板</span><span class="c">$1,684</span></div>
+      <div class="it"><i class="d"></i><span class="nm">trading-co</span><span class="c">$1,494</span></div>
+      <div class="it"><i class="d"></i><span class="nm">人生 K 线</span><span class="c">$293</span></div>
+      <div class="it"><i class="d warm"></i><span class="nm">tokenpulse</span><span class="c">$15</span></div>
+      <div class="it"><i class="d"></i><span class="nm">a股情报</span><span class="c">$11</span></div>
+      <div class="it"><i class="d warm"></i><span class="nm">trading-system</span><span class="c">$6</span></div>
+      <div class="it"><i class="d cool"></i><span class="nm">goldbot-gateway</span><span class="c">$0</span></div>
+    </div>
+
+    <div class="grp">
+      <div class="h"><span class="n">02</span><span class="t">内容</span></div>
+      <div class="it"><i class="d"></i><span class="nm">内容制作</span><span class="c">$3,964</span></div>
+      <div class="it"><i class="d"></i><span class="nm">New project</span><span class="c">$3,084</span></div>
+      <div class="it"><i class="d"></i><span class="nm">电商工作台</span><span class="c">$242</span></div>
+      <div class="it"><i class="d"></i><span class="nm">知识库</span><span class="c">$82</span></div>
+      <div class="it"><i class="d"></i><span class="nm">content-ops</span><span class="c">$77</span></div>
+      <div class="it"><i class="d"></i><span class="nm">videocut</span><span class="c">$2</span></div>
+      <div class="it"><i class="d live"></i><span class="nm">park-ai-intel</span><span class="c">$0</span></div>
+    </div>
+
+    <div class="grp">
+      <div class="h"><span class="n">03</span><span class="t">Agent OS</span></div>
+      <div class="it"><i class="d live"></i><span class="nm">input-to-park</span><span class="c">$1,431</span></div>
+      <div class="it"><i class="d"></i><span class="nm">agent 自管理</span><span class="c">$377</span></div>
+      <div class="it"><i class="d"></i><span class="nm">park-io</span><span class="c">$234</span></div>
+      <div class="it"><i class="d"></i><span class="nm">tokenrouter</span><span class="c">$112</span></div>
+      <div class="it"><i class="d"></i><span class="nm">loop-board-daemon</span><span class="c">$2</span></div>
+      <div class="it"><i class="d warm"></i><span class="nm">park-operating-system</span><span class="c">$0</span></div>
+    </div>
+
+    <div class="grp">
+      <div class="h"><span class="n">04</span><span class="t">未归类</span></div>
+      <div class="it"><i class="d"></i><span class="nm">~/wendy 根目录会话</span><span class="c">$394</span></div>
+      <div class="it"><i class="d"></i><span class="nm">未匹配日志目录</span><span class="c">$392</span></div>
+    </div>
+
+    <div class="navfoot">
+      <div class="kick">金额 = Claude + Codex 合计</div>
+      <div class="lgd" style="margin-top:6px">活跃度按最后提交：</div>
+      <div class="lgd"><i style="background:var(--ok)"></i>24 小时内</div>
+      <div class="lgd"><i style="background:var(--warn)"></i>7 天内</div>
+      <div class="lgd"><i style="background:var(--fnt)"></i>30 天内</div>
+      <div class="lgd"><i style="background:var(--dead)"></i>更早 / 无 git 仓库</div>
+      <div class="lgd" style="margin-top:7px;color:var(--mut)">$0 = 两条通道本机均无日志，<b style="color:var(--warn)">非零成本</b></div>
+    </div>
+  </nav>
+
+  <!-- 中栏：真实项目 -->
+  <main class="main">
+    <div class="phd">
+      <h1>网格交易机器人</h1>
+      <span class="badge">PAPER · 真钱路径关闭</span>
+      <span class="sp"></span>
+      <a href="https://goldbot.park-ai-intel.com/dashboard-v5.html" target="_blank" rel="noopener">公网 ↗</a>
+      <a href="https://github.com/zinan92/trading-system" target="_blank" rel="noopener">GitHub ↗</a>
+    </div>
+
+    <div class="tlbox">
+      <div class="tlhd">
+        <span class="kick">整体进度</span>
+        <span class="t">实施计划 M1–M6</span>
+        <span class="ct"><b>26 / 26</b> story 已验证</span>
+      </div>
+      <div class="track">
+        <div class="trk">
+          <div class="seg done"><div class="bar"></div><div class="nm">M1 运行真相</div><div class="ct">5/5</div></div>
+          <div class="seg done"><div class="bar"></div><div class="nm">M2 生命周期证据</div><div class="ct">6/6</div></div>
+          <div class="seg done"><div class="bar"></div><div class="nm">M3 操作者产品</div><div class="ct">6/6</div></div>
+          <div class="seg done"><div class="bar"></div><div class="nm">M4 Shadows/复盘</div><div class="ct">3/3</div></div>
+          <div class="seg done"><div class="bar"></div><div class="nm">M5 演化/自修复</div><div class="ct">3/3</div></div>
+          <div class="seg done"><div class="bar"></div><div class="nm">M6 接口/发布纪律</div><div class="ct">3/3</div></div>
+        </div>
+        <div class="trow2">
+          <div class="lb"><span class="kick">平台 Roadmap · 另一根轴（ROADMAP.md，更新于 05-29）</span></div>
+          <div class="trk ph">
+            <div class="seg part"><div class="bar"></div><div class="nm">P1 可信账目</div><div class="ct">进行中 3/5</div></div>
+            <div class="seg part"><div class="bar"></div><div class="nm">P2 策略抽象</div><div class="ct">核心完成</div></div>
+            <div class="seg part"><div class="bar"></div><div class="nm">P3 多策略并行</div><div class="ct">基础就绪</div></div>
+            <div class="seg done"><div class="bar"></div><div class="nm">P4 排行榜</div><div class="ct">完成</div></div>
+            <div class="seg gate"><div class="bar"></div><div class="nm">P5 运维加固</div><div class="ct">3 项待决策</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="tlnote">
+        26 个 story <b>全部在 2026-07-24 当日合入</b>，基线 <span class="mono">main@d3e41a2</span>（PR #367）——
+        M1–M6 是<b>逻辑顺序，不是时间轴</b>。实施计划已走完，但平台 Roadmap 的 P1 仍在进行、P5 有 3 项等你拍板
+        （paper/live 环境分离 · 行情源依赖加固 · 容器化脱离 launchd），<b>live 准入尚未定义</b>。
+      </div>
+    </div>
+
+    <div class="emwrap">
+      <div class="emlab">
+        <span class="kick">产品本身 · 真实嵌入</span><span class="l"></span>
+        <span class="kick">经本机 goldbot-gateway :8766 直取，未过 Cloudflare</span>
+      </div>
+      <div class="frame">
+        <div class="fbar">
+          <span class="mono" style="font-size:10.5px;font-weight:600">GoldBot Trader Console V5</span>
+          <span class="u">127.0.0.1:8766/dashboard-v5.html</span>
+          <span class="sp"></span>
+          <span class="st"><i></i>实时</span>
+        </div>
+        <iframe id="dash" src="http://127.0.0.1:8766/dashboard-v5.html"
+                title="GoldBot Trader Console V5 实时仪表盘"></iframe>
+        <div class="fallback" id="fb">
+          嵌入未能加载。本页须经 <code>http://127.0.0.1</code> 打开（不能用 file:// 或线上链接），
+          且本机 <code>goldbot-gateway</code> 需在运行：<code>curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8766/dashboard-v5.html</code> 应返回 200。
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 右栏：真实元数据 -->
+  <aside class="aside">
+    <section class="sec">
+      <div class="h"><span class="t">现在在哪里</span><span class="kick k">REGISTRY.md · 07-24</span></div>
+      <div class="pos">26 个已审核 story <b>全部验证完成</b>。M6-03 把 main SHA、发布前兼容性闸、健康/行情/执行分离、浏览器验收与 Paper-only rollback 固化为 release runbook（PR #365）。</div>
+      <div class="pos"><b>计划完成 ≠ 自动启动。</b>每次 Paper 发布仍须按 runbook 走实时安全闸；真钱动作仍需 <span class="mono">park-approved</span>。</div>
+    </section>
+
+    <section class="sec">
+      <div class="h"><span class="t">下一步</span><span class="kick k">REGISTRY.md</span></div>
+      <div class="pos">继续积累 Grid 开仓→止盈→原价重挂与 P&amp;L reconciliation 实绩；用 12 小时复盘与 Strategy Shadows 比较网格变体，<b>只在样本足够且原因可持续时才升级主策略</b>；实绩达标后再定义 live 准入标准。</div>
+    </section>
+
+    <section class="sec">
+      <div class="h"><span class="t">产出</span><span class="kick k">本地 git</span></div>
+      <div class="kv"><span class="k">已合并 PR</span><span class="v">131</span></div>
+      <div class="kv"><span class="k">提交数</span><span class="v">479</span></div>
+      <div class="kv"><span class="k">仓库跨度</span><span class="v">07-01 → 07-25</span></div>
+      <div class="kv"><span class="k">最新合并</span><span class="v">#383 <small>· 07-25</small></span></div>
+      <div class="kv"><span class="k">已验证 story</span><span class="v ok">26 <small>/ 26</small></span></div>
+      <div class="kv"><span class="k">可展示产出</span><span class="v">1 <small>· GridMind V5</small></span></div>
+    </section>
+
+    <section class="sec">
+      <div class="h"><span class="t">消耗 · 双通道</span><span class="kick k">Claude + Codex</span></div>
+      <div class="kv"><span class="k">Claude 输入 / 输出</span><span class="v">3,849M <small>/</small> 18.6M</span></div>
+      <div class="kv"><span class="k">Codex 输入 / 输出</span><span class="v">157M <small>/</small> 1.4M</span></div>
+      <div class="kv"><span class="k">Claude 估算</span><span class="v">$4,068</span></div>
+      <div class="kv"><span class="k">Codex 估算</span><span class="v">$55 <small>· 231 session</small></span></div>
+      <div class="kv"><span class="k">合计</span><span class="v">$4,123 <small>· 占 22.9%</small></span></div>
+      <div class="kv"><span class="k">活跃日</span><span class="v">32 <small>天 · 05-29→07-27</small></span></div>
+      <div class="note">⚠ <b>此项目 131 个 PR 全部来自 <span class="mono">codex/*</span> 分支</b>，但本机 Codex CLI 日志只记到 $55——实现工作大概率跑在 Codex 云端，日志不在本机。
+      因此这里<b>不给「每 PR 成本」</b>：分母（Codex 产出）与分子（主要是 Claude 花费）来自不同系统。</div>
+    </section>
+
+    <section class="sec">
+      <div class="h"><span class="t">分工</span><span class="kick k">谁烧 token · 谁出 PR</span></div>
+      <div class="mrow hi"><span class="n">Claude 花费</span><span class="t"><i style="width:99%"></i></span><span class="p">99%</span></div>
+      <div class="mrow"><span class="n">Codex 花费</span><span class="t"><i style="width:1%"></i></span><span class="p">1%</span></div>
+      <div class="mrow hi"><span class="n">Codex 出 PR</span><span class="t"><i style="width:100%"></i></span><span class="p">100%</span></div>
+      <div class="mrow"><span class="n">Claude 出 PR</span><span class="t"><i style="width:1%"></i></span><span class="p">0%</span></div>
+      <div class="note">Claude 烧掉本项目 99% 的可见 token 却<b>没产出一个 PR</b>（做的是分析、规划、复盘、审计）；PR 全由 Codex 产出。<b>两个模型干的根本不是一件事</b>——这也是 TokenRouter 分角色路由的现实依据。</div>
+    </section>
+
+    <section class="sec">
+      <div class="h"><span class="t">Claude 模型构成</span><span class="kick k">按输出 token</span></div>
+      <div class="mrow hi"><span class="n">opus-4.8</span><span class="t"><i style="width:68%"></i></span><span class="p">68%</span></div>
+      <div class="mrow"><span class="n">fable-5</span><span class="t"><i style="width:22%"></i></span><span class="p">22%</span></div>
+      <div class="mrow"><span class="n">sonnet-5</span><span class="t"><i style="width:9%"></i></span><span class="p">9%</span></div>
+      <div class="mrow"><span class="n">opus-5</span><span class="t"><i style="width:1%"></i></span><span class="p">1%</span></div>
+      <div class="note">Claude 侧 <b>68% 的产能 token 走了最贵的模型</b>，中低档合计仅 9%。Codex 侧 <b>96% 的输入是缓存重读</b>（39,295M 中 37,825M）——两条通道各有一个可压的浪费点。</div>
+    </section>
+
+    <section class="sec">
+      <div class="h"><span class="t">安全闸</span><span class="kick k">fail-closed</span></div>
+      <div class="gt"><i>✓</i><span class="t">180 秒 tick 心跳</span><span class="s">未收口拒新启动</span></div>
+      <div class="gt"><i>✓</i><span class="t">启动需风险确认</span><span class="s">操作者显式</span></div>
+      <div class="gt"><i>✓</i><span class="t">rollover 只停止/撤单/封包</span><span class="s">不自动续</span></div>
+      <div class="gt"><i class="off">○</i><span class="t">真钱执行</span><span class="s">关闭</span></div>
+      <div class="gt"><i class="off">○</i><span class="t">自动 actuator</span><span class="s">无</span></div>
+    </section>
+
+    <section class="sec">
+      <div class="h"><span class="t">最近合并</span><span class="kick k">git log</span></div>
+      <div class="pr"><span class="g">✓</span><span><span class="id">#383</span>paper rebootstrap</span><span class="tm">07-25</span></div>
+      <div class="pr"><span class="g">✓</span><span><span class="id">#381</span>boot exit code</span><span class="tm">07-25</span></div>
+      <div class="pr"><span class="g">✓</span><span><span class="id">#379</span>live-tick cache refill</span><span class="tm">07-25</span></div>
+    </section>
+  </aside>
+</div>
+
+<div class="foot">
+  <b>数据来源</b>　中栏：本机 <span class="mono">goldbot-gateway</span>（127.0.0.1:8766）实时反代真实 dashboard-v5，非截图非模拟。
+  进度框：<span class="mono">docs/plans/implementation-progress-2026-07-24.md</span> + <span class="mono">ROADMAP.md</span>（更新于 05-29）。
+  产出 / 最近合并 / 左栏活跃度：各仓本地 <span class="mono">git log</span>。
+  「现在在哪里」「下一步」：<span class="mono">REGISTRY.md</span> 原文摘录。
+  消耗：<b>双通道实算</b>——<span class="mono">~/.claude/projects/</span>（Claude Code，35 个目录）+ <span class="mono">~/.codex/{sessions,archived_sessions}</span>（Codex CLI，888 个 session，6.6GB）。
+  Codex 的 <span class="mono">total_token_usage</span> 是会话累计值，取每文件最后一条，不相加；每个 cwd 按最长前缀只归一个项目，归类合计与全量一致（$10,343 + $7,676）。
+  脚本 <span class="mono">scratchpad/merged.py</span>，可复算。<br>
+  <b>口径</b>　按各家官方 API 标价折算：Claude 分档（opus-5/4.8 $5/$25、fable-5 $10/$50、sonnet-5 $3/$15，含缓存读写）；Codex 按 GPT-5（$1.25 输入 / $0.125 缓存输入 / $10 输出）。
+  <b>这是「这些 token 按量付费值多少钱」，不是你订阅制的实付金额</b>，两者是不同的表，不应混为一个数。<br>
+  <b>已知缺口——$18,019 是下限</b>　①<b>Codex 云端用量完全不在本机</b>：本仓 131 个 PR 全来自 <span class="mono">codex/*</span> 分支，本地 CLI 日志却只记到 $55，实现工作的账没算进来；
+  ②网页版 / 桌面版对话无本地日志；③日志可能被轮转清理（Codex 最早只到 02-14）；④标「$0」的项目是两条通道都无日志，不代表没花钱。
+  安全闸状态摘自 REGISTRY.md 记述，非本页实时探测。
+</div>
+
+<script>
+(function(){
+  var f=document.getElementById('dash'), fb=document.getElementById('fb'), ok=false;
+  f.addEventListener('load',function(){ok=true;});
+  setTimeout(function(){ if(!ok){ f.style.display='none'; fb.style.display='block'; } },6000);
+})();
+</script>
+</body>
+</html>
