@@ -323,6 +323,7 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
   产出只覆盖本机 git 仓库；$18k+ 为<b>下限</b>（Codex 云端用量、网页版对话不在本机日志）。
 </div>
 
+<script src="assets/pure.js"></script>
 <script>
 (function(){
   'use strict';
@@ -337,15 +338,8 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
       ['架构设计（图一/图二）↗','https://claude.ai/code/artifact/f817c844-c966-4a5f-9e87-88564e2057c3']]
   };
   var $ = function(id){ return document.getElementById(id); };
-  var money = function(c){
-    if(!c) return '无日志';
-    return '$' + Math.round(c/100).toLocaleString('en-US');
-  };
-  var esc = function(t){
-    var d = document.createElement('span'); d.textContent = t == null ? '' : String(t);
-    // textContent→innerHTML 不逃逸引号；本页会把 esc 结果拼进属性位，必须补上
-    return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  };
+  // 纯函数统一来自 assets/pure.js，有 node 测试钉住（assets/tests/pure.test.js）
+  var money = Pure.money, esc = Pure.esc;
 
   var LEDGER = null, OUTPUTS = null, TOTAL = 0;
 
@@ -424,15 +418,8 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
     fetch(url, {cache:'no-store'})
       .then(function(r){ if(!r.ok) throw 0; return r.json(); })
       .then(function(st){
-        var bad = function(msg){ var e = new Error(msg); e.schema = true; throw e; };
-        if(!st || !Array.isArray(st.modules) || !st.modules.length) bad('modules 缺失或为空');
-        if(typeof st.assessed_at !== 'string') bad('assessed_at 缺失');
-        st.modules.forEach(function(m, i){
-          if(typeof m.name !== 'string' || !m.name) bad('modules[' + i + '].name 非法');
-          if(typeof m.pct !== 'number' || m.pct < 0 || m.pct > 100) bad('modules[' + i + '].pct 须为 0–100 数字');
-          if(['green','yellow','red'].indexOf(m.light) < 0) bad('modules[' + i + '].light 须为 green/yellow/red');
-          if(typeof m.verdict !== 'string') bad('modules[' + i + '].verdict 非法');
-        });
+        var problem = Pure.validateStatus(st);   // 校验规则有 node 测试钉住
+        if(problem){ var e = new Error(problem); e.schema = true; throw e; }
         $('p-assessed').textContent = 'agent 评估 · ' + st.assessed_at;
         $('mod-title').textContent = (ALIAS[name] || name) + ' · ' + st.modules.length + ' 个模块';
         $('mod-meta').textContent = st.assessor || '';
