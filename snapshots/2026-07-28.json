@@ -1,11 +1,11 @@
 {
  "date": "2026-07-28",
- "generated_at": "2026-07-28T23:52:50+08:00",
- "grand_total_cents": 2030842,
+ "generated_at": "2026-07-28T23:57:35+08:00",
+ "grand_total_cents": 2032403,
  "projects": {
   "tokenrouter": {
-   "cost_cents": 63803,
-   "claude_cents": 63748,
+   "cost_cents": 65004,
+   "claude_cents": 64949,
    "codex_cents": 55,
    "active_days": 3
   },
@@ -58,9 +58,9 @@
    "active_days": 0
   },
   "agent 自管理": {
-   "cost_cents": 37894,
+   "cost_cents": 37955,
    "claude_cents": 2560,
-   "codex_cents": 35334,
+   "codex_cents": 35395,
    "active_days": 31
   },
   "人生 K 线": {
@@ -70,15 +70,15 @@
    "active_days": 5
   },
   "New project": {
-   "cost_cents": 326416,
-   "claude_cents": 267026,
+   "cost_cents": 326618,
+   "claude_cents": 267228,
    "codex_cents": 59390,
-   "active_days": 47
+   "active_days": 48
   },
   "投研面板": {
-   "cost_cents": 199592,
+   "cost_cents": 199633,
    "claude_cents": 30097,
-   "codex_cents": 169495,
+   "codex_cents": 169536,
    "active_days": 8
   },
   "电商工作台": {
@@ -100,9 +100,9 @@
    "active_days": 8
   },
   "tokenpulse": {
-   "cost_cents": 1751,
+   "cost_cents": 1807,
    "claude_cents": 0,
-   "codex_cents": 1751,
+   "codex_cents": 1807,
    "active_days": 7
   },
   "a股情报": {

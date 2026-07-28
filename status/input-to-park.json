@@ -1,0 +1,30 @@
+{
+ "project": "input-to-park",
+ "assessed_at": "2026-07-28",
+ "assessor": "claude-opus-5（workbench 会话，人工复核前有效）",
+ "sources": [
+  "~/work/input-to-park/README.md（Daily Newsletter，5 阶段 AI-first 管道）",
+  "~/work/input-to-park/REGISTRY.md「现在在哪里(2026-07-22)」与「下一步」",
+  "~/work/input-to-park/GOTCHAS.md（不变量清单与 gate/test/code/partial/manual 强制等级）",
+  "git log（最近提交 eec9408 Repair daily push diagnostics）"
+ ],
+ "modules": [
+  {"name": "每日出刊管道", "pct": 90, "light": "green", "verdict": "最强·稳定出刊",
+   "note": "REGISTRY 2026-07-22：「管道每日稳定出刊」；README 标注 5 阶段 AI-first pipeline 与 workflow yaml"},
+  {"name": "多源抓取", "pct": 80, "light": "green", "verdict": "覆盖面齐",
+   "note": "README：官方渠道 + X + 播客 + 公众号；GOTCHAS 点名 fetch-twitter.py / fetch-wechat.py 为受保护文件"},
+  {"name": "回归防护", "pct": 75, "light": "green", "verdict": "机制明确",
+   "note": "GOTCHAS 用 gate/test/code/partial/manual 五档标注每条不变量的强制等级——比多数项目更严谨"},
+  {"name": "推送与诊断", "pct": 70, "light": "green", "verdict": "刚修过",
+   "note": "最近提交 eec9408「Repair daily push diagnostics」；README 有 push-telegram.py"},
+  {"name": "Agent Skill 化", "pct": 65, "light": "green", "verdict": "已发布",
+   "note": "README 徽章 agent-skill-ready + skills.sh/zinan92/daily-newsletter，SKILL.md 存在"},
+  {"name": "源健康告警", "pct": 20, "light": "red", "verdict": "最弱·瓶颈",
+   "note": "REGISTRY 已知弱点原文：「单源故障靠状态页人肉发现」；下一步即「源健康告警自动化(连续失败自动开 issue)」"}
+ ],
+ "tracking": {
+  "now": "管道每日稳定出刊；WhyNotTV SSL 修复与 workflow 基线遗留已合(#4)，测试全绿（REGISTRY 2026-07-22）",
+  "working_on": "最近提交为修复每日推送诊断（eec9408）；REGISTRY 未标注更细的当前进行项",
+  "next": "源健康告警自动化——连续失败自动开 issue，消除「单源故障靠人肉发现」这个已知弱点"
+ }
+}
