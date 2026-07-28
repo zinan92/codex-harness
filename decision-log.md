@@ -43,3 +43,6 @@
 - A menu item named "open" must show the complete card.  Revealing the saved
   34px compact window is technically an action but indistinguishable from no
   response in normal menu-bar use.
+- A token count without provider, scope, scanner, refresh time, and freshness
+  is not an auditable product metric. An unavailable provider must make the
+  aggregate visibly incomplete rather than looking like a legitimate zero.

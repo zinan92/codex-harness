@@ -163,6 +163,15 @@
     color: var(--heat);
     font-weight: 700;
   }
+  .trust-strip { border-top: 1px solid var(--track); margin-top: 9px; padding-top: 8px;
+                  display: grid; gap: 4px; font-size: 9.5px; color: var(--ink-faint); }
+  .trust-heading { letter-spacing: .1em; text-transform: uppercase; color: var(--ink-dim); font-weight: 700; }
+  .trust-row { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+  .trust-state { flex: 0 0 auto; width: 5px; height: 5px; border-radius: 50%; background: var(--heat); }
+  .trust-row.stale .trust-state { background: var(--ink-dim); }
+  .trust-row.unavailable { color: var(--alarm); }
+  .trust-row.unavailable .trust-state { background: var(--alarm); }
+  .trust-copy { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* ── tool rows ── */
   .tools { margin-top: 15px; display: flex; flex-direction: column; gap: 11px; }
@@ -437,6 +446,11 @@
         <div><b>Operator</b> <span id="operator-line">—</span></div>
         <div><b>Impact</b> <span id="impact-line">—</span></div>
       </div>
+      <div class="trust-strip" id="trust-strip" aria-live="polite">
+        <span class="trust-heading">数据口径</span>
+        <div class="trust-row" id="claude-trust"><span class="trust-state"></span><span class="trust-copy">Claude · 读取中…</span></div>
+        <div class="trust-row" id="codex-trust"><span class="trust-state"></span><span class="trust-copy">Codex · 读取中…</span></div>
+      </div>
     </section>
 
     <div class="tools">
@@ -587,26 +601,44 @@
   }
 
   let _lastState = null;
+  function provenanceCopy(p) {
+    const label = { fresh: "已验证", stale: "上次可信", unavailable: "未读取" }[p.status] || "读取中";
+    const refreshed = p.refreshed_at ? new Date(p.refreshed_at).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}) : "—";
+    return `${p.provider} · ${p.source_label} · ${p.scope} · ${refreshed} · ${label}`;
+  }
+  function renderProvenance(d) {
+    for (const t of ["claude", "codex"]) {
+      const p = d.tools[t].provenance || {};
+      const row = $(t + "-trust"), copy = row.querySelector(".trust-copy");
+      row.className = "trust-row " + (p.status || "unavailable");
+      copy.textContent = provenanceCopy(p);
+      copy.title = p.status === "unavailable" && p.reason ? `${provenanceCopy(p)} · ${p.reason}` : provenanceCopy(p);
+    }
+  }
   function renderCore(d) {
     if (!d) return;
     $("clock").textContent = d.clock;
     const c = d.combined;
+    const incomplete = ["claude", "codex"].some(t => d.tools[t].provenance?.status === "unavailable");
     document.body.dataset.state = c.state;
     $("c-target").textContent = tok(c.target);
-    countTo($("c-today"), c.today);
-    $("c-fill").style.width = clamp(c.today / c.target * 100, 0, 100) + "%";
+    if (incomplete) { $("c-today").textContent = "—"; _cur = 0; }
+    else countTo($("c-today"), c.today);
+    $("c-fill").style.width = incomplete ? "0%" : clamp(c.today / c.target * 100, 0, 100) + "%";
     $("c-pace").style.left = clamp(c.expected / c.target * 100, 0, 100) + "%";
-    $("goad").innerHTML = goadFor(c);
-    $("compact-total").textContent = `${tok(c.today)} / ${tok(c.target)}`;
+    $("goad").innerHTML = incomplete ? "数据未完整，等待可信本地扫描。" : goadFor(c);
+    $("compact-total").textContent = incomplete ? "读取中" : `${tok(c.today)} / ${tok(c.target)}`;
     $("compact-state").textContent = { early: "待开烧", behind: "落后配速", ontrack: "配速正常", ahead: "领先", done: "今日达标", rocket: "超额燃烧" }[c.state] || "更新中";
     $("operator-line").textContent = c.operator || "choose the next AI-work session by priority.";
     $("impact-line").textContent = c.impact || "turn raw quota and pace into a visible next-session choice.";
+    renderProvenance(d);
     paintEggHunger(c);
 
     for (const t of ["claude", "codex"]) {
       const x = d.tools[t];
       const px = x.pace_ratio != null ? `  <span class="pace-x">${x.pace_ratio}×</span>` : "";
-      $(t + "-amt").innerHTML = `${tok(x.today)} / ${tok(x.target)}${px}`;
+      const unavailable = x.provenance?.status === "unavailable";
+      $(t + "-amt").innerHTML = unavailable ? "— · 未读取" : `${tok(x.today)} / ${tok(x.target)}${px}`;
       $(t + "-fill").style.width = clamp(x.today / x.target * 100, 0, 100) + "%";
       $(t + "-pace").style.left = clamp(x.expected / x.target * 100, 0, 100) + "%";
       // update ONLY sess/week here; cost/tok are owned by renderCost (no clobber)

@@ -70,6 +70,8 @@ def test_claude_dedup_and_sum(tmp_path, monkeypatch):
     assert res["total"] == 1000 + 15 + 4, res
     assert res["duplicates_skipped"] == 1
     assert res["messages"] == 3
+    assert res["source"] == "claude-jsonl"
+    assert res["available"] is True and res["stale"] is False
 
 
 def test_claude_excludes_other_days(tmp_path, monkeypatch):
@@ -126,7 +128,10 @@ def test_codex_today_uses_local_codexbar_scanner_for_live_default_globs(monkeypa
         "available": True, "source": "codexbar", "tokens_today": 825_620_085,
     })
     res = core.codex_today(core.reference_day(now), "local")
-    assert res == {"total": 825_620_085, "turns": 0, "sessions": 0, "source": "codexbar"}
+    assert res == {
+        "total": 825_620_085, "turns": 0, "sessions": 0,
+        "source": "codexbar", "available": True, "stale": False,
+    }
 
 
 def test_codex_today_fails_closed_when_live_codexbar_scanner_is_unavailable(monkeypatch):

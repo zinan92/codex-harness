@@ -21,6 +21,32 @@ import limits
 
 TOOLS = ("claude", "codex")
 
+_SOURCE_LABELS = {
+    "claude-jsonl": "Claude 本地日志",
+    "codexbar": "CodexBar 本地扫描",
+    "codex-jsonl": "Codex 本地日志",
+    "codexbar-unavailable": "CodexBar 本地扫描",
+}
+
+
+def _provenance(tool: str, data: dict, now: datetime, boundary: str) -> dict:
+    """A small, UI-safe receipt for every displayed usage number."""
+    receipt = data.get("breakdown") if isinstance(data.get("breakdown"), dict) else {}
+    source = receipt.get("source") or ("claude-jsonl" if tool == "claude" else "codex-jsonl")
+    available = receipt.get("available", True)
+    stale = bool(receipt.get("stale"))
+    status = "unavailable" if not available else ("stale" if stale else "fresh")
+    zone = "UTC" if boundary == "utc" else "本地时区"
+    return {
+        "provider": "Claude" if tool == "claude" else "Codex",
+        "source": source,
+        "source_label": _SOURCE_LABELS.get(source, "本地用量扫描"),
+        "scope": f"今日 · {zone}",
+        "refreshed_at": now.isoformat(),
+        "status": status,
+        "reason": receipt.get("reason") if status == "unavailable" else None,
+    }
+
 
 def _state(mood: str) -> str:
     """Map core's mood to a UI state name."""
@@ -52,6 +78,7 @@ def core_payload(now: datetime | None = None, config: dict | None = None) -> dic
     config = config or core.load_config()
     st = core.status(now=now, config=config)
     pl = limits.plan_limits()
+    boundary = config.get("day_boundary", "local")
 
     tools = {}
     for t in TOOLS:
@@ -74,6 +101,7 @@ def core_payload(now: datetime | None = None, config: dict | None = None) -> dic
             "weekly": {"left": week["left_percent"], "reset": week["reset_in"]} if week else None,
             "plan_available": bool(info.get("available")),
             "plan_stale": bool(info.get("stale")),
+            "provenance": _provenance(t, d, now, boundary),
         }
 
     c = st["combined"]

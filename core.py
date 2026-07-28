@@ -118,7 +118,15 @@ def claude_today(day, day_boundary: str = "local") -> dict:
         except OSError:
             continue
     total = sum(agg.values())
-    return {"total": total, **agg, "messages": messages, "duplicates_skipped": dups}
+    return {
+        "total": total,
+        **agg,
+        "messages": messages,
+        "duplicates_skipped": dups,
+        "source": "claude-jsonl",
+        "available": True,
+        "stale": False,
+    }
 
 
 def _codex_session_uuid(path: str) -> str:
@@ -151,6 +159,8 @@ def codex_today(day, day_boundary: str = "local") -> dict:
                 "turns": 0,
                 "sessions": 0,
                 "source": external.get("source"),
+                "available": True,
+                "stale": bool(external.get("stale")),
             }
         # Current Codex rollouts combine cumulative snapshots and forked agent
         # lineages.  The legacy per-event sum below can inflate today's number
@@ -205,7 +215,14 @@ def codex_today(day, day_boundary: str = "local") -> dict:
                     sessions.add(uid)
         except OSError:
             continue
-    return {"total": total, "turns": turns, "sessions": len(sessions)}
+    return {
+        "total": total,
+        "turns": turns,
+        "sessions": len(sessions),
+        "source": "codex-jsonl",
+        "available": True,
+        "stale": False,
+    }
 
 
 # ----------------------------------------------------------------- targets/pace
