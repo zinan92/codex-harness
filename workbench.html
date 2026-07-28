@@ -199,53 +199,16 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
   <div class="lg"><i></i>PARK INTEL</div>
   <span class="kick">Workbench</span>
   <span class="sp"></span>
-  <div class="st"><div class="v num">22</div><div class="k">项目</div></div>
-  <div class="st"><div class="v num">$10,343</div><div class="k">Claude</div></div>
-  <div class="st"><div class="v num">$7,676</div><div class="k">Codex</div></div>
-  <div class="st"><div class="v num">$18,019</div><div class="k">合计（下限）</div></div>
+  <div class="st"><div class="v num" id="m-proj">—</div><div class="k">项目</div></div>
+  <div class="st"><div class="v num" id="m-claude">—</div><div class="k">Claude</div></div>
+  <div class="st"><div class="v num" id="m-codex">—</div><div class="k">Codex</div></div>
+  <div class="st"><div class="v num" id="m-total">—</div><div class="k">合计（下限）</div></div>
 </div>
 
 <div class="shell">
   <!-- 左栏：真实项目清单 -->
   <nav class="nav">
-    <div class="grp">
-      <div class="h"><span class="n">01</span><span class="t">交易</span></div>
-      <div class="it on"><i class="d warm"></i><span class="nm">网格交易机器人</span><span class="c">$4,123</span></div>
-      <div class="it"><i class="d"></i><span class="nm">投研面板</span><span class="c">$1,684</span></div>
-      <div class="it"><i class="d"></i><span class="nm">trading-co</span><span class="c">$1,494</span></div>
-      <div class="it"><i class="d"></i><span class="nm">人生 K 线</span><span class="c">$293</span></div>
-      <div class="it"><i class="d warm"></i><span class="nm">tokenpulse</span><span class="c">$15</span></div>
-      <div class="it"><i class="d"></i><span class="nm">a股情报</span><span class="c">$11</span></div>
-      <div class="it"><i class="d warm"></i><span class="nm">trading-system</span><span class="c">$6</span></div>
-      <div class="it"><i class="d cool"></i><span class="nm">goldbot-gateway</span><span class="c">$0</span></div>
-    </div>
-
-    <div class="grp">
-      <div class="h"><span class="n">02</span><span class="t">内容</span></div>
-      <div class="it"><i class="d"></i><span class="nm">内容制作</span><span class="c">$3,964</span></div>
-      <div class="it"><i class="d"></i><span class="nm">New project</span><span class="c">$3,084</span></div>
-      <div class="it"><i class="d"></i><span class="nm">电商工作台</span><span class="c">$242</span></div>
-      <div class="it"><i class="d"></i><span class="nm">知识库</span><span class="c">$82</span></div>
-      <div class="it"><i class="d"></i><span class="nm">content-ops</span><span class="c">$77</span></div>
-      <div class="it"><i class="d"></i><span class="nm">videocut</span><span class="c">$2</span></div>
-      <div class="it"><i class="d live"></i><span class="nm">park-ai-intel</span><span class="c">$0</span></div>
-    </div>
-
-    <div class="grp">
-      <div class="h"><span class="n">03</span><span class="t">Agent OS</span></div>
-      <div class="it"><i class="d live"></i><span class="nm">input-to-park</span><span class="c">$1,431</span></div>
-      <div class="it"><i class="d"></i><span class="nm">agent 自管理</span><span class="c">$377</span></div>
-      <div class="it"><i class="d"></i><span class="nm">park-io</span><span class="c">$234</span></div>
-      <div class="it"><i class="d"></i><span class="nm">tokenrouter</span><span class="c">$112</span></div>
-      <div class="it"><i class="d"></i><span class="nm">loop-board-daemon</span><span class="c">$2</span></div>
-      <div class="it"><i class="d warm"></i><span class="nm">park-operating-system</span><span class="c">$0</span></div>
-    </div>
-
-    <div class="grp">
-      <div class="h"><span class="n">04</span><span class="t">未归类</span></div>
-      <div class="it"><i class="d"></i><span class="nm">~/wendy 根目录会话</span><span class="c">$394</span></div>
-      <div class="it"><i class="d"></i><span class="nm">未匹配日志目录</span><span class="c">$392</span></div>
-    </div>
+    <div id="nav-groups"></div>
 
     <div class="navfoot">
       <div class="kick">金额 = Claude + Codex 合计</div>
@@ -347,14 +310,14 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
     </section>
 
     <section class="sec">
-      <div class="h"><span class="t">消耗 · 双通道</span><span class="kick k">Claude + Codex</span></div>
-      <div class="kv"><span class="k">Claude 输入 / 输出</span><span class="v">3,849M <small>/</small> 18.6M</span></div>
-      <div class="kv"><span class="k">Codex 输入 / 输出</span><span class="v">157M <small>/</small> 1.4M</span></div>
-      <div class="kv"><span class="k">Claude 估算</span><span class="v">$4,068</span></div>
-      <div class="kv"><span class="k">Codex 估算</span><span class="v">$55 <small>· 231 session</small></span></div>
-      <div class="kv"><span class="k">合计</span><span class="v">$4,123 <small>· 占 22.9%</small></span></div>
-      <div class="kv"><span class="k">活跃日</span><span class="v">32 <small>天 · 05-29→07-27</small></span></div>
-      <div class="note">⚠ <b>此项目 131 个 PR 全部来自 <span class="mono">codex/*</span> 分支</b>，但本机 Codex CLI 日志只记到 $55——实现工作大概率跑在 Codex 云端，日志不在本机。
+      <div class="h"><span class="t">消耗 · <span id="c-name">—</span></span><span class="kick k" id="c-src">ledger.json</span></div>
+      <div class="kv"><span class="k">Claude</span><span class="v" id="c-claude">—</span></div>
+      <div class="kv"><span class="k">Codex</span><span class="v" id="c-codex">—</span></div>
+      <div class="kv"><span class="k">合计</span><span class="v" id="c-total">—</span></div>
+      <div class="kv"><span class="k">占全部支出</span><span class="v" id="c-share">—</span></div>
+      <div class="kv"><span class="k">记录条数</span><span class="v" id="c-rec">—</span></div>
+      <div id="c-note"></div>
+      <div class="note" id="c-gold">⚠ <b>此项目 131 个 PR 全部来自 <span class="mono">codex/*</span> 分支</b>，但本机 Codex CLI 日志只记到几十美元——实现工作大概率跑在 Codex 云端，日志不在本机。
       因此这里<b>不给「每 PR 成本」</b>：分母（Codex 产出）与分子（主要是 Claude 花费）来自不同系统。</div>
     </section>
 
@@ -414,6 +377,89 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
   var f=document.getElementById('dash'), fb=document.getElementById('fb'), ok=false;
   f.addEventListener('load',function(){ok=true;});
   setTimeout(function(){ if(!ok){ f.style.display='none'; fb.style.display='block'; } },6000);
+})();
+
+// ---- 成本数据一律来自 ledger：workbench 不再自己算钱 ----
+(function(){
+  var GROUPS = ['交易','内容','Agent OS','未归类'];      // 展示顺序
+  var ALIAS  = {'trading-orchestrator':'网格交易机器人'}; // 仅显示名，账本里仍是原名
+  var EMBED  = 'trading-orchestrator';                   // 目前只有这个项目有嵌入与时间轴
+  var $ = function(id){ return document.getElementById(id); };
+  var money = function(c){
+    if(c === 0) return '无日志';
+    return '$' + (c/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+  };
+
+  function fail(msg){
+    $('nav-groups').innerHTML =
+      '<div style="padding:10px 13px;font-size:11px;color:var(--warn);line-height:1.7">'+
+      '账本数据未加载：'+msg+'<br><br>在仓库根目录跑：<br>'+
+      '<code class="mono" style="font-size:10px">python3 -m ledger report --json &gt; ledger.json</code>'+
+      '<br><br>然后刷新本页。</div>';
+    $('c-name').textContent = '数据缺失';
+  }
+
+  function render(d){
+    var ps = d.projects, total = d.grand_total_cents;
+    $('m-proj').textContent   = d.coverage.registered_projects;
+    $('m-claude').textContent = money(ps.reduce(function(a,p){return a+p.claude_cents;},0));
+    $('m-codex').textContent  = money(ps.reduce(function(a,p){return a+p.codex_cents;},0));
+    $('m-total').textContent  = money(total);
+
+    // 左栏：按组渲染，组内按金额降序
+    var host = $('nav-groups'); host.innerHTML = '';
+    GROUPS.forEach(function(g, gi){
+      var rows = ps.filter(function(p){ return p.group === g; })
+                   .sort(function(a,b){ return b.cost_cents - a.cost_cents; });
+      if(!rows.length) return;
+      var box = document.createElement('div'); box.className = 'grp';
+      box.innerHTML = '<div class="h"><span class="n">' +
+        String(gi+1).padStart(2,'0') + '</span><span class="t">' + g + '</span></div>';
+      rows.forEach(function(p){
+        var it = document.createElement('div');
+        it.className = 'it' + (p.name === EMBED ? ' on' : '');
+        it.setAttribute('role','button'); it.tabIndex = 0;
+        it.dataset.name = p.name;
+        it.innerHTML = '<i class="d' + (p.cost_cents ? ' warm' : '') + '"></i>' +
+          '<span class="nm">' + (ALIAS[p.name] || p.name) + '</span>' +
+          '<span class="c">' + money(p.cost_cents) + '</span>';
+        var pick = function(){ select(p, total); };
+        it.addEventListener('click', pick);
+        it.addEventListener('keydown', function(e){
+          if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pick(); }
+        });
+        box.appendChild(it);
+      });
+      host.appendChild(box);
+    });
+
+    var cur = ps.filter(function(p){ return p.name === EMBED; })[0] || ps[0];
+    select(cur, total);
+  }
+
+  function select(p, total){
+    Array.prototype.forEach.call(document.querySelectorAll('.it'), function(el){
+      el.classList.toggle('on', el.dataset.name === p.name);
+    });
+    $('c-name').textContent   = ALIAS[p.name] || p.name;
+    $('c-claude').textContent = money(p.claude_cents);
+    $('c-codex').textContent  = money(p.codex_cents);
+    $('c-total').textContent  = money(p.cost_cents);
+    $('c-share').textContent  = total ? (p.cost_cents/total*100).toFixed(1) + '%' : '—';
+    $('c-rec').textContent    = (p.records||0).toLocaleString('en-US');
+    // 中栏的嵌入与时间轴只属于 trading-orchestrator，选别的项目要说清楚
+    var isEmbed = p.name === EMBED;
+    $('c-gold').style.display = isEmbed ? '' : 'none';
+    $('c-note').innerHTML = isEmbed ? '' :
+      '<div class="note">你选中的是 <b>' + (ALIAS[p.name] || p.name) + '</b>，本卡片的金额已切换。' +
+      '但<b>中栏的嵌入、时间轴，以及右栏其余各节仍是「网格交易机器人」的</b>——' +
+      '目前只有它接了实时 dashboard 与文档来源。</div>';
+  }
+
+  fetch('./ledger.json', {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(render)
+    .catch(function(e){ fail(e.message); });
 })();
 </script>
 </body>
