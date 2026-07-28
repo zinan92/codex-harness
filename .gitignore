@@ -4,3 +4,4 @@ ledger/
 __pycache__/
 .DS_Store
 ledger.json
+outputs.json

@@ -182,6 +182,27 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
 .pr .id{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:var(--fnt);margin-right:4px}
 .pr .tm{font-family:ui-monospace,Menlo,monospace;font-size:9px;color:var(--fnt)}
 
+/* module progress */
+.mod{display:grid;grid-template-columns:16px minmax(120px,1.1fr) 2fr 40px auto;gap:9px;
+  align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px}
+.mod:last-child{border-bottom:none}
+.mod .ix{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--fnt)}
+.mod .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mod .bar{height:7px;background:var(--soft);border:1px solid var(--line)}
+.mod .bar i{display:block;height:100%}
+.mod.green .bar i{background:var(--ok)}
+.mod.yellow .bar i{background:var(--warn)}
+.mod.red .bar i{background:#c0392b}
+.mod .pct{font-family:ui-monospace,Menlo,monospace;font-size:11px;text-align:right;
+  font-variant-numeric:tabular-nums}
+.mod .vd{font-size:11px;white-space:nowrap}
+.mod.green .vd{color:var(--ok)}
+.mod.yellow .vd{color:var(--warn)}
+.mod.red .vd{color:#c0392b}
+.mod-note{font-size:10.5px;color:var(--fnt);grid-column:2/-1;margin-top:-2px;padding-bottom:3px}
+.placeholder{padding:36px 24px;text-align:center;color:var(--fnt);font-size:12px;line-height:2}
+.placeholder code{background:var(--soft);padding:1px 6px;border-radius:3px;font-size:11px}
+
 .foot{padding:10px 18px;border-top:1px solid var(--line);font-size:10px;
   color:var(--fnt);line-height:1.7}
 .foot b{color:var(--mut);font-weight:600}
@@ -211,76 +232,48 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
     <div id="nav-groups"></div>
 
     <div class="navfoot">
-      <div class="kick">金额 = Claude + Codex 合计</div>
-      <div class="lgd" style="margin-top:6px">活跃度按最后提交：</div>
-      <div class="lgd"><i style="background:var(--ok)"></i>24 小时内</div>
-      <div class="lgd"><i style="background:var(--warn)"></i>7 天内</div>
-      <div class="lgd"><i style="background:var(--fnt)"></i>30 天内</div>
-      <div class="lgd"><i style="background:var(--dead)"></i>更早 / 无 git 仓库</div>
-      <div class="lgd" style="margin-top:7px;color:var(--mut)">$0 = 两条通道本机均无日志，<b style="color:var(--warn)">非零成本</b></div>
+      <div class="kick">金额 · 天数 = Claude+Codex 合计 · 活跃日</div>
+      <div class="lgd" style="margin-top:6px;color:var(--mut)">「无日志」= 两条通道本机均无记录，<b style="color:var(--warn)">非零成本</b></div>
     </div>
   </nav>
 
   <!-- 中栏：真实项目 -->
   <main class="main">
     <div class="phd">
-      <h1>网格交易机器人</h1>
-      <span class="badge">PAPER · 真钱路径关闭</span>
+      <h1 id="p-title">—</h1>
+      <span class="badge" id="p-badge" style="display:none">PAPER · 真钱路径关闭</span>
       <span class="sp"></span>
-      <a href="https://goldbot.park-ai-intel.com/dashboard-v5.html" target="_blank" rel="noopener">公网 ↗</a>
-      <a href="https://github.com/zinan92/trading-system" target="_blank" rel="noopener">GitHub ↗</a>
+      <span class="kick" id="p-assessed"></span>
     </div>
 
+    <!-- 中上：模块进度（agent 评估） -->
     <div class="tlbox">
       <div class="tlhd">
-        <span class="kick">整体进度</span>
-        <span class="t">实施计划 M1–M6</span>
-        <span class="ct"><b>26 / 26</b> story 已验证</span>
+        <span class="kick">模块进度</span>
+        <span class="t" id="mod-title">—</span>
+        <span class="ct" id="mod-meta"></span>
       </div>
-      <div class="track">
-        <div class="trk">
-          <div class="seg done"><div class="bar"></div><div class="nm">M1 运行真相</div><div class="ct">5/5</div></div>
-          <div class="seg done"><div class="bar"></div><div class="nm">M2 生命周期证据</div><div class="ct">6/6</div></div>
-          <div class="seg done"><div class="bar"></div><div class="nm">M3 操作者产品</div><div class="ct">6/6</div></div>
-          <div class="seg done"><div class="bar"></div><div class="nm">M4 Shadows/复盘</div><div class="ct">3/3</div></div>
-          <div class="seg done"><div class="bar"></div><div class="nm">M5 演化/自修复</div><div class="ct">3/3</div></div>
-          <div class="seg done"><div class="bar"></div><div class="nm">M6 接口/发布纪律</div><div class="ct">3/3</div></div>
-        </div>
-        <div class="trow2">
-          <div class="lb"><span class="kick">平台 Roadmap · 另一根轴（ROADMAP.md，更新于 05-29）</span></div>
-          <div class="trk ph">
-            <div class="seg part"><div class="bar"></div><div class="nm">P1 可信账目</div><div class="ct">进行中 3/5</div></div>
-            <div class="seg part"><div class="bar"></div><div class="nm">P2 策略抽象</div><div class="ct">核心完成</div></div>
-            <div class="seg part"><div class="bar"></div><div class="nm">P3 多策略并行</div><div class="ct">基础就绪</div></div>
-            <div class="seg done"><div class="bar"></div><div class="nm">P4 排行榜</div><div class="ct">完成</div></div>
-            <div class="seg gate"><div class="bar"></div><div class="nm">P5 运维加固</div><div class="ct">3 项待决策</div></div>
-          </div>
-        </div>
-      </div>
-      <div class="tlnote">
-        26 个 story <b>全部在 2026-07-24 当日合入</b>，基线 <span class="mono">main@d3e41a2</span>（PR #367）——
-        M1–M6 是<b>逻辑顺序，不是时间轴</b>。实施计划已走完，但平台 Roadmap 的 P1 仍在进行、P5 有 3 项等你拍板
-        （paper/live 环境分离 · 行情源依赖加固 · 容器化脱离 launchd），<b>live 准入尚未定义</b>。
-      </div>
+      <div class="track" id="mod-list"></div>
     </div>
 
+    <!-- 中主体：项目成品 -->
     <div class="emwrap">
       <div class="emlab">
-        <span class="kick">产品本身 · 真实嵌入</span><span class="l"></span>
-        <span class="kick">经本机 goldbot-gateway :8766 直取，未过 Cloudflare</span>
+        <span class="kick">项目成品</span><span class="l"></span>
+        <span class="kick" id="em-src"></span>
       </div>
-      <div class="frame">
-        <div class="fbar">
+      <div class="frame" id="em-frame">
+        <div class="fbar" id="em-bar" style="display:none">
           <span class="mono" style="font-size:10.5px;font-weight:600">GoldBot Trader Console V5</span>
           <span class="u">127.0.0.1:8766/dashboard-v5.html</span>
           <span class="sp"></span>
           <span class="st"><i></i>实时</span>
         </div>
-        <iframe id="dash" src="http://127.0.0.1:8766/dashboard-v5.html"
-                title="GoldBot Trader Console V5 实时仪表盘"></iframe>
+        <iframe id="dash" title="项目成品" style="display:none"></iframe>
+        <div class="placeholder" id="em-empty" style="display:none"></div>
         <div class="fallback" id="fb">
-          嵌入未能加载。本页须经 <code>http://127.0.0.1</code> 打开（不能用 file:// 或线上链接），
-          且本机 <code>goldbot-gateway</code> 需在运行：<code>curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8766/dashboard-v5.html</code> 应返回 200。
+          嵌入未能加载。本页须经 <code>http://127.0.0.1</code> 打开，且本机 <code>goldbot-gateway</code> 需在运行：
+          <code>curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8766/dashboard-v5.html</code> 应返回 200。
         </div>
       </div>
     </div>
@@ -289,141 +282,103 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
   <!-- 右栏：真实元数据 -->
   <aside class="aside">
     <section class="sec">
-      <div class="h"><span class="t">现在在哪里</span><span class="kick k">REGISTRY.md · 07-24</span></div>
-      <div class="pos">26 个已审核 story <b>全部验证完成</b>。M6-03 把 main SHA、发布前兼容性闸、健康/行情/执行分离、浏览器验收与 Paper-only rollback 固化为 release runbook（PR #365）。</div>
-      <div class="pos"><b>计划完成 ≠ 自动启动。</b>每次 Paper 发布仍须按 runbook 走实时安全闸；真钱动作仍需 <span class="mono">park-approved</span>。</div>
+      <div class="h"><span class="t">状态追踪</span><span class="kick k" id="t-src">status/*.json</span></div>
+      <div class="pos"><b>现在在哪里</b><br><span id="t-now">—</span></div>
+      <div class="pos"><b>正在做</b><br><span id="t-work">—</span></div>
+      <div class="pos"><b>下一步</b><br><span id="t-next">—</span></div>
     </section>
 
     <section class="sec">
-      <div class="h"><span class="t">下一步</span><span class="kick k">REGISTRY.md</span></div>
-      <div class="pos">继续积累 Grid 开仓→止盈→原价重挂与 P&amp;L reconciliation 实绩；用 12 小时复盘与 Strategy Shadows 比较网格变体，<b>只在样本足够且原因可持续时才升级主策略</b>；实绩达标后再定义 live 准入标准。</div>
+      <div class="h"><span class="t">产出统计</span><span class="kick k">outputs.json · git</span></div>
+      <div class="kv"><span class="k">已合并 PR</span><span class="v" id="o-prs">—</span></div>
+      <div class="kv"><span class="k">近 30 天提交</span><span class="v" id="o-c30">—</span></div>
+      <div class="kv"><span class="k">昨日合并</span><span class="v" id="o-yday">—</span></div>
+      <div class="kv"><span class="k">最新合并</span><span class="v" id="o-last">—</span></div>
+      <div class="kv"><span class="k">最后提交</span><span class="v" id="o-lastc">—</span></div>
+      <div id="o-note"></div>
     </section>
 
     <section class="sec">
-      <div class="h"><span class="t">产出</span><span class="kick k">本地 git</span></div>
-      <div class="kv"><span class="k">已合并 PR</span><span class="v">131</span></div>
-      <div class="kv"><span class="k">提交数</span><span class="v">479</span></div>
-      <div class="kv"><span class="k">仓库跨度</span><span class="v">07-01 → 07-25</span></div>
-      <div class="kv"><span class="k">最新合并</span><span class="v">#383 <small>· 07-25</small></span></div>
-      <div class="kv"><span class="k">已验证 story</span><span class="v ok">26 <small>/ 26</small></span></div>
-      <div class="kv"><span class="k">可展示产出</span><span class="v">1 <small>· GridMind V5</small></span></div>
-    </section>
-
-    <section class="sec">
-      <div class="h"><span class="t">消耗 · <span id="c-name">—</span></span><span class="kick k" id="c-src">ledger.json</span></div>
-      <div class="kv"><span class="k">Claude</span><span class="v" id="c-claude">—</span></div>
-      <div class="kv"><span class="k">Codex</span><span class="v" id="c-codex">—</span></div>
+      <div class="h"><span class="t">消耗统计</span><span class="kick k">ledger.json</span></div>
       <div class="kv"><span class="k">合计</span><span class="v" id="c-total">—</span></div>
+      <div class="kv"><span class="k">Claude / Codex</span><span class="v" id="c-split">—</span></div>
       <div class="kv"><span class="k">占全部支出</span><span class="v" id="c-share">—</span></div>
+      <div class="kv"><span class="k">时间跨度</span><span class="v" id="c-span">—</span></div>
+      <div class="kv"><span class="k">活跃</span><span class="v" id="c-active">—</span></div>
       <div class="kv"><span class="k">记录条数</span><span class="v" id="c-rec">—</span></div>
-      <div id="c-note"></div>
-      <div class="note" id="c-gold">⚠ <b>此项目 131 个 PR 全部来自 <span class="mono">codex/*</span> 分支</b>，但本机 Codex CLI 日志只记到几十美元——实现工作大概率跑在 Codex 云端，日志不在本机。
-      因此这里<b>不给「每 PR 成本」</b>：分母（Codex 产出）与分子（主要是 Claude 花费）来自不同系统。</div>
     </section>
 
     <section class="sec">
-      <div class="h"><span class="t">分工</span><span class="kick k">谁烧 token · 谁出 PR</span></div>
-      <div class="mrow hi"><span class="n">Claude 花费</span><span class="t"><i style="width:99%"></i></span><span class="p">99%</span></div>
-      <div class="mrow"><span class="n">Codex 花费</span><span class="t"><i style="width:1%"></i></span><span class="p">1%</span></div>
-      <div class="mrow hi"><span class="n">Codex 出 PR</span><span class="t"><i style="width:100%"></i></span><span class="p">100%</span></div>
-      <div class="mrow"><span class="n">Claude 出 PR</span><span class="t"><i style="width:1%"></i></span><span class="p">0%</span></div>
-      <div class="note">Claude 烧掉本项目 99% 的可见 token 却<b>没产出一个 PR</b>（做的是分析、规划、复盘、审计）；PR 全由 Codex 产出。<b>两个模型干的根本不是一件事</b>——这也是 TokenRouter 分角色路由的现实依据。</div>
-    </section>
-
-    <section class="sec">
-      <div class="h"><span class="t">Claude 模型构成</span><span class="kick k">按输出 token</span></div>
-      <div class="mrow hi"><span class="n">opus-4.8</span><span class="t"><i style="width:68%"></i></span><span class="p">68%</span></div>
-      <div class="mrow"><span class="n">fable-5</span><span class="t"><i style="width:22%"></i></span><span class="p">22%</span></div>
-      <div class="mrow"><span class="n">sonnet-5</span><span class="t"><i style="width:9%"></i></span><span class="p">9%</span></div>
-      <div class="mrow"><span class="n">opus-5</span><span class="t"><i style="width:1%"></i></span><span class="p">1%</span></div>
-      <div class="note">Claude 侧 <b>68% 的产能 token 走了最贵的模型</b>，中低档合计仅 9%。Codex 侧 <b>96% 的输入是缓存重读</b>（39,295M 中 37,825M）——两条通道各有一个可压的浪费点。</div>
-    </section>
-
-    <section class="sec">
-      <div class="h"><span class="t">安全闸</span><span class="kick k">fail-closed</span></div>
-      <div class="gt"><i>✓</i><span class="t">180 秒 tick 心跳</span><span class="s">未收口拒新启动</span></div>
-      <div class="gt"><i>✓</i><span class="t">启动需风险确认</span><span class="s">操作者显式</span></div>
-      <div class="gt"><i>✓</i><span class="t">rollover 只停止/撤单/封包</span><span class="s">不自动续</span></div>
-      <div class="gt"><i class="off">○</i><span class="t">真钱执行</span><span class="s">关闭</span></div>
-      <div class="gt"><i class="off">○</i><span class="t">自动 actuator</span><span class="s">无</span></div>
-    </section>
-
-    <section class="sec">
-      <div class="h"><span class="t">最近合并</span><span class="kick k">git log</span></div>
-      <div class="pr"><span class="g">✓</span><span><span class="id">#383</span>paper rebootstrap</span><span class="tm">07-25</span></div>
-      <div class="pr"><span class="g">✓</span><span><span class="id">#381</span>boot exit code</span><span class="tm">07-25</span></div>
-      <div class="pr"><span class="g">✓</span><span><span class="id">#379</span>live-tick cache refill</span><span class="tm">07-25</span></div>
+      <div class="h"><span class="t">参考</span><span class="kick k">links</span></div>
+      <div id="refs" style="display:flex;flex-direction:column;gap:5px;font-size:11.5px"></div>
     </section>
   </aside>
+
 </div>
 
 <div class="foot">
-  <b>数据来源</b>　中栏：本机 <span class="mono">goldbot-gateway</span>（127.0.0.1:8766）实时反代真实 dashboard-v5，非截图非模拟。
-  进度框：<span class="mono">docs/plans/implementation-progress-2026-07-24.md</span> + <span class="mono">ROADMAP.md</span>（更新于 05-29）。
-  产出 / 最近合并 / 左栏活跃度：各仓本地 <span class="mono">git log</span>。
-  「现在在哪里」「下一步」：<span class="mono">REGISTRY.md</span> 原文摘录。
-  消耗：<b>双通道实算</b>——<span class="mono">~/.claude/projects/</span>（Claude Code，35 个目录）+ <span class="mono">~/.codex/{sessions,archived_sessions}</span>（Codex CLI，888 个 session，6.6GB）。
-  Codex 的 <span class="mono">total_token_usage</span> 是会话累计值，取每文件最后一条，不相加；每个 cwd 按最长前缀只归一个项目，归类合计与全量一致（$10,343 + $7,676）。
-  脚本 <span class="mono">scratchpad/merged.py</span>，可复算。<br>
-  <b>口径</b>　按各家官方 API 标价折算：Claude 分档（opus-5/4.8 $5/$25、fable-5 $10/$50、sonnet-5 $3/$15，含缓存读写）；Codex 按 GPT-5（$1.25 输入 / $0.125 缓存输入 / $10 输出）。
-  <b>这是「这些 token 按量付费值多少钱」，不是你订阅制的实付金额</b>，两者是不同的表，不应混为一个数。<br>
-  <b>已知缺口——$18,019 是下限</b>　①<b>Codex 云端用量完全不在本机</b>：本仓 131 个 PR 全来自 <span class="mono">codex/*</span> 分支，本地 CLI 日志却只记到 $55，实现工作的账没算进来；
-  ②网页版 / 桌面版对话无本地日志；③日志可能被轮转清理（Codex 最早只到 02-14）；④标「$0」的项目是两条通道都无日志，不代表没花钱。
-  安全闸状态摘自 REGISTRY.md 记述，非本页实时探测。
+  <b>三个数据文件，三种刷新</b>　
+  ①<span class="mono">ledger.json</span>（钱+时间）：<span class="mono">python3 -m ledger report --json &gt; ledger.json</span>，双通道日志实算，归类合计==全量合计；
+  ②<span class="mono">outputs.json</span>（产出）：<span class="mono">python3 scripts/build_outputs.py</span>，只统计 registry 带 repo 的本机仓库；
+  ③<span class="mono">status/&lt;项目&gt;.json</span>（模块进度+状态追踪）：<b>agent 定期评估</b>，提示词在 <span class="mono">status/PROMPT.md</span>——百分比是判断值，依据须可溯源。<br>
+  <b>口径</b>　成本按官方 API 标价折算（非订阅实付）；「活跃小时」= 有用量记录的自然小时数（去重），是估算不是打卡；
+  产出只覆盖本机 git 仓库；$18k+ 为<b>下限</b>（Codex 云端用量、网页版对话不在本机日志）。
 </div>
 
 <script>
 (function(){
-  var f=document.getElementById('dash'), fb=document.getElementById('fb'), ok=false;
-  f.addEventListener('load',function(){ok=true;});
-  setTimeout(function(){ if(!ok){ f.style.display='none'; fb.style.display='block'; } },6000);
-})();
-
-// ---- 成本数据一律来自 ledger：workbench 不再自己算钱 ----
-(function(){
-  var GROUPS = ['交易','内容','Agent OS','未归类'];      // 展示顺序
-  var ALIAS  = {'trading-orchestrator':'网格交易机器人'}; // 仅显示名，账本里仍是原名
-  var EMBED  = 'trading-orchestrator';                   // 目前只有这个项目有嵌入与时间轴
+  'use strict';
+  var GOLD  = 'trading-orchestrator';
+  var ALIAS = {'trading-orchestrator':'网格交易机器人'};
+  var GROUPS = ['交易','内容','Agent OS','未归类'];
+  var REFS = {
+    'trading-orchestrator': [
+      ['GoldBot 公网 ↗','https://goldbot.park-ai-intel.com/dashboard-v5.html'],
+      ['GitHub ↗','https://github.com/zinan92/trading-system']],
+    'tokenrouter': [
+      ['架构设计（图一/图二）↗','https://claude.ai/code/artifact/f817c844-c966-4a5f-9e87-88564e2057c3']]
+  };
   var $ = function(id){ return document.getElementById(id); };
   var money = function(c){
-    if(c === 0) return '无日志';
-    return '$' + (c/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+    if(!c) return '无日志';
+    return '$' + Math.round(c/100).toLocaleString('en-US');
   };
+  var esc = function(t){
+    var d = document.createElement('span'); d.textContent = t == null ? '' : String(t);
+    return d.innerHTML;
+  };
+
+  var LEDGER = null, OUTPUTS = null, TOTAL = 0;
 
   function fail(msg){
     $('nav-groups').innerHTML =
-      '<div style="padding:10px 13px;font-size:11px;color:var(--warn);line-height:1.7">'+
-      '账本数据未加载：'+msg+'<br><br>在仓库根目录跑：<br>'+
-      '<code class="mono" style="font-size:10px">python3 -m ledger report --json &gt; ledger.json</code>'+
-      '<br><br>然后刷新本页。</div>';
-    $('c-name').textContent = '数据缺失';
+      '<div style="padding:10px 13px;font-size:11px;color:var(--warn);line-height:1.8">' +
+      '账本未加载：' + esc(msg) + '<br><br>在仓库根目录跑：<br>' +
+      '<code class="mono" style="font-size:10px">python3 -m ledger report --json &gt; ledger.json</code>' +
+      '<br>然后刷新本页。</div>';
   }
 
-  function render(d){
-    var ps = d.projects, total = d.grand_total_cents;
-    $('m-proj').textContent   = d.coverage.registered_projects;
-    $('m-claude').textContent = money(ps.reduce(function(a,p){return a+p.claude_cents;},0));
-    $('m-codex').textContent  = money(ps.reduce(function(a,p){return a+p.codex_cents;},0));
-    $('m-total').textContent  = money(total);
-
-    // 左栏：按组渲染，组内按金额降序
+  function renderNav(){
     var host = $('nav-groups'); host.innerHTML = '';
     GROUPS.forEach(function(g, gi){
-      var rows = ps.filter(function(p){ return p.group === g; })
-                   .sort(function(a,b){ return b.cost_cents - a.cost_cents; });
+      var rows = LEDGER.projects
+        .filter(function(p){ return p.group === g; })
+        .sort(function(a,b){ return b.cost_cents - a.cost_cents; });
       if(!rows.length) return;
       var box = document.createElement('div'); box.className = 'grp';
       box.innerHTML = '<div class="h"><span class="n">' +
-        String(gi+1).padStart(2,'0') + '</span><span class="t">' + g + '</span></div>';
+        String(gi+1).padStart(2,'0') + '</span><span class="t">' + esc(g) + '</span></div>';
       rows.forEach(function(p){
         var it = document.createElement('div');
-        it.className = 'it' + (p.name === EMBED ? ' on' : '');
+        it.className = 'it'; it.dataset.name = p.name;
         it.setAttribute('role','button'); it.tabIndex = 0;
-        it.dataset.name = p.name;
+        var label = p.cost_cents
+          ? money(p.cost_cents) + ' · ' + p.active_days + 'd'
+          : '无日志';
         it.innerHTML = '<i class="d' + (p.cost_cents ? ' warm' : '') + '"></i>' +
-          '<span class="nm">' + (ALIAS[p.name] || p.name) + '</span>' +
-          '<span class="c">' + money(p.cost_cents) + '</span>';
-        var pick = function(){ select(p, total); };
+          '<span class="nm">' + esc(ALIAS[p.name] || p.name) + '</span>' +
+          '<span class="c">' + label + '</span>';
+        var pick = function(){ select(p.name); };
         it.addEventListener('click', pick);
         it.addEventListener('keydown', function(e){
           if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pick(); }
@@ -432,34 +387,146 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
       });
       host.appendChild(box);
     });
-
-    var cur = ps.filter(function(p){ return p.name === EMBED; })[0] || ps[0];
-    select(cur, total);
   }
 
-  function select(p, total){
-    Array.prototype.forEach.call(document.querySelectorAll('.it'), function(el){
-      el.classList.toggle('on', el.dataset.name === p.name);
+  function renderCost(p){
+    $('c-total').textContent = money(p.cost_cents);
+    $('c-split').textContent = money(p.claude_cents) + ' / ' + money(p.codex_cents);
+    $('c-share').textContent = TOTAL ? (p.cost_cents/TOTAL*100).toFixed(1) + '%' : '—';
+    $('c-span').textContent  = p.first_day
+      ? p.first_day.slice(5) + ' → ' + p.last_day.slice(5) : '—';
+    $('c-active').textContent = p.active_days
+      ? p.active_days + ' 天 · ' + p.active_hours + ' 小时' : '—';
+    $('c-rec').textContent = (p.records || 0).toLocaleString('en-US');
+  }
+
+  function renderOutputs(name){
+    var o = OUTPUTS && OUTPUTS.projects && OUTPUTS.projects[name];
+    var set = function(id, v){ $(id).textContent = v; };
+    if(!o){
+      ['o-prs','o-c30','o-yday','o-last','o-lastc'].forEach(function(id){ set(id,'—'); });
+      $('o-note').innerHTML = '<div class="note" style="border-color:var(--line);color:var(--fnt)">' +
+        '本机无此项目的 git 仓库，产出未统计（≠ 无产出）。</div>';
+      return;
+    }
+    set('o-prs', o.merged_prs);
+    set('o-c30', o.commits_30d);
+    set('o-yday', o.merged_yesterday);
+    set('o-last', o.last_merge_pr ? '#' + o.last_merge_pr + ' · ' + (o.last_merge_day||'').slice(5) : '—');
+    set('o-lastc', o.last_commit_day ? o.last_commit_day.slice(5) : '—');
+    $('o-note').innerHTML = (name === GOLD)
+      ? '<div class="note">⚠ 此项目 PR 全部来自 <span class="mono">codex/*</span> 分支，而本机 Codex 日志仅记到零头——' +
+        '实现跑在 Codex 云端。故不设「每 PR 成本」：分子分母来自不同系统。</div>' : '';
+  }
+
+  function renderStatus(name){
+    var url = 'status/' + encodeURIComponent(name) + '.json';
+    $('t-src').textContent = 'status/' + name + '.json';
+    fetch(url, {cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(st){
+        $('p-assessed').textContent = 'agent 评估 · ' + st.assessed_at;
+        $('mod-title').textContent = (ALIAS[name] || name) + ' · ' + st.modules.length + ' 个模块';
+        $('mod-meta').textContent = st.assessor || '';
+        var html = st.modules.map(function(m, i){
+          return '<div class="mod ' + esc(m.light) + '">' +
+            '<span class="ix">' + (i+1) + '</span>' +
+            '<span class="nm" title="' + esc(m.note||'') + '">' + esc(m.name) + '</span>' +
+            '<span class="bar"><i style="width:' + (m.pct|0) + '%"></i></span>' +
+            '<span class="pct">' + (m.pct|0) + '%</span>' +
+            '<span class="vd">' + esc(m.verdict) + '</span>' +
+            (m.note ? '<span class="mod-note">' + esc(m.note) + '</span>' : '') +
+            '</div>';
+        }).join('');
+        $('mod-list').innerHTML = html;
+        var t = st.tracking || {};
+        $('t-now').textContent  = t.now || '—';
+        $('t-work').textContent = t.working_on || '—';
+        $('t-next').textContent = t.next || '—';
+      })
+      .catch(function(){
+        $('p-assessed').textContent = '';
+        $('mod-title').textContent = ALIAS[name] || name;
+        $('mod-meta').textContent = '未评估';
+        $('mod-list').innerHTML =
+          '<div class="placeholder">该项目尚无模块评估。<br>' +
+          '让任意 agent 按 <code>status/PROMPT.md</code> 生成 <code>status/' +
+          esc(name) + '.json</code> 后刷新本页。</div>';
+        $('t-now').textContent = $('t-work').textContent = $('t-next').textContent = '未评估';
+      });
+  }
+
+  function renderEmbed(name){
+    var isGold = name === GOLD;
+    $('em-bar').style.display = isGold ? '' : 'none';
+    $('fb').style.display = 'none';
+    var frame = $('dash'), empty = $('em-empty');
+    if(isGold){
+      empty.style.display = 'none';
+      frame.style.display = '';
+      $('em-src').textContent = '经本机 goldbot-gateway :8766 直取 · 实时';
+      if(!frame.src) frame.src = 'http://127.0.0.1:8766/dashboard-v5.html';
+    }else{
+      frame.style.display = 'none';
+      empty.style.display = '';
+      $('em-src').textContent = '';
+      empty.innerHTML = '<b>' + esc(ALIAS[name] || name) + '</b> 暂无接入的成品页面。<br>' +
+        '有可展示产出（面板、站点、报告）时，在页面 REFS 里登记 URL 或本机端口即可嵌入。';
+    }
+  }
+
+  function renderRefs(name){
+    var host = $('refs'); host.innerHTML = '';
+    var list = REFS[name] || [];
+    if(!list.length){ host.innerHTML = '<span style="color:var(--fnt)">无</span>'; return; }
+    list.forEach(function(pair){
+      var a = document.createElement('a');
+      a.href = pair[1]; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = pair[0];
+      a.style.color = 'var(--acc)'; a.style.textDecoration = 'none';
+      host.appendChild(a);
     });
-    $('c-name').textContent   = ALIAS[p.name] || p.name;
-    $('c-claude').textContent = money(p.claude_cents);
-    $('c-codex').textContent  = money(p.codex_cents);
-    $('c-total').textContent  = money(p.cost_cents);
-    $('c-share').textContent  = total ? (p.cost_cents/total*100).toFixed(1) + '%' : '—';
-    $('c-rec').textContent    = (p.records||0).toLocaleString('en-US');
-    // 中栏的嵌入与时间轴只属于 trading-orchestrator，选别的项目要说清楚
-    var isEmbed = p.name === EMBED;
-    $('c-gold').style.display = isEmbed ? '' : 'none';
-    $('c-note').innerHTML = isEmbed ? '' :
-      '<div class="note">你选中的是 <b>' + (ALIAS[p.name] || p.name) + '</b>，本卡片的金额已切换。' +
-      '但<b>中栏的嵌入、时间轴，以及右栏其余各节仍是「网格交易机器人」的</b>——' +
-      '目前只有它接了实时 dashboard 与文档来源。</div>';
   }
 
-  fetch('./ledger.json', {cache:'no-store'})
-    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(render)
-    .catch(function(e){ fail(e.message); });
+  function select(name){
+    Array.prototype.forEach.call(document.querySelectorAll('.it'), function(el){
+      el.classList.toggle('on', el.dataset.name === name);
+    });
+    var p = LEDGER.projects.filter(function(x){ return x.name === name; })[0];
+    if(!p) return;
+    $('p-title').textContent = ALIAS[name] || name;
+    $('p-badge').style.display = name === GOLD ? '' : 'none';
+    renderCost(p);
+    renderOutputs(name);
+    renderStatus(name);
+    renderEmbed(name);
+    renderRefs(name);
+  }
+
+  // goldbot iframe 失败回退
+  (function(){
+    var f = $('dash'), ok = false;
+    f.addEventListener('load', function(){ ok = true; });
+    setTimeout(function(){
+      if(!ok && f.style.display !== 'none'){ f.style.display = 'none'; $('fb').style.display = 'block'; }
+    }, 6000);
+  })();
+
+  Promise.all([
+    fetch('./ledger.json', {cache:'no-store'}).then(function(r){
+      if(!r.ok) throw new Error('ledger.json HTTP ' + r.status); return r.json(); }),
+    fetch('./outputs.json', {cache:'no-store'}).then(function(r){
+      return r.ok ? r.json() : null; }).catch(function(){ return null; })
+  ]).then(function(res){
+    LEDGER = res[0]; OUTPUTS = res[1];
+    TOTAL = LEDGER.grand_total_cents;
+    $('m-proj').textContent   = LEDGER.coverage.registered_projects;
+    $('m-claude').textContent = money(LEDGER.projects.reduce(function(a,p){ return a + p.claude_cents; }, 0));
+    $('m-codex').textContent  = money(LEDGER.projects.reduce(function(a,p){ return a + p.codex_cents; }, 0));
+    $('m-total').textContent  = money(TOTAL);
+    renderNav();
+    select(GOLD);
+  }).catch(function(e){ fail(e.message); });
 })();
 </script>
 </body>
