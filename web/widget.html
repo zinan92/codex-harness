@@ -209,6 +209,16 @@
   .weekly-stats { color: var(--ink-faint); font-size: 10px; }
   .weekly-conclusion { color: var(--ink-dim); font-size: 10.5px; }
   .weekly-next { color: var(--heat); font-size: 10.5px; font-weight: 700; }
+  .settings-sheet { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 10px;
+    background: color-mix(in oklch, #05070b 68%, transparent); }
+  .settings-card { width: min(440px, 100%); max-height: min(720px, calc(100vh - 20px)); display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto; background: var(--bg); border: 1px solid var(--track); border-radius: 12px; box-shadow: 0 18px 50px #0008; }
+  .settings-title, .settings-actions { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--track); }
+  .settings-title b { color: var(--ink); font-size: 13px; }
+  .settings-title button { margin-left: auto; padding: 0 6px; font-size: 18px; color: var(--ink-dim); }
+  .settings-scroll { overflow-y: auto; overscroll-behavior: contain; padding: 10px 12px; }
+  .settings-actions { border-bottom: 0; border-top: 1px solid var(--track); }
+  .settings-actions #s-msg { margin-left: auto; }
 
   /* ── tool rows ── */
   .tools { margin-top: 15px; display: flex; flex-direction: column; gap: 11px; }
@@ -572,28 +582,24 @@
         <div class="ptitle">本周复盘 <span class="psub">仅本机</span></div>
         <div class="weekly-review" id="weekly-review"><span class="session-empty">正在生成本周复盘…</span></div>
       </div>
-      <div class="psec">
-        <div class="ptitle">设置</div>
-        <div class="srow"><span class="slbl">每日目标 M</span>
-          <input id="s-tc" type="number" min="1"><i>Claude</i>
-          <input id="s-tx" type="number" min="1"><i>Codex</i></div>
-        <div class="srow"><span class="slbl">X 账号</span>
-          <span class="at">@</span><input id="s-handle" class="wider" placeholder="yourhandle"><i>战绩卡署名</i></div>
-        <div class="srow"><span class="slbl">小红书号</span>
-          <input id="s-xhs" class="wider" placeholder="RED ID"><i>选填</i></div>
-        <div class="srow"><span class="slbl">烧量榜</span>
-          <label class="consent"><input type="checkbox" id="s-rank"> 加入排名</label>
-          <i>勾选=同意上传你的 handle + 烧量参与排名；不勾只留本地（需先填 handle）</i></div>
-        <div class="srow"><span class="slbl">桌面占用</span>
-          <select id="s-display-mode"><option value="full">完整 widget</option><option value="compact">一行紧凑</option></select></div>
-        <div class="srow"><span class="slbl">展示位置</span>
-          <select id="s-display-placement"><option value="desktop">桌面浮窗</option><option value="menu_bar">菜单栏</option></select>
-          <i>菜单栏显示实时摘要；点菜单可临时打开完整面板</i></div>
+      <div class="psec"><button id="open-settings" type="button">打开设置 ↗</button></div>
+    </div>
+  </div>
+  <div class="settings-sheet" id="settings-sheet" hidden role="dialog" aria-modal="true" aria-label="TokenPulse 设置">
+    <div class="settings-card">
+      <div class="settings-title"><b>设置</b><button id="close-settings" type="button" aria-label="关闭设置">×</button></div>
+      <div class="settings-scroll">
+        <div class="srow"><span class="slbl">每日目标 M</span><input id="s-tc" type="number" min="1"><i>Claude</i><input id="s-tx" type="number" min="1"><i>Codex</i></div>
+        <div class="srow"><span class="slbl">X 账号</span><span class="at">@</span><input id="s-handle" class="wider" placeholder="yourhandle"><i>战绩卡署名</i></div>
+        <div class="srow"><span class="slbl">小红书号</span><input id="s-xhs" class="wider" placeholder="RED ID"><i>选填</i></div>
+        <div class="srow"><span class="slbl">烧量榜</span><label class="consent"><input type="checkbox" id="s-rank"> 加入排名</label><i>勾选=同意上传 handle + 烧量参与排名；不勾只留本地</i></div>
+        <div class="srow"><span class="slbl">桌面占用</span><select id="s-display-mode"><option value="full">完整 widget</option><option value="compact">一行紧凑</option></select></div>
+        <div class="srow"><span class="slbl">展示位置</span><select id="s-display-placement"><option value="desktop">桌面浮窗</option><option value="menu_bar">菜单栏</option></select><i id="layout-preview">预览中：桌面浮窗</i></div>
+        <div class="srow"><button id="s-reset-layout" type="button">恢复默认布局</button><i>只预览，点击保存后才生效</i></div>
         <div class="srow"><span class="slbl">追踪厂商</span><i>勾选要统计的厂商；只有 tokens 计入烧量</i></div>
         <div id="s-providers" class="provs"></div>
-        <div class="srow"><button id="s-save">保存并重启</button>
-          <span id="s-msg" class="smsg"></span></div>
       </div>
+      <div class="settings-actions"><button id="s-cancel" type="button">取消</button><button id="s-save">保存并重启</button><span id="s-msg" class="smsg"></span></div>
     </div>
   </div>
 
@@ -663,6 +669,7 @@
   let _lastState = null;
   let _metricScope = "combined";
   let _lastCorePayload = null, _lastCostPayload = null, _lastPanelPayload = null;
+  let _savedLayout = {mode: "full", placement: "desktop"};
   const scopeLabel = scope => ({combined: "Codex + Claude", codex: "Codex", claude: "Claude"}[scope] || "Codex + Claude");
   function scopedCore(d) {
     if (_metricScope === "combined") return {...d.combined, label: scopeLabel(_metricScope)};
@@ -1086,6 +1093,7 @@
     syncScopeControls();
     $("s-display-mode").value = display.mode || "full";
     $("s-display-placement").value = display.placement || "desktop";
+    _savedLayout = {mode: display.mode || "full", placement: display.placement || "desktop"};
     document.body.classList.toggle("compact", (display.mode || "full") === "compact");
   }
   async function loadConfig() {
@@ -1164,18 +1172,29 @@
     setTimeout(fitWindow, 40);
   }
 
-  async function openCompactSettings(e) {
-    e.stopPropagation();
-    try {
-      // Compact is a presentation choice, never a dead end. Switch back to
-      // the full widget first, then expose the existing settings panel.
-      const r = JSON.parse(await window.pywebview.api.save_config(JSON.stringify({ display: { mode: "full" } })));
-      if (!r.ok) return;
-      document.body.classList.remove("compact");
-      const p = $("panel");
-      if (p.hidden) togglePanel();
-      else loadPanel();
-    } catch (err) {}
+  function applyLayoutPreview() {
+    const mode = $("s-display-mode").value, placement = $("s-display-placement").value;
+    document.body.classList.toggle("compact", mode === "compact");
+    $("layout-preview").textContent = `预览中：${placement === "menu_bar" ? "菜单栏" : "桌面浮窗"} · ${mode === "compact" ? "一行紧凑" : "完整 widget"}`;
+  }
+  async function openSettings(e) {
+    if (e) e.stopPropagation();
+    $("settings-sheet").hidden = false;
+    await loadConfig();
+    applyLayoutPreview();
+  }
+  function closeSettings(e) {
+    if (e) e.stopPropagation();
+    $("settings-sheet").hidden = true;
+    document.body.classList.toggle("compact", _savedLayout.mode === "compact");
+    setTimeout(fitWindow, 20);
+  }
+  function resetLayoutPreview(e) {
+    if (e) e.stopPropagation();
+    if (!window.confirm("恢复为完整桌面浮窗？保存并重启后才会生效。")) return;
+    $("s-display-mode").value = "full";
+    $("s-display-placement").value = "desktop";
+    applyLayoutPreview();
   }
 
   // Resize the window to the actual content height so nothing (long cost line,
@@ -1223,11 +1242,18 @@
     const chev = $("chev");
     chev.addEventListener("mousedown", e => e.stopPropagation());
     chev.addEventListener("click", e => { e.stopPropagation(); togglePanel(); });
-    // interactions inside the panel (settings inputs/button) must not drag the window
+    // interactions inside the panel must not drag the window
     $("panel").addEventListener("mousedown", e => e.stopPropagation());
     $("s-save").addEventListener("click", e => { e.stopPropagation(); saveSettings(); });
     $("compact-settings").addEventListener("mousedown", e => e.stopPropagation());
-    $("compact-settings").addEventListener("click", openCompactSettings);
+    $("compact-settings").addEventListener("click", openSettings);
+    $("open-settings").addEventListener("click", openSettings);
+    $("close-settings").addEventListener("click", closeSettings);
+    $("s-cancel").addEventListener("click", closeSettings);
+    $("s-reset-layout").addEventListener("click", resetLayoutPreview);
+    $("s-display-mode").addEventListener("change", applyLayoutPreview);
+    $("s-display-placement").addEventListener("change", applyLayoutPreview);
+    $("settings-sheet").addEventListener("mousedown", e => e.stopPropagation());
     document.querySelectorAll("#scope-switch button").forEach(btn => {
       btn.addEventListener("click", e => { e.stopPropagation(); setMetricScope(btn.dataset.scope); });
     });

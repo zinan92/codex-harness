@@ -455,7 +455,7 @@ class MenuBarController:
         self.window.show()
         panel = "false" if settings else "true"
         chev = "true" if settings else "false"
-        load = "if (typeof loadPanel === 'function') loadPanel();" if settings else ""
+        load = "if (typeof openSettings === 'function') openSettings();" if settings else ""
         self.window.evaluate_js(f"""
             document.body.classList.remove('compact');
             const panel = document.getElementById('panel');
