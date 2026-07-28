@@ -157,6 +157,19 @@ def test_display_mode_change_does_not_require_restart(monkeypatch):
     assert placement_changed["restart_required"] is True
 
 
+def test_session_annotation_api_keeps_user_notes_in_the_local_session_store(monkeypatch):
+    api = webwidget.Api()
+    monkeypatch.setattr(webwidget.sessions, "annotated_sessions", lambda: [{"id": "codex-1", "name": "Thread"}])
+    saved = {}
+    monkeypatch.setattr(webwidget.sessions, "save_annotation", lambda *args: saved.update(args=args) or {"project": "P"})
+
+    assert json.loads(api.sessions()) == {"sessions": [{"id": "codex-1", "name": "Thread"}]}
+    assert json.loads(api.save_session_annotation("codex-1", "P", "feature", "done")) == {
+        "ok": True, "annotation": {"project": "P"}
+    }
+    assert saved["args"] == ("codex-1", "P", "feature", "done")
+
+
 def test_fit_allows_a_one_line_compact_height():
     calls = []
 

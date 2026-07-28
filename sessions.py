@@ -9,14 +9,48 @@ Pure stdlib.
 from __future__ import annotations
 
 import glob
+import hashlib
 import json
 import os
 import time
 from datetime import datetime
+from pathlib import Path
 
 CLAUDE_PROJECTS = os.path.expanduser("~/.claude/projects")
 CODEX_INDEX = os.path.expanduser("~/.codex/session_index.jsonl")
 CODEX_SESSIONS = os.path.expanduser("~/.codex/sessions/**/*.jsonl")
+ANNOTATIONS_PATH = Path.home() / ".tokenpulse" / "session-annotations.json"
+
+
+def _session_id(tool: str, stable_key: str) -> str:
+    """Opaque local id: enough to reconnect an annotation, never a log path."""
+    digest = hashlib.sha256(f"{tool}:{stable_key}".encode("utf-8")).hexdigest()[:16]
+    return f"{tool}-{digest}"
+
+
+def _load_annotations(path: Path = ANNOTATIONS_PATH) -> dict[str, dict]:
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def save_annotation(session_id: str, project: str = "", work_type: str = "", outcome: str = "",
+                    path: Path = ANNOTATIONS_PATH) -> dict:
+    """Persist a user-authored local annotation; blank fields are valid."""
+    if not isinstance(session_id, str) or not session_id:
+        raise ValueError("session_id")
+    clean = {
+        "project": str(project or "").strip()[:80],
+        "work_type": str(work_type or "").strip()[:80],
+        "outcome": str(outcome or "").strip()[:240],
+    }
+    all_notes = _load_annotations(path)
+    all_notes[session_id] = clean
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(all_notes, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return clean
 
 
 def _age_str(epoch: float, now: float | None = None) -> str:
@@ -88,6 +122,7 @@ def _claude_recent(days: int) -> list[dict]:
     for info in best.values():
         out.append({
             "tool": "claude",
+            "id": _session_id("claude", info["path"]),
             "name": info["name"],
             "last_touched": info["mtime"],
             "age": _age_str(info["mtime"]),
@@ -120,6 +155,7 @@ def _codex_recent(days: int) -> list[dict]:
                         continue
                     out.append({
                         "tool": "codex",
+                        "id": _session_id("codex", str(d.get("id") or d.get("thread_name") or upd)),
                         "name": d.get("thread_name") or d.get("id", "codex session"),
                         "last_touched": dt,
                         "age": _age_str(dt),
@@ -144,6 +180,7 @@ def _codex_recent(days: int) -> list[dict]:
         seen.add(base)
         out.append({
             "tool": "codex",
+            "id": _session_id("codex", f),
             "name": base.replace("rollout-", "").replace(".jsonl", "")[:40],
             "last_touched": m,
             "age": _age_str(m),
@@ -157,6 +194,13 @@ def recent_sessions(days: int = 5, limit: int = 8) -> list[dict]:
     merged = _claude_recent(days) + _codex_recent(days)
     merged.sort(key=lambda x: x["last_touched"], reverse=True)
     return merged[:limit]
+
+
+def annotated_sessions(days: int = 5, limit: int = 8) -> list[dict]:
+    """Recent local sessions plus optional user-written local annotations."""
+    notes = _load_annotations()
+    rows = recent_sessions(days=days, limit=limit)
+    return [{**row, "annotation": notes.get(row["id"], {})} for row in rows]
 
 
 def suggestion(days: int = 5, min_age_seconds: int = 600) -> dict | None:

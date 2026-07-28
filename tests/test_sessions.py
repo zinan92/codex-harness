@@ -102,6 +102,8 @@ def test_recent_sessions_merges_claude_and_codex_newest_first(tmp_path, monkeypa
     ]
     assert rows[1]["snippet"] == "resume claude work"
     assert rows[0]["age"] == "5m ago"
+    assert rows[0]["id"] == sessions._session_id("codex", "newer")
+    assert rows[1]["id"].startswith("claude-")
 
 
 def test_codex_recent_accepts_iso_z_and_skips_unusable_index_rows(tmp_path, monkeypatch):
@@ -122,21 +124,9 @@ def test_codex_recent_accepts_iso_z_and_skips_unusable_index_rows(tmp_path, monk
 
     rows = sessions._codex_recent(days=1)
 
-    assert rows == [
-        {
-            "tool": "codex",
-            "name": "Numeric Newest",
-            "last_touched": NOW - 300,
-            "age": "5m ago",
-            "snippet": "",
-        },
-        {
-            "tool": "codex",
-            "name": "ISO Z Session",
-            "last_touched": iso_ts,
-            "age": "15m ago",
-            "snippet": "",
-        },
+    assert [(r["id"], r["name"], r["age"]) for r in rows] == [
+        (sessions._session_id("codex", "numeric-newest"), "Numeric Newest", "5m ago"),
+        (sessions._session_id("codex", "iso-z"), "ISO Z Session", "15m ago"),
     ]
 
 
@@ -161,3 +151,18 @@ def test_suggestion_falls_back_to_newest_when_all_rows_active(monkeypatch):
     monkeypatch.setattr(sessions.time, "time", lambda: NOW)
 
     assert sessions.suggestion(days=1, min_age_seconds=600)["name"] == "newest"
+
+
+def test_session_annotation_is_local_and_overwrites_the_same_session(tmp_path):
+    path = tmp_path / "state" / "session-annotations.json"
+    sid = sessions._session_id("codex", "thread-123")
+
+    assert sessions.save_annotation(sid, "TokenPulse", "feature", "Popover done", path=path) == {
+        "project": "TokenPulse", "work_type": "feature", "outcome": "Popover done"
+    }
+    assert sessions.save_annotation(sid, "TokenPulse", "review", "", path=path) == {
+        "project": "TokenPulse", "work_type": "review", "outcome": ""
+    }
+    assert sessions._load_annotations(path) == {sid: {
+        "project": "TokenPulse", "work_type": "review", "outcome": ""
+    }}
