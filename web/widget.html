@@ -198,6 +198,13 @@
   .session-outcome { width: 100%; box-sizing: border-box; }
   .session-save { justify-self: start; font-size: 10px; padding: 4px 7px; }
   .session-empty { color: var(--ink-faint); font-size: 10.5px; }
+  .timeline { display: grid; gap: 0; }
+  .timeline-gap { color: var(--ink-faint); font-size: 9.5px; padding: 6px 0 2px 54px; }
+  .timeline-row { display: grid; grid-template-columns: 42px 1fr auto; align-items: baseline; gap: 7px; padding: 5px 0; border-left: 2px solid var(--track); padding-left: 8px; }
+  .timeline-row.codex { border-left-color: var(--heat); }
+  .timeline-time { color: var(--ink-faint); font-size: 10px; }
+  .timeline-name { color: var(--ink-dim); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .timeline-meta { color: var(--ink-faint); font-size: 9.5px; }
 
   /* ── tool rows ── */
   .tools { margin-top: 15px; display: flex; flex-direction: column; gap: 11px; }
@@ -554,6 +561,10 @@
         <div class="session-list" id="session-list"><span class="session-empty">正在读取近期本地会话…</span></div>
       </div>
       <div class="psec">
+        <div class="ptitle">今天时间线 <span class="psub">会话元数据</span></div>
+        <div class="timeline" id="today-timeline"><span class="session-empty">正在读取今天的会话活动…</span></div>
+      </div>
+      <div class="psec">
         <div class="ptitle">设置</div>
         <div class="srow"><span class="slbl">每日目标 M</span>
           <input id="s-tc" type="number" min="1"><i>Claude</i>
@@ -814,6 +825,7 @@
     loadConfig();   // keep the settings inputs in sync whenever the panel loads
     loadBadges();
     loadSessions();
+    loadTimeline();
     try { renderPanel(JSON.parse(await window.pywebview.api.panel())); }
     catch (e) {}
     setTimeout(fitWindow, 40);
@@ -855,6 +867,31 @@
         card.append(head, fields, outcome, save); box.append(card);
       });
     } catch (e) { box.innerHTML = '<span class="session-empty">近期会话暂不可读。</span>'; }
+    setTimeout(fitWindow, 40);
+  }
+  async function loadTimeline() {
+    const box = $("today-timeline"); if (!box) return;
+    try {
+      const data = JSON.parse(await window.pywebview.api.timeline());
+      const rows = data && data.timeline; box.replaceChildren();
+      if (!rows || !rows.length) {
+        const empty = document.createElement("span"); empty.className = "session-empty";
+        empty.textContent = "今天还没有可读取的本地会话活动。"; box.appendChild(empty); return;
+      }
+      rows.forEach(row => {
+        if (row.gap_minutes) {
+          const gap = document.createElement("div"); gap.className = "timeline-gap";
+          gap.textContent = `间隔 ${row.gap_minutes} 分钟`; box.appendChild(gap);
+        }
+        const line = document.createElement("div"); line.className = `timeline-row ${row.tool || ""}`;
+        const when = document.createElement("span"); when.className = "timeline-time"; when.textContent = row.time || "—";
+        const name = document.createElement("span"); name.className = "timeline-name"; name.textContent = row.name || "未命名会话";
+        const meta = document.createElement("span"); meta.className = "timeline-meta";
+        const note = row.annotation || {}; const tag = [note.project, note.work_type].filter(Boolean).join(" · ");
+        meta.textContent = `${row.tool === "codex" ? "Codex" : "Claude"}${row.tool_switch ? " ↔ 切换" : ""}${tag ? " · " + tag : ""}`;
+        line.append(when, name, meta); box.appendChild(line);
+      });
+    } catch (e) { box.innerHTML = '<span class="session-empty">今天时间线暂不可读。</span>'; }
     setTimeout(fitWindow, 40);
   }
 

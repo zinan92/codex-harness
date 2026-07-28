@@ -141,6 +141,9 @@ def test_widget_exposes_compact_and_menu_bar_display_controls():
     assert 'id="decision-action"' in html
     assert "renderDecision" in html
     assert "d.decisions" in html
+    assert 'id="today-timeline"' in html
+    assert "loadTimeline" in html
+    assert "gap_minutes" in html
 
 
 def test_display_mode_change_does_not_require_restart(monkeypatch):
@@ -168,6 +171,11 @@ def test_session_annotation_api_keeps_user_notes_in_the_local_session_store(monk
         "ok": True, "annotation": {"project": "P"}
     }
     assert saved["args"] == ("codex-1", "P", "feature", "done")
+
+
+def test_timeline_api_returns_local_metadata_only(monkeypatch):
+    monkeypatch.setattr(webwidget.sessions, "today_timeline", lambda: [{"id": "codex-1", "time": "10:00"}])
+    assert json.loads(webwidget.Api().timeline()) == {"timeline": [{"id": "codex-1", "time": "10:00"}]}
 
 
 def test_fit_allows_a_one_line_compact_height():

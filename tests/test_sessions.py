@@ -166,3 +166,25 @@ def test_session_annotation_is_local_and_overwrites_the_same_session(tmp_path):
     assert sessions._load_annotations(path) == {sid: {
         "project": "TokenPulse", "work_type": "review", "outcome": ""
     }}
+
+
+def test_today_timeline_sorts_marks_real_gaps_and_tool_switches():
+    now = datetime.fromtimestamp(NOW).astimezone()
+    rows = [
+        {"id": "late", "tool": "codex", "name": "Codex thread", "last_touched": NOW - 60,
+         "annotation": {"project": "TokenPulse"}},
+        {"id": "first", "tool": "claude", "name": "Claude project", "last_touched": NOW - 7200,
+         "annotation": {}},
+        {"id": "middle", "tool": "claude", "name": "Claude follow-up", "last_touched": NOW - 6000,
+         "annotation": {"work_type": "review"}},
+        {"id": "old", "tool": "codex", "name": "Yesterday", "last_touched": NOW - 86400,
+         "annotation": {}},
+    ]
+
+    timeline = sessions.today_timeline(rows, now=now, gap_seconds=45 * 60)
+
+    assert [row["id"] for row in timeline] == ["first", "middle", "late"]
+    assert timeline[0]["gap_minutes"] == 0 and timeline[0]["tool_switch"] is False
+    assert timeline[1]["gap_minutes"] == 0 and timeline[1]["tool_switch"] is False
+    assert timeline[2]["gap_minutes"] == 99 and timeline[2]["tool_switch"] is True
+    assert timeline[2]["annotation"] == {"project": "TokenPulse"}

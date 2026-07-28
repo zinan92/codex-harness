@@ -203,6 +203,30 @@ def annotated_sessions(days: int = 5, limit: int = 8) -> list[dict]:
     return [{**row, "annotation": notes.get(row["id"], {})} for row in rows]
 
 
+def today_timeline(rows: list[dict] | None = None, now: datetime | None = None,
+                   gap_seconds: int = 45 * 60) -> list[dict]:
+    """Chronological, metadata-only activity timeline for the local calendar day."""
+    now = now or datetime.now().astimezone()
+    today = now.astimezone().date()
+    rows = rows if rows is not None else annotated_sessions(days=1, limit=30)
+    current = [r for r in rows if datetime.fromtimestamp(r["last_touched"]).astimezone().date() == today]
+    current.sort(key=lambda r: r["last_touched"])
+    out = []
+    previous = None
+    for row in current:
+        stamp = datetime.fromtimestamp(row["last_touched"]).astimezone()
+        gap = int(row["last_touched"] - previous["last_touched"]) if previous else 0
+        out.append({
+            "id": row["id"], "tool": row["tool"], "name": row.get("name") or "未命名会话",
+            "time": stamp.strftime("%H:%M"), "last_touched": row["last_touched"],
+            "annotation": row.get("annotation") or {},
+            "gap_minutes": gap // 60 if previous and gap >= gap_seconds else 0,
+            "tool_switch": bool(previous and previous.get("tool") != row.get("tool")),
+        })
+        previous = row
+    return out
+
+
 def suggestion(days: int = 5, min_age_seconds: int = 600) -> dict | None:
     """A single session to nudge the user back into.
 
