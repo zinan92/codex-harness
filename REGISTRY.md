@@ -13,6 +13,7 @@
 - launchd 无 PATH 时仍会从标准本机安装位置解析 CodexBar（含 Apple Silicon Homebrew），避免菜单栏显示错误的 `Codex 0`。
 - 菜单栏的“打开 TokenPulse”会临时展开完整 widget（不改常驻菜单栏/紧凑偏好）；再次点击则隐藏。
 - 首页可在合计、Codex、Claude 三种口径间切换；选定口径同步驱动主数、目标、进度、成本、活跃时长与 30 天图，并保存为本地展示偏好。
+- 菜单栏状态项现在以系统原生 popover 展示 Codex-only 的实时数、来源和刷新状态；“打开 TokenPulse / 刷新用量 / 打开设置 / 退出”均为显式可用操作，扫描不可用时显示 `— / 未读取` 而非 0。
 - 体系角色:loop 全周期演练与 claimer 冒烟的**指定沙盒仓**,share 测试已 sandbox-hermetic。
 - 无排队任务。
 
