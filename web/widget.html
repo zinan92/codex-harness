@@ -205,6 +205,10 @@
   .timeline-time { color: var(--ink-faint); font-size: 10px; }
   .timeline-name { color: var(--ink-dim); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .timeline-meta { color: var(--ink-faint); font-size: 9.5px; }
+  .weekly-review { border: 1px solid var(--track); border-radius: 8px; padding: 9px; display: grid; gap: 4px; }
+  .weekly-stats { color: var(--ink-faint); font-size: 10px; }
+  .weekly-conclusion { color: var(--ink-dim); font-size: 10.5px; }
+  .weekly-next { color: var(--heat); font-size: 10.5px; font-weight: 700; }
 
   /* ── tool rows ── */
   .tools { margin-top: 15px; display: flex; flex-direction: column; gap: 11px; }
@@ -565,6 +569,10 @@
         <div class="timeline" id="today-timeline"><span class="session-empty">正在读取今天的会话活动…</span></div>
       </div>
       <div class="psec">
+        <div class="ptitle">本周复盘 <span class="psub">仅本机</span></div>
+        <div class="weekly-review" id="weekly-review"><span class="session-empty">正在生成本周复盘…</span></div>
+      </div>
+      <div class="psec">
         <div class="ptitle">设置</div>
         <div class="srow"><span class="slbl">每日目标 M</span>
           <input id="s-tc" type="number" min="1"><i>Claude</i>
@@ -826,6 +834,7 @@
     loadBadges();
     loadSessions();
     loadTimeline();
+    loadWeeklyReview();
     try { renderPanel(JSON.parse(await window.pywebview.api.panel())); }
     catch (e) {}
     setTimeout(fitWindow, 40);
@@ -892,6 +901,20 @@
         line.append(when, name, meta); box.appendChild(line);
       });
     } catch (e) { box.innerHTML = '<span class="session-empty">今天时间线暂不可读。</span>'; }
+    setTimeout(fitWindow, 40);
+  }
+  async function loadWeeklyReview() {
+    const box = $("weekly-review"); if (!box) return;
+    try {
+      const r = JSON.parse(await window.pywebview.api.weekly_review());
+      if (!r || r.error) throw new Error("unavailable");
+      box.replaceChildren();
+      const stats = document.createElement("span"); stats.className = "weekly-stats";
+      stats.textContent = `7 天 ${tok(r.total || 0)} · ${r.active_days || 0} 个活跃日 · ${r.outcomes || 0} 条已记录产出`;
+      const conclusion = document.createElement("span"); conclusion.className = "weekly-conclusion"; conclusion.textContent = r.conclusion || "—";
+      const next = document.createElement("span"); next.className = "weekly-next"; next.textContent = `下一步：${r.next_action || "—"}`;
+      box.append(stats, conclusion, next);
+    } catch (e) { box.innerHTML = '<span class="session-empty">本周复盘暂不可读。</span>'; }
     setTimeout(fitWindow, 40);
   }
 
