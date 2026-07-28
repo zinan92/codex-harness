@@ -78,6 +78,8 @@ def validate_partial(p: dict) -> list[str]:
                 errs.append("display.mode")
             if display.get("placement") is not None and display.get("placement") not in {"desktop", "menu_bar"}:
                 errs.append("display.placement")
+            if display.get("metric_scope") is not None and display.get("metric_scope") not in {"combined", "codex", "claude"}:
+                errs.append("display.metric_scope")
     return errs
 
 

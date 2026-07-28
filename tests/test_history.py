@@ -88,6 +88,17 @@ def test_daily_tokens_buckets_by_local_day_and_dedupes(tmp_path, monkeypatch):
     assert out["series"][-1]["date"] == NOW.astimezone().date().isoformat()  # today is last
 
 
+def test_panel_data_exposes_per_scope_targets(monkeypatch):
+    series = [{"date": "2026-06-13", "claude": 100, "codex": 50, "total": 150}]
+    monkeypatch.setattr(history, "daily_tokens", lambda now, days: {"days": days, "series": series})
+    monkeypatch.setattr(history, "active_minutes_today", lambda now: {"claude": 20, "codex": 10})
+    monkeypatch.setattr(history.core, "target_for", lambda day, config, tool: {"claude": 200, "codex": 300}[tool])
+
+    result = history.panel_data(now=NOW, config={"targets": {}}, ttl=0)
+
+    assert result["targets"] == {"claude": 200, "codex": 300, "combined": 500}
+
+
 def test_lifetime_records(monkeypatch):
     """All-time record day + best streak over the full persisted cache."""
     M = 1_000_000

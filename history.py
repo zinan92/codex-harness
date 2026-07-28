@@ -423,8 +423,12 @@ def lifetime_records(now: datetime | None = None, config: dict | None = None) ->
     config = config or core.load_config()
     cache = _load_disk()
     dates = sorted(set(cache["claude"]) | set(cache["codex"]))
-    target = (core.target_for(now.date(), config, "claude")
-              + core.target_for(now.date(), config, "codex"))
+    targets = {
+        "claude": core.target_for(now.date(), config, "claude"),
+        "codex": core.target_for(now.date(), config, "codex"),
+    }
+    targets["combined"] = targets["claude"] + targets["codex"]
+    target = targets["combined"]
     series = [{"date": d, "total": cache["claude"].get(d, 0) + cache["codex"].get(d, 0)} for d in dates]
     record = max(series, key=lambda r: r["total"], default=None)
     best = cur = 0
@@ -448,12 +452,17 @@ def panel_data(now: datetime | None = None, config: dict | None = None,
     if hit and (time.time() - hit[0]) < ttl:
         return hit[1]
     dt = daily_tokens(now, days)
-    target = (core.target_for(now.date(), config, "claude")
-              + core.target_for(now.date(), config, "codex"))
+    targets = {
+        "claude": core.target_for(now.date(), config, "claude"),
+        "codex": core.target_for(now.date(), config, "codex"),
+    }
+    targets["combined"] = targets["claude"] + targets["codex"]
+    target = targets["combined"]
     val = {
         "series": dt["series"],
         "days": days,
         "combined_target": target,
+        "targets": targets,
         "active_today": active_minutes_today(now),
         **streak_and_best(dt["series"], target),
     }
