@@ -94,7 +94,7 @@ def test_menu_open_shows_a_full_widget_without_saving_display_preferences():
     assert menu.visible is False
 
 
-def test_menu_settings_opens_the_full_widget_and_expands_the_settings_panel():
+def test_menu_settings_opens_the_full_widget_and_standalone_settings_sheet():
     calls = []
 
     class FakeWindow:
@@ -115,7 +115,7 @@ def test_menu_settings_opens_the_full_widget_and_expands_the_settings_panel():
 
     assert calls[:3] == ["restore", ("resize", webwidget.WIDTH, webwidget.HEIGHT), "show"]
     assert "panel.hidden = false" in calls[3][1]
-    assert "loadPanel()" in calls[3][1]
+    assert "openSettings()" in calls[3][1]
     assert menu.visible is True
 
 
@@ -125,7 +125,13 @@ def test_widget_exposes_compact_and_menu_bar_display_controls():
     assert 'id="s-display-mode"' in html
     assert 'id="s-display-placement"' in html
     assert 'id="compact-settings"' in html
-    assert "openCompactSettings" in html
+    assert 'id="settings-sheet"' in html
+    assert 'id="open-settings"' in html
+    assert 'id="s-cancel"' in html
+    assert 'id="s-reset-layout"' in html
+    assert "openSettings" in html
+    assert "applyLayoutPreview" in html
+    assert "resetLayoutPreview" in html
     assert "overflow-y: auto" in html
     assert 'id="s-save">保存并重启' in html
     assert "restart_widget" in html
