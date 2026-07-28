@@ -7,6 +7,7 @@
 1. **归类合计 == 全量合计**（整数分）。`ledger/registry.py:aggregate` 里的断言是真闸门，不许注释、不许放宽。
 2. **Codex 每文件只取最后一条 `total_token_usage`**（会话累计值，求和会静默放大数倍）。改 `collect.py` 前先跑 `python3 -m unittest discover ledger/tests`。
 3. `~/.claude/` 与 `~/.codex/` 是数据源，**只读**。
+4. **定价与 TokenPulse 同源**：`ledger/prices.py` 优先读 `~/Library/Caches/codexbar/model-pricing/models-dev-v1.json`（TokenPulse/CodexBar 每日维护的共享价表），缺失才回退离线标价。三个产品对同一 model 得同一价——别在 ledger 里另立价表。
 
 ## 边界
 

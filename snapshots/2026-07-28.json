@@ -1,17 +1,17 @@
 {
  "date": "2026-07-28",
- "generated_at": "2026-07-28T16:52:08+08:00",
- "grand_total_cents": 2032224,
+ "generated_at": "2026-07-28T22:15:43+08:00",
+ "grand_total_cents": 2019527,
  "projects": {
   "tokenrouter": {
-   "cost_cents": 52742,
-   "claude_cents": 52687,
+   "cost_cents": 56561,
+   "claude_cents": 56506,
    "codex_cents": 55,
    "active_days": 3
   },
   "trading-orchestrator": {
-   "cost_cents": 560452,
-   "claude_cents": 554816,
+   "cost_cents": 549099,
+   "claude_cents": 543463,
    "codex_cents": 5636,
    "active_days": 52
   },
@@ -22,8 +22,8 @@
    "active_days": 2
   },
   "trading-co": {
-   "cost_cents": 154070,
-   "claude_cents": 153719,
+   "cost_cents": 153469,
+   "claude_cents": 153118,
    "codex_cents": 351,
    "active_days": 32
   },
@@ -34,8 +34,8 @@
    "active_days": 17
   },
   "park-io": {
-   "cost_cents": 34299,
-   "claude_cents": 32301,
+   "cost_cents": 31113,
+   "claude_cents": 29115,
    "codex_cents": 1998,
    "active_days": 13
   },
@@ -58,39 +58,39 @@
    "active_days": 0
   },
   "agent 自管理": {
-   "cost_cents": 37901,
-   "claude_cents": 2682,
+   "cost_cents": 37779,
+   "claude_cents": 2560,
    "codex_cents": 35219,
    "active_days": 31
   },
   "人生 K 线": {
-   "cost_cents": 29444,
-   "claude_cents": 4218,
+   "cost_cents": 29301,
+   "claude_cents": 4075,
    "codex_cents": 25226,
    "active_days": 5
   },
   "New project": {
-   "cost_cents": 329881,
-   "claude_cents": 270520,
-   "codex_cents": 59361,
+   "cost_cents": 326416,
+   "claude_cents": 267026,
+   "codex_cents": 59390,
    "active_days": 47
   },
   "投研面板": {
-   "cost_cents": 195845,
-   "claude_cents": 26875,
-   "codex_cents": 168970,
+   "cost_cents": 198262,
+   "claude_cents": 29017,
+   "codex_cents": 169245,
    "active_days": 8
   },
   "电商工作台": {
-   "cost_cents": 27453,
-   "claude_cents": 3227,
+   "cost_cents": 27393,
+   "claude_cents": 3167,
    "codex_cents": 24226,
    "active_days": 3
   },
   "内容制作": {
-   "cost_cents": 397762,
+   "cost_cents": 397891,
    "claude_cents": 0,
-   "codex_cents": 397762,
+   "codex_cents": 397891,
    "active_days": 24
   },
   "知识库": {
@@ -136,8 +136,8 @@
    "active_days": 0
   },
   "未归类": {
-   "cost_cents": 40579,
-   "claude_cents": 1800,
+   "cost_cents": 40447,
+   "claude_cents": 1668,
    "codex_cents": 38779,
    "active_days": 70
   }
