@@ -10,7 +10,8 @@
 
 - **TradingView Advanced Charts 申请**（内容制作项目）：表单要求签署 License Agreement PDF
   并填写公司邮箱／电话／注册地——只能你本人完成。见 `status/内容制作.json`。
-- **`~/Documents/tokenrouter` 旧仓库**：内容已全部迁入本仓，是否删除等你确认。
+（原「旧仓库是否删除」已于 2026-07-29 处理：核验为本仓超集后删除，
+桌面留有 `tokenrouter-old-repo-backup-20260729.tar.gz` 备份。）
 
 ## 已解决
 
