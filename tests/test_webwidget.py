@@ -66,6 +66,9 @@ def test_widget_exposes_compact_and_menu_bar_display_controls():
     assert "overflow-y: auto" in html
     assert 'id="s-save">保存并重启' in html
     assert "restart_widget" in html
+    assert 'id="trust-strip"' in html
+    assert "renderProvenance" in html
+    assert "数据未完整，等待可信本地扫描" in html
 
 
 def test_display_mode_change_does_not_require_restart(monkeypatch):

@@ -23,6 +23,7 @@ def _tool(today, expected, mood, *, hit=False):
         "active_fraction": 0.5,
         "hit": hit,
         "mood": mood,
+        "breakdown": {"source": "claude-jsonl", "available": True, "stale": False},
     }
 
 
@@ -135,6 +136,7 @@ def test_core_payload_shape_and_available_plan_fields(monkeypatch):
         "weekly",
         "plan_available",
         "plan_stale",
+        "provenance",
     }
     assert payload["tools"]["claude"]["state"] == "ahead"
     assert payload["tools"]["claude"]["pace_ratio"] == 1.2
@@ -142,6 +144,10 @@ def test_core_payload_shape_and_available_plan_fields(monkeypatch):
     assert payload["tools"]["claude"]["weekly"] == {"left": 44, "reset": "4d"}
     assert payload["tools"]["claude"]["plan_available"] is True
     assert payload["tools"]["claude"]["plan_stale"] is False
+    assert payload["tools"]["claude"]["provenance"] == {
+        "provider": "Claude", "source": "claude-jsonl", "source_label": "Claude 本地日志",
+        "scope": "今日 · 本地时区", "refreshed_at": NOW.isoformat(), "status": "fresh", "reason": None,
+    }
 
     assert payload["tools"]["codex"]["state"] == "behind"
     assert payload["tools"]["codex"]["pace_ratio"] == 0.25
@@ -149,6 +155,25 @@ def test_core_payload_shape_and_available_plan_fields(monkeypatch):
     assert payload["tools"]["codex"]["weekly"] == {"left": 91, "reset": "6d"}
     assert payload["tools"]["codex"]["plan_available"] is True
     assert payload["tools"]["codex"]["plan_stale"] is True
+
+
+def test_core_payload_marks_unavailable_source_without_a_false_zero(monkeypatch):
+    st = _status()
+    st["tools"]["codex"]["today"] = 0
+    st["tools"]["codex"]["breakdown"] = {
+        "source": "codexbar-unavailable", "available": False, "reason": "not-installed",
+    }
+    monkeypatch.setattr(webdata.core, "status", lambda now, config: st)
+    monkeypatch.setattr(webdata.core, "pace", lambda now, config, actual, target: {"mood": "ontrack", "hit": False})
+    monkeypatch.setattr(webdata.core, "_active_fraction", lambda now, config: 0.5)
+    monkeypatch.setattr(webdata.limits, "plan_limits", lambda: {"claude": {"available": False, "windows": []}, "codex": {"available": False, "windows": []}})
+
+    payload = webdata.core_payload(now=NOW, config=CONFIG)
+
+    assert payload["tools"]["codex"]["provenance"] == {
+        "provider": "Codex", "source": "codexbar-unavailable", "source_label": "CodexBar 本地扫描",
+        "scope": "今日 · 本地时区", "refreshed_at": NOW.isoformat(), "status": "unavailable", "reason": "not-installed",
+    }
 
     assert payload["combined"] == {
         "today": 170,
