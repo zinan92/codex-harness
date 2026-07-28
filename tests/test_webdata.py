@@ -115,7 +115,7 @@ def test_core_payload_shape_and_available_plan_fields(monkeypatch):
 
     payload = webdata.core_payload(now=NOW, config=CONFIG)
 
-    assert set(payload) == {"generated_at", "clock", "active_fraction", "combined", "tools"}
+    assert set(payload) == {"generated_at", "clock", "active_fraction", "combined", "tools", "decisions"}
     assert payload["generated_at"] == NOW.isoformat()
     assert payload["clock"] == "18:45"
     assert payload["active_fraction"] == 0.5
@@ -155,6 +155,14 @@ def test_core_payload_shape_and_available_plan_fields(monkeypatch):
     assert payload["tools"]["codex"]["weekly"] == {"left": 91, "reset": "6d"}
     assert payload["tools"]["codex"]["plan_available"] is True
     assert payload["tools"]["codex"]["plan_stale"] is True
+    assert payload["decisions"]["combined"] == {
+        "question": "今天下一步",
+        "action": "继续当前优先级，完成下一个可交付物",
+        "reason": "配速健康；把注意力留在最重要的工作上。",
+        "pace": "合计 · 配速正常",
+    }
+    assert payload["decisions"]["claude"]["pace"] == "Claude · 领先配速"
+    assert payload["decisions"]["codex"]["pace"] == "Codex · 落后配速"
 
 
 def test_core_payload_marks_unavailable_source_without_a_false_zero(monkeypatch):
@@ -188,6 +196,13 @@ def test_core_payload_marks_unavailable_source_without_a_false_zero(monkeypatch)
         "operator": "behind - start the next AI-work session now to catch up; 830 tokens remain today.",
         "impact": "turn lag into useful AI-work before the day slips.",
     }
+    assert payload["decisions"]["codex"] == {
+        "question": "今天下一步",
+        "action": "先等待可信本地扫描完成",
+        "reason": "Codex 数据未完整，不能把未读取当作 0 来安排工作。",
+        "pace": "数据状态：未读取",
+    }
+    assert payload["decisions"]["combined"]["action"] == "先等待可信本地扫描完成"
 
 
 def test_core_payload_unavailable_plan_fields_are_null(monkeypatch):
