@@ -2,6 +2,7 @@
 import json
 import os
 import sys
+from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import webwidget  # noqa: E402
@@ -22,7 +23,44 @@ def test_menu_actions_use_objective_c_selectors():
     source = open(webwidget.__file__, encoding="utf-8").read()
     assert '"打开 TokenPulse", "toggle:"' in source
     assert '"刷新用量", "refresh:"' in source
+    assert '"打开设置", "settings:"' in source
     assert '"退出 TokenPulse", "quit:"' in source
+    assert "setAutoenablesItems_(False)" in source
+
+
+def test_menu_popover_snapshot_has_a_codex_only_fresh_receipt():
+    payload = {
+        "tools": {
+            "codex": {
+                "today": 825_620_085,
+                "state": "done",
+                "provenance": {
+                    "status": "fresh",
+                    "source_label": "CodexBar 本地扫描",
+                    "refreshed_at": "2026-07-28T10:31:00+08:00",
+                },
+            }
+        }
+    }
+
+    snapshot = webwidget._menu_popover_snapshot(payload, now=datetime(2026, 7, 28, 10, 32, tzinfo=timezone.utc))
+
+    assert snapshot == {
+        "summary": "Codex 826M · 已刷新",
+        "receipt": "CodexBar 本地扫描 · 已刷新 10:31",
+        "title": "⏱ Codex 826M ✓",
+        "status": "fresh",
+    }
+
+
+def test_menu_popover_snapshot_never_presents_an_unavailable_scan_as_zero():
+    snapshot = webwidget._menu_popover_snapshot({"tools": {"codex": {"today": 0, "provenance": {
+        "status": "unavailable", "source_label": "CodexBar 本地扫描", "reason": "未安装"
+    }}}})
+
+    assert snapshot["summary"] == "Codex — · 未读取"
+    assert snapshot["receipt"] == "CodexBar 本地扫描 · 不可用：未安装"
+    assert snapshot["title"] == "⏱ Codex —"
 
 
 def test_menu_open_shows_a_full_widget_without_saving_display_preferences():
@@ -54,6 +92,31 @@ def test_menu_open_shows_a_full_widget_without_saving_display_preferences():
     menu.toggle_(None)
     assert calls[-1] == "hide"
     assert menu.visible is False
+
+
+def test_menu_settings_opens_the_full_widget_and_expands_the_settings_panel():
+    calls = []
+
+    class FakeWindow:
+        def restore(self):
+            calls.append("restore")
+
+        def resize(self, width, height):
+            calls.append(("resize", width, height))
+
+        def show(self):
+            calls.append("show")
+
+        def evaluate_js(self, script):
+            calls.append(("js", script))
+
+    menu = webwidget.MenuBarController(FakeWindow())
+    menu.settings_(None)
+
+    assert calls[:3] == ["restore", ("resize", webwidget.WIDTH, webwidget.HEIGHT), "show"]
+    assert "panel.hidden = false" in calls[3][1]
+    assert "loadPanel()" in calls[3][1]
+    assert menu.visible is True
 
 
 def test_widget_exposes_compact_and_menu_bar_display_controls():

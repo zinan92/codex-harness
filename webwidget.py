@@ -14,6 +14,7 @@ import os
 import sys
 import threading
 import time
+from datetime import datetime
 
 import webview
 
@@ -324,6 +325,50 @@ def _menu_bar_title(payload: dict) -> str:
     return f"⏱ Codex {cost.humanize_tokens(today)} {mark}"
 
 
+def _menu_popover_snapshot(payload: dict, now=None) -> dict:
+    """Return the native menu popover's small, honest Codex receipt.
+
+    This stays separate from AppKit so the exact unavailable/stale behaviour is
+    testable.  The menu-bar figure deliberately remains Codex-only: it is a
+    comparison surface for CodexBar, not a combined productivity score.
+    """
+    if now is None:
+        now = datetime.now().astimezone()
+    tools = payload.get("tools") if isinstance(payload, dict) else {}
+    codex = tools.get("codex") if isinstance(tools, dict) else {}
+    provenance = codex.get("provenance") if isinstance(codex, dict) else {}
+    provenance = provenance if isinstance(provenance, dict) else {}
+    status = provenance.get("status") or "unavailable"
+    available = status != "unavailable"
+    source = provenance.get("source_label") or "本地 Codex 扫描"
+
+    if not available:
+        reason = provenance.get("reason") or "等待可信本地扫描"
+        return {
+            "summary": "Codex — · 未读取",
+            "receipt": f"{source} · 不可用：{reason}",
+            "title": "⏱ Codex —",
+            "status": "unavailable",
+        }
+
+    today = int(codex.get("today") or 0)
+    if status == "stale":
+        state = "旧数据"
+    else:
+        state = "已刷新"
+    refreshed = provenance.get("refreshed_at") or now.isoformat()
+    try:
+        stamp = datetime.fromisoformat(refreshed.replace("Z", "+00:00")).strftime("%H:%M")
+    except (TypeError, ValueError):
+        stamp = now.strftime("%H:%M")
+    return {
+        "summary": f"Codex {cost.humanize_tokens(today)} · {state}",
+        "receipt": f"{source} · {state} {stamp}",
+        "title": _menu_bar_title(payload),
+        "status": status,
+    }
+
+
 class MenuBarController:
     """Native macOS status item, created only when the user opts into it."""
     def __init__(self, window):
@@ -332,12 +377,26 @@ class MenuBarController:
         self.button = None
         self.timer = None
         self.visible = False
+        self.menu = None
+        self.summary_item = None
+        self.receipt_item = None
 
     def _menu_item(self, title: str, action: str):
         from AppKit import NSMenuItem
 
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(title, action, "")
         item.setTarget_(self)
+        # NSMenu otherwise re-validates Python Objective-C targets and may turn
+        # all actions grey even though their selectors are valid.
+        item.setEnabled_(True)
+        return item
+
+    @staticmethod
+    def _menu_info_item(title: str):
+        from AppKit import NSMenuItem
+
+        item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(title, None, "")
+        item.setEnabled_(False)
         return item
 
     def _install(self) -> None:
@@ -348,10 +407,18 @@ class MenuBarController:
         self.item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
         self.button = self.item.button()
         menu = NSMenu.alloc().init()
+        menu.setAutoenablesItems_(False)
+        self.menu = menu
+        self.summary_item = self._menu_info_item("Codex 读取中…")
+        self.receipt_item = self._menu_info_item("本地 Codex 扫描 · 等待刷新")
+        menu.addItem_(self.summary_item)
+        menu.addItem_(self.receipt_item)
+        menu.addItem_(NSMenuItem.separatorItem())
         # NSMenu actions use Objective-C selectors, not Python method names.
         # PyObjC maps toggle_ → toggle:, etc.; omitting ':' disables the item.
         menu.addItem_(self._menu_item("打开 TokenPulse", "toggle:"))
         menu.addItem_(self._menu_item("刷新用量", "refresh:"))
+        menu.addItem_(self._menu_item("打开设置", "settings:"))
         menu.addItem_(NSMenuItem.separatorItem())
         menu.addItem_(self._menu_item("退出 TokenPulse", "quit:"))
         self.item.setMenu_(menu)
@@ -360,27 +427,35 @@ class MenuBarController:
             60.0, self, "refresh:", None, True
         )
 
+    def _show_full_widget(self, settings: bool = False) -> None:
+        # A menu-bar configuration normally owns a hidden 34px compact window.
+        # Expose a recognisable full card without mutating saved preferences.
+        self.window.restore()
+        self.window.resize(WIDTH, HEIGHT)
+        self.window.show()
+        panel = "false" if settings else "true"
+        chev = "true" if settings else "false"
+        load = "if (typeof loadPanel === 'function') loadPanel();" if settings else ""
+        self.window.evaluate_js(f"""
+            document.body.classList.remove('compact');
+            const panel = document.getElementById('panel');
+            const chev = document.getElementById('chev');
+            if (panel) panel.hidden = {panel};
+            if (chev) chev.classList.toggle('open', {chev});
+            {load}
+            if (typeof fitWindow === 'function') setTimeout(fitWindow, 0);
+        """)
+        self.visible = True
+
     def toggle_(self, _sender) -> None:
         if self.visible:
             self.window.hide()
             self.visible = False
         else:
-            # A menu-bar configuration normally owns a hidden 34px compact
-            # window. "Open TokenPulse" must expose a recognisable full card,
-            # not merely unhide that nearly invisible strip. This is temporary
-            # UI state: the saved menu-bar/compact preference remains intact.
-            self.window.restore()
-            self.window.resize(WIDTH, HEIGHT)
-            self.window.show()
-            self.window.evaluate_js("""
-                document.body.classList.remove('compact');
-                const panel = document.getElementById('panel');
-                const chev = document.getElementById('chev');
-                if (panel) panel.hidden = true;
-                if (chev) chev.classList.remove('open');
-                if (typeof fitWindow === 'function') setTimeout(fitWindow, 0);
-            """)
-            self.visible = True
+            self._show_full_widget()
+
+    def settings_(self, _sender) -> None:
+        self._show_full_widget(settings=True)
 
     def refresh_(self, _sender) -> None:
         try:
@@ -388,11 +463,21 @@ class MenuBarController:
 
             codexbar.clear_cache()
             payload = webdata.core_payload()
+            snapshot = _menu_popover_snapshot(payload)
             if self.button is not None:
-                self.button.setTitle_(_menu_bar_title(payload))
+                self.button.setTitle_(snapshot["title"])
+            if self.summary_item is not None:
+                self.summary_item.setTitle_(snapshot["summary"])
+            if self.receipt_item is not None:
+                self.receipt_item.setTitle_(snapshot["receipt"])
         except Exception:  # noqa: BLE001
             if self.button is not None:
                 self.button.setTitle_("⏱ —")
+            snapshot = _menu_popover_snapshot({})
+            if self.summary_item is not None:
+                self.summary_item.setTitle_(snapshot["summary"])
+            if self.receipt_item is not None:
+                self.receipt_item.setTitle_(snapshot["receipt"])
 
     def quit_(self, _sender) -> None:
         try:
