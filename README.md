@@ -33,4 +33,26 @@ python3 -m http.server 8790 --bind 127.0.0.1
 # 打开 http://127.0.0.1:8790/workbench.html
 ```
 
+## 定时刷新与趋势
+
+一条命令刷新全部四份数据:
+
+```bash
+bash scripts/refresh.sh   # ledger.json → outputs.json → snapshots/<日期>.json → trend.json
+```
+
+`set -euo pipefail` + 原子写(先写 `.tmp` 再 `mv`):任一步失败即非零退出、错误进 stderr,**且不会毁掉上一次的好文件**。
+
+**自动化(可选,需你确认后自己装)**:每天凌晨刷新的 launchd 模板在 `scripts/com.wendy.tokenrouter-refresh.plist`。装载:
+
+```bash
+cp scripts/com.wendy.tokenrouter-refresh.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.wendy.tokenrouter-refresh.plist
+launchctl kickstart -k gui/$(id -u)/com.wendy.tokenrouter-refresh   # 立即试跑一次
+```
+
+**快照 vs 派生数据的关键区别**:`ledger.json`/`outputs.json`/`trend.json` 是派生数据(随时可重算,已 gitignore);
+`snapshots/<日期>.json` 是**历史事实**——会话日志会滚动清理,过去某天的数字之后重算不出来,所以快照**入库**。
+趋势只能从开始留快照那天算起,越早跑越早有数据。
+
 项目分组与 repo 路径都在 `ledger/registry.py`——加新项目只改 registry，页面自动跟随。
