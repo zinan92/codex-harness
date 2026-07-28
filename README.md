@@ -33,6 +33,21 @@ python3 -m http.server 8790 --bind 127.0.0.1
 # 打开 http://127.0.0.1:8790/workbench.html
 ```
 
+## 质量闸
+
+改动前后各跑一次，一条命令回答「这仓库现在健康吗」：
+
+```bash
+bash scripts/check.sh              # 红了就别提交
+bash scripts/check.sh --fix-hint   # 每种失败怎么修
+```
+
+检查六项：python 测试（21 例）、node 页面测试（17 例）、账本不变量（归类合计 == 全量合计）、
+快照不变量（每份快照内部自洽）、工作树干净、gitleaks 无泄漏。任一失败即非零退出并指明是哪项。
+
+页面纯函数在 `assets/pure.js`（`money` / `esc` / `validateStatus` / `sparkPoints`），
+node 零依赖直接跑测试；`esc()` 逃逸引号，守着「agent 写的数据渲染进页面」这条信任边界。
+
 ## 定时刷新与趋势
 
 一条命令刷新全部四份数据:
