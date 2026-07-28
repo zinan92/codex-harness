@@ -182,24 +182,21 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
 .pr .id{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:var(--fnt);margin-right:4px}
 .pr .tm{font-family:ui-monospace,Menlo,monospace;font-size:9px;color:var(--fnt)}
 
-/* module progress */
-.mod{display:grid;grid-template-columns:16px minmax(120px,1.1fr) 2fr 40px auto;gap:9px;
-  align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px}
-.mod:last-child{border-bottom:none}
-.mod .ix{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--fnt)}
-.mod .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mod .bar{height:7px;background:var(--soft);border:1px solid var(--line)}
-.mod .bar i{display:block;height:100%}
-.mod.green .bar i{background:var(--ok)}
-.mod.yellow .bar i{background:var(--warn)}
-.mod.red .bar i{background:#c0392b}
-.mod .pct{font-family:ui-monospace,Menlo,monospace;font-size:11px;text-align:right;
-  font-variant-numeric:tabular-nums}
-.mod .vd{font-size:11px;white-space:nowrap}
-.mod.green .vd{color:var(--ok)}
-.mod.yellow .vd{color:var(--warn)}
-.mod.red .vd{color:#c0392b}
-.mod-note{font-size:10.5px;color:var(--fnt);grid-column:2/-1;margin-top:-2px;padding-bottom:3px}
+/* module progress — donuts in one row */
+.mods{display:flex;flex-wrap:wrap;gap:2px 0;padding:10px 6px 8px;justify-content:space-between}
+.donut{flex:1 1 0;min-width:76px;max-width:118px;text-align:center;padding:0 4px}
+.ring{width:52px;height:52px;border-radius:50%;margin:0 auto;position:relative;
+  display:flex;align-items:center;justify-content:center;
+  background:conic-gradient(var(--ring-c) calc(var(--p)*1%), var(--soft) 0)}
+.ring::before{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--panel)}
+.ring b{position:relative;font-family:ui-monospace,"SF Mono",Menlo,monospace;
+  font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.donut.green{--ring-c:var(--ok)} .donut.yellow{--ring-c:var(--warn)} .donut.red{--ring-c:#c0392b}
+.donut.green .ring b{color:var(--ok)} .donut.yellow .ring b{color:var(--warn)} .donut.red .ring b{color:#c0392b}
+.donut .nm{font-size:10.5px;color:var(--mut);margin-top:5px;line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.donut .vd{font-size:10px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.donut.green .vd{color:var(--ok)} .donut.yellow .vd{color:var(--warn)} .donut.red .vd{color:#c0392b}
 .placeholder{padding:36px 24px;text-align:center;color:var(--fnt);font-size:12px;line-height:2}
 .placeholder code{background:var(--soft);padding:1px 6px;border-radius:3px;font-size:11px}
 
@@ -253,7 +250,7 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
         <span class="t" id="mod-title">—</span>
         <span class="ct" id="mod-meta"></span>
       </div>
-      <div class="track" id="mod-list"></div>
+      <div id="mod-list"></div>
     </div>
 
     <!-- 中主体：项目成品 -->
@@ -428,16 +425,14 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
         $('p-assessed').textContent = 'agent 评估 · ' + st.assessed_at;
         $('mod-title').textContent = (ALIAS[name] || name) + ' · ' + st.modules.length + ' 个模块';
         $('mod-meta').textContent = st.assessor || '';
-        var html = st.modules.map(function(m, i){
-          return '<div class="mod ' + esc(m.light) + '">' +
-            '<span class="ix">' + (i+1) + '</span>' +
-            '<span class="nm" title="' + esc(m.note||'') + '">' + esc(m.name) + '</span>' +
-            '<span class="bar"><i style="width:' + (m.pct|0) + '%"></i></span>' +
-            '<span class="pct">' + (m.pct|0) + '%</span>' +
-            '<span class="vd">' + esc(m.verdict) + '</span>' +
-            (m.note ? '<span class="mod-note">' + esc(m.note) + '</span>' : '') +
+        var html = '<div class="mods">' + st.modules.map(function(m, i){
+          var tip = (i+1) + '. ' + m.name + ' — ' + (m.note || '');
+          return '<div class="donut ' + esc(m.light) + '" title="' + esc(tip) + '">' +
+            '<div class="ring" style="--p:' + (m.pct|0) + '"><b>' + (m.pct|0) + '</b></div>' +
+            '<div class="nm">' + esc(m.name) + '</div>' +
+            '<div class="vd">' + esc(m.verdict) + '</div>' +
             '</div>';
-        }).join('');
+        }).join('') + '</div>';
         $('mod-list').innerHTML = html;
         var t = st.tracking || {};
         $('t-now').textContent  = t.now || '—';
