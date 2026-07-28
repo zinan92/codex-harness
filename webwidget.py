@@ -70,6 +70,12 @@ class Api:
         except Exception as exc:  # noqa: BLE001
             return json.dumps({"error": str(exc)})
 
+    def timeline(self) -> str:
+        try:
+            return json.dumps({"timeline": sessions.today_timeline()}, default=str)
+        except Exception as exc:  # noqa: BLE001
+            return json.dumps({"error": str(exc)})
+
     def save_session_annotation(self, session_id: str, project: str = "", work_type: str = "", outcome: str = "") -> str:
         try:
             note = sessions.save_annotation(session_id, project, work_type, outcome)
