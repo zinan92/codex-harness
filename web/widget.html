@@ -103,6 +103,14 @@
   /* ── hero gauge (the focal — NOT a hero-metric number) ── */
   .hero { margin-bottom: 4px; }
   .readout { display: flex; align-items: baseline; gap: 8px; margin-bottom: 9px; }
+  .scope-switch { display: inline-flex; padding: 2px; margin-bottom: 9px; border: 1px solid var(--track);
+                  border-radius: 7px; background: var(--bg-0); }
+  .scope-switch button { border: 0; background: transparent; color: var(--ink-faint); font: inherit;
+                         font-size: 10px; padding: 3px 7px; border-radius: 5px; cursor: pointer; }
+  .scope-switch button.active { color: var(--bg-0); background: var(--heat); font-weight: 700; }
+  .scope-switch button:active { transform: translateY(1px); }
+  .tool.dimmed { opacity: 0.45; }
+  .tool.selected { outline: 1px solid var(--heat-soft); border-radius: 8px; padding: 5px 6px; margin: -5px -6px; }
   /* power-user badge: 30d API-value ÷ plan price = how many × the plan you milk */
   .vbadge {
     margin-left: auto; align-self: center; white-space: nowrap;
@@ -432,6 +440,11 @@
     </header>
 
     <section class="hero">
+      <div class="scope-switch" id="scope-switch" role="group" aria-label="统计口径">
+        <button data-scope="combined" class="active">合计</button>
+        <button data-scope="codex">Codex</button>
+        <button data-scope="claude">Claude</button>
+      </div>
       <div class="readout">
         <span class="big mono" id="c-today">0</span>
         <span class="of">/ <b class="mono" id="c-target">300M</b> today</span>
@@ -601,6 +614,28 @@
   }
 
   let _lastState = null;
+  let _metricScope = "combined";
+  let _lastCorePayload = null, _lastCostPayload = null, _lastPanelPayload = null;
+  const scopeLabel = scope => ({combined: "Codex + Claude", codex: "Codex", claude: "Claude"}[scope] || "Codex + Claude");
+  function scopedCore(d) {
+    if (_metricScope === "combined") return {...d.combined, label: scopeLabel(_metricScope)};
+    return {...d.tools[_metricScope], label: scopeLabel(_metricScope)};
+  }
+  function syncScopeControls() {
+    document.querySelectorAll("#scope-switch button").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.scope === _metricScope);
+      btn.setAttribute("aria-pressed", String(btn.dataset.scope === _metricScope));
+    });
+  }
+  async function setMetricScope(scope) {
+    if (!["combined", "codex", "claude"].includes(scope)) return;
+    _metricScope = scope;
+    syncScopeControls();
+    if (_lastCorePayload) renderCore(_lastCorePayload);
+    if (_lastCostPayload) renderCost(_lastCostPayload);
+    if (_lastPanelPayload) renderPanel(_lastPanelPayload);
+    try { await window.pywebview.api.save_config(JSON.stringify({display: {metric_scope: scope}})); } catch (e) {}
+  }
   function provenanceCopy(p) {
     const label = { fresh: "已验证", stale: "上次可信", unavailable: "未读取" }[p.status] || "读取中";
     const refreshed = p.refreshed_at ? new Date(p.refreshed_at).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}) : "—";
@@ -617,9 +652,12 @@
   }
   function renderCore(d) {
     if (!d) return;
+    _lastCorePayload = d;
     $("clock").textContent = d.clock;
-    const c = d.combined;
-    const incomplete = ["claude", "codex"].some(t => d.tools[t].provenance?.status === "unavailable");
+    const c = scopedCore(d);
+    const incomplete = _metricScope === "combined"
+      ? ["claude", "codex"].some(t => d.tools[t].provenance?.status === "unavailable")
+      : c.provenance?.status === "unavailable";
     document.body.dataset.state = c.state;
     $("c-target").textContent = tok(c.target);
     if (incomplete) { $("c-today").textContent = "—"; _cur = 0; }
@@ -629,8 +667,8 @@
     $("goad").innerHTML = incomplete ? "数据未完整，等待可信本地扫描。" : goadFor(c);
     $("compact-total").textContent = incomplete ? "读取中" : `${tok(c.today)} / ${tok(c.target)}`;
     $("compact-state").textContent = { early: "待开烧", behind: "落后配速", ontrack: "配速正常", ahead: "领先", done: "今日达标", rocket: "超额燃烧" }[c.state] || "更新中";
-    $("operator-line").textContent = c.operator || "choose the next AI-work session by priority.";
-    $("impact-line").textContent = c.impact || "turn raw quota and pace into a visible next-session choice.";
+    $("operator-line").textContent = c.operator || `${c.label} 单独统计`;
+    $("impact-line").textContent = c.impact || `当前只计算 ${c.label} 的本地用量。`;
     renderProvenance(d);
     paintEggHunger(c);
 
@@ -638,6 +676,9 @@
       const x = d.tools[t];
       const px = x.pace_ratio != null ? `  <span class="pace-x">${x.pace_ratio}×</span>` : "";
       const unavailable = x.provenance?.status === "unavailable";
+      const tool = document.querySelector(`.tool[data-tool="${t}"]`);
+      tool.classList.toggle("selected", _metricScope === t);
+      tool.classList.toggle("dimmed", _metricScope !== "combined" && _metricScope !== t);
       $(t + "-amt").innerHTML = unavailable ? "— · 未读取" : `${tok(x.today)} / ${tok(x.target)}${px}`;
       $(t + "-fill").style.width = clamp(x.today / x.target * 100, 0, 100) + "%";
       $(t + "-pace").style.left = clamp(x.expected / x.target * 100, 0, 100) + "%";
@@ -654,13 +695,15 @@
       $("frame").classList.remove("flare"); void $("frame").offsetWidth; $("frame").classList.add("flare");
     }
     _lastState = c.state;
+    syncScopeControls();
   }
 
   function renderCost(cost) {
     if (!cost) return;
-    const cm = cost.combined;
+    _lastCostPayload = cost;
+    const cm = cost[_metricScope] || cost.combined;
     if (cm && cm.cost_30d != null)
-      $("value-badge").textContent = `$${Math.round(cm.cost_30d).toLocaleString("en-US")} · 30d`;
+      $("value-badge").textContent = `${scopeLabel(_metricScope)} $${Math.round(cm.cost_30d).toLocaleString("en-US")} · 30d`;
     for (const t of ["claude", "codex"]) {
       const x = cost[t]; if (!x) continue;
       const cEl = $(t + "-cost"), tEl = $(t + "-tok");
@@ -677,12 +720,16 @@
   }
   function renderPanel(p) {
     if (!p || p.error) { $("active-line").textContent = "暂无数据"; return; }
+    _lastPanelPayload = p;
     const a = p.active_today || { claude: 0, codex: 0 };
-    $("active-line").innerHTML =
-      `Claude <b>${hm(a.claude)}</b><span class="sep">·</span>Codex <b>${hm(a.codex)}</b>`;
+    $("active-line").innerHTML = _metricScope === "combined"
+      ? `Claude <b>${hm(a.claude)}</b><span class="sep">·</span>Codex <b>${hm(a.codex)}</b>`
+      : `${scopeLabel(_metricScope)} <b>${hm(a[_metricScope])}</b>`;
     $("streak-line").textContent = p.streak > 0 ? `· 连续达标 ${p.streak} 天 🔥` : "";
-    const tgt = p.combined_target || 1;
-    const maxV = Math.max(tgt, ...p.series.map(r => r.total)) || 1;
+    const key = _metricScope === "combined" ? "total" : _metricScope;
+    const tgt = (p.targets && p.targets[_metricScope]) || p.combined_target || 1;
+    const values = p.series.map(r => r[key] || 0);
+    const maxV = Math.max(tgt, ...values) || 1;
     const chart = $("chart");
     chart.innerHTML = "";
     const tline = document.createElement("div");
@@ -691,16 +738,17 @@
     tline.title = "目标 " + tok(tgt);
     chart.appendChild(tline);
     for (const r of p.series) {
+      const value = r[key] || 0;
       const b = document.createElement("div");
-      b.className = "b" + (r.total >= tgt ? " hit" : "");
-      b.style.height = Math.max(2, r.total / maxV * 100) + "%";
-      b.title = `${r.date.slice(5)}: ${tok(r.total)}`;
+      b.className = "b" + (value >= tgt ? " hit" : "");
+      b.style.height = Math.max(2, value / maxV * 100) + "%";
+      b.title = `${r.date.slice(5)}: ${scopeLabel(_metricScope)} ${tok(value)}`;
       chart.appendChild(b);
     }
     $("cstats").innerHTML =
-      `<span><b>达标</b> ${p.hit_days}/${p.total_days} 天</span>` +
-      `<span><b>日均</b> ${tok(p.avg)}</span>` +
-      (p.best ? `<span><b>最高</b> ${tok(p.best.total)} (${p.best.date.slice(5)})</span>` : "");
+      `<span><b>口径</b> ${scopeLabel(_metricScope)}</span>` +
+      `<span><b>日均</b> ${tok(values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length))}</span>` +
+      `<span><b>最高</b> ${tok(Math.max(...values, 0))}</span>`;
     paintEggDroop(p, tgt);
   }
   // M4: the egg droops if YESTERDAY (last settled day) missed target and today hasn't
@@ -895,6 +943,8 @@
     $("s-xhs").value = c.xhs_id || "";
     $("s-rank").checked = !!(c.ranking && c.ranking.enabled);
     const display = c.display || {};
+    _metricScope = ["combined", "codex", "claude"].includes(display.metric_scope) ? display.metric_scope : "combined";
+    syncScopeControls();
     $("s-display-mode").value = display.mode || "full";
     $("s-display-placement").value = display.placement || "desktop";
     document.body.classList.toggle("compact", (display.mode || "full") === "compact");
@@ -1039,6 +1089,9 @@
     $("s-save").addEventListener("click", e => { e.stopPropagation(); saveSettings(); });
     $("compact-settings").addEventListener("mousedown", e => e.stopPropagation());
     $("compact-settings").addEventListener("click", openCompactSettings);
+    document.querySelectorAll("#scope-switch button").forEach(btn => {
+      btn.addEventListener("click", e => { e.stopPropagation(); setMetricScope(btn.dataset.scope); });
+    });
     $("share-btn").addEventListener("click", e => { e.stopPropagation(); shareCard(); });
     $("share-open").addEventListener("click", e => {
       e.stopPropagation();

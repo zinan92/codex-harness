@@ -341,6 +341,7 @@ DEFAULT_CONFIG = {
     "display": {
         "mode": "full",          # full widget or one-line compact widget
         "placement": "desktop",  # desktop widget or native macOS menu bar
+        "metric_scope": "combined",  # combined, codex, or claude
     },
     "handle": "",  # your X/Twitter @handle for the share card (blank -> git user / "you")
     "xhs_id": "",  # your 小红书号 (RED ID) for the share card (blank -> hidden)

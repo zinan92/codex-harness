@@ -64,8 +64,10 @@ def test_validate_ranking_consent():
 
 def test_display_accepts_compact_and_menu_bar_only():
     assert configio.validate_partial({"display": {"mode": "compact", "placement": "menu_bar"}}) == []
+    assert configio.validate_partial({"display": {"metric_scope": "codex"}}) == []
     assert "display.mode" in configio.validate_partial({"display": {"mode": "tiny"}})
     assert "display.placement" in configio.validate_partial({"display": {"placement": "dock"}})
+    assert "display.metric_scope" in configio.validate_partial({"display": {"metric_scope": "all"}})
 
 
 def test_save_partial_ranking_consent_preserves_url(tmp_path, monkeypatch):

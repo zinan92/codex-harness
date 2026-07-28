@@ -69,6 +69,11 @@ def test_widget_exposes_compact_and_menu_bar_display_controls():
     assert 'id="trust-strip"' in html
     assert "renderProvenance" in html
     assert "数据未完整，等待可信本地扫描" in html
+    assert 'data-scope="combined"' in html
+    assert 'data-scope="codex"' in html
+    assert 'data-scope="claude"' in html
+    assert "setMetricScope" in html
+    assert "metric_scope" in html
 
 
 def test_display_mode_change_does_not_require_restart(monkeypatch):
