@@ -137,6 +137,10 @@ def test_widget_exposes_compact_and_menu_bar_display_controls():
     assert 'data-scope="claude"' in html
     assert "setMetricScope" in html
     assert "metric_scope" in html
+    assert 'id="daily-decision"' in html
+    assert 'id="decision-action"' in html
+    assert "renderDecision" in html
+    assert "d.decisions" in html
 
 
 def test_display_mode_change_does_not_require_restart(monkeypatch):

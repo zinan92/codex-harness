@@ -180,6 +180,15 @@
   .trust-row.unavailable { color: var(--alarm); }
   .trust-row.unavailable .trust-state { background: var(--alarm); }
   .trust-copy { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .decision-card { margin-top: 11px; padding: 9px 10px; border: 1px solid var(--track);
+    border-radius: 9px; background: color-mix(in oklch, var(--panel) 88%, var(--heat) 12%);
+    display: grid; gap: 3px; }
+  .decision-kicker { color: var(--ink-faint); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; }
+  .decision-action { color: var(--ink); font-size: 12px; font-weight: 700; line-height: 1.35; }
+  .decision-reason { color: var(--ink-dim); font-size: 10.5px; line-height: 1.35; }
+  .decision-pace { color: var(--heat); font-size: 9.5px; font-weight: 700; }
+  .decision-card.unavailable { border-color: var(--alarm); background: color-mix(in oklch, var(--panel) 92%, var(--alarm) 8%); }
+  .decision-card.unavailable .decision-pace { color: var(--alarm); }
 
   /* ── tool rows ── */
   .tools { margin-top: 15px; display: flex; flex-direction: column; gap: 11px; }
@@ -464,6 +473,12 @@
         <div class="trust-row" id="claude-trust"><span class="trust-state"></span><span class="trust-copy">Claude · 读取中…</span></div>
         <div class="trust-row" id="codex-trust"><span class="trust-state"></span><span class="trust-copy">Codex · 读取中…</span></div>
       </div>
+      <section class="decision-card" id="daily-decision" aria-live="polite" aria-label="今天下一步">
+        <span class="decision-kicker" id="decision-question">今天下一步</span>
+        <strong class="decision-action" id="decision-action">正在根据本地数据判断…</strong>
+        <span class="decision-reason" id="decision-reason">—</span>
+        <span class="decision-pace" id="decision-pace">—</span>
+      </section>
     </section>
 
     <div class="tools">
@@ -650,6 +665,16 @@
       copy.title = p.status === "unavailable" && p.reason ? `${provenanceCopy(p)} · ${p.reason}` : provenanceCopy(p);
     }
   }
+  function renderDecision(d, incomplete) {
+    const decision = (d.decisions || {})[_metricScope];
+    if (!decision) return;
+    const card = $("daily-decision");
+    card.classList.toggle("unavailable", incomplete);
+    $("decision-question").textContent = decision.question || "今天下一步";
+    $("decision-action").textContent = decision.action || "等待本地数据";
+    $("decision-reason").textContent = decision.reason || "—";
+    $("decision-pace").textContent = decision.pace || "—";
+  }
   function renderCore(d) {
     if (!d) return;
     _lastCorePayload = d;
@@ -670,6 +695,7 @@
     $("operator-line").textContent = c.operator || `${c.label} 单独统计`;
     $("impact-line").textContent = c.impact || `当前只计算 ${c.label} 的本地用量。`;
     renderProvenance(d);
+    renderDecision(d, incomplete);
     paintEggHunger(c);
 
     for (const t of ["claude", "codex"]) {

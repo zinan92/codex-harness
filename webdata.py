@@ -73,6 +73,55 @@ def _impact_line(st: dict) -> str:
     return "stay on the priority session while runway is healthy."
 
 
+def _daily_decision(scope: str, data: dict, unavailable: bool = False) -> dict:
+    """Turn a trusted pace state into one concrete, non-automated next move."""
+    label = {"combined": "合计", "claude": "Claude", "codex": "Codex"}.get(scope, scope)
+    if unavailable:
+        return {
+            "question": "今天下一步",
+            "action": "先等待可信本地扫描完成",
+            "reason": f"{label} 数据未完整，不能把未读取当作 0 来安排工作。",
+            "pace": "数据状态：未读取",
+        }
+    state = data.get("state") or "ontrack"
+    target = core.humanize(int(data.get("target") or 0))
+    if state == "early":
+        return {
+            "question": "今天下一步",
+            "action": "先选定一个可验收的 AI 工作产出",
+            "reason": "活跃工作窗口尚未开始；先确定要交付什么，再开始会话。",
+            "pace": f"今日目标 {target} · 尚未开始计速",
+        }
+    if state == "behind":
+        deficit = core.humanize(int(data.get("deficit") or 0))
+        return {
+            "question": "今天下一步",
+            "action": "启动下一段专注工作，完成一个可交付物",
+            "reason": f"当前比节奏少 {deficit}；先把下一段收敛到一个明确结果。",
+            "pace": f"{label} · 落后配速",
+        }
+    if state in {"done", "hit", "rocket"}:
+        return {
+            "question": "今天下一步",
+            "action": "写下今天已完成的产出，再选明天的第一步",
+            "reason": "今日目标已达成；接下来由优先级决定，不再由额度压力决定。",
+            "pace": f"{label} · 今日已达标",
+        }
+    if state == "ahead":
+        return {
+            "question": "今天下一步",
+            "action": "保持当前优先级，收尾一个可交付物",
+            "reason": "当前领先配速；不要为了数字切换到低价值工作。",
+            "pace": f"{label} · 领先配速",
+        }
+    return {
+        "question": "今天下一步",
+        "action": "继续当前优先级，完成下一个可交付物",
+        "reason": "配速健康；把注意力留在最重要的工作上。",
+        "pace": f"{label} · 配速正常",
+    }
+
+
 def core_payload(now: datetime | None = None, config: dict | None = None) -> dict:
     now = now or datetime.now().astimezone()
     config = config or core.load_config()
@@ -131,6 +180,16 @@ def core_payload(now: datetime | None = None, config: dict | None = None) -> dic
             "impact": _impact_line(st),
         },
         "tools": tools,
+    }
+    out["decisions"] = {
+        "combined": _daily_decision(
+            "combined", out["combined"],
+            unavailable=any(t["provenance"]["status"] == "unavailable" for t in tools.values()),
+        ),
+        **{
+            tool: _daily_decision(tool, data, unavailable=data["provenance"]["status"] == "unavailable")
+            for tool, data in tools.items()
+        },
     }
     return out
 
