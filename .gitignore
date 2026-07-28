@@ -7,3 +7,4 @@ ledger.json
 outputs.json
 trend.json
 ledger.json.tmp
+logs/
