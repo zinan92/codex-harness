@@ -129,6 +129,7 @@ def _ordered_nested(mapping: dict[str, int]) -> dict[str, int]:
 
 
 def _empty_summary() -> dict[str, Any]:
+    """Return the canonical zero summary used when runs_dir is empty, missing, or not a directory."""
     return {
         "completed_runs": 0,
         "total_cost_cents": 0,
