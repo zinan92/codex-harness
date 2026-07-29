@@ -32,35 +32,47 @@ v0 的判断权只在 `claude-fable-5`：它把任务分为 `simple`、`medium`�
 
 ### Router 收据汇总（`--summary`）
 
-`--summary` 会输出纯 JSON，字段包括：
+`--summary` 不需要 `task` 和 `workspace`，默认读取 `router/runs/*.json`，并输出纯 JSON。你可以直接运行：
+
+```sh
+python3 -m router --summary
+```
+
+如需汇总其他目录（例如测试目录）可指定：
+
+```sh
+python3 -m router --summary --runs-dir /path/to/router/runs
+```
+
+输出是确定性的 JSON（同一份 `router/runs/*.json` 上，重复执行键序与数值不变）：
 
 ```json
 {
-  "completed_runs": 0,
-  "total_cost_cents": 0,
   "by_profile": {
-    "complex": 1,
-    "medium": 2,
-    "simple": 3,
-    "unclassified": 1
+    "medium": 1,
+    "simple": 1
   },
   "by_status": {
-    "failed_machine_gate": 1,
-    "failed_review": 1,
-    "succeeded": 5
+    "succeeded": 2
   },
+  "completed_runs": 2,
   "invalid_receipts": {
     "invalid_structure": 0,
-    "malformed_json": 2
-  }
+    "malformed_json": 0
+  },
+  "total_cost_cents": 484
 }
 ```
 
+- `by_profile`：按 `triage` 的 `complexity` 聚合（缺失为 `unclassified`）。仅计入已完成且非 `dry-run` 的收据。
+- `by_status`：按收据顶层 `status` 聚合。仅计入已完成且非 `dry-run` 的收据。
 - `completed_runs`：已完成且非 `dry-run` 的收据数量。
-- `total_cost_cents`：上述收据内 `model_call` 里 `cost_cents` 的合计。
-- `by_profile`：按 profile（`triage` 的 `complexity`，缺失则归入 `unclassified`）聚合。
-- `by_status`：按收据顶层状态聚合，已完成且非 `dry-run`。
 - `invalid_receipts`：解析失败的收据桶，`malformed_json`（JSON 解码失败）、`invalid_structure`（非字典或缺少必需字段）。
+- `total_cost_cents`：已计入收据内 `model_call.cost_cents` 的总和。
+
+`dry-run` 收据会被排除，不参与 `completed_runs` 和 `total_cost_cents` 的统计，但不会计入失败计数。
+
+命令成功时返回码为 0。
 
 - `simple`：Codex 实现／机器闸（最多 2 次）→ Opus 审核。
 - `medium`：Fable 写合同 → Codex 实现／机器闸（每轮最多 2 次）→ Opus 审核（最多 2 轮）。机器闸失败和审核打回都会把原因带进下一次实现。
