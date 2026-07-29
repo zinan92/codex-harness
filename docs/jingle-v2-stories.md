@@ -52,16 +52,15 @@ cwd、启动它的 terminal process/window identity）。返回动作按下列�
 
 1. 发现并前置仍存在的原窗口，验证窗口/进程与保存 identity 一致；
 2. provider 的指定-session 官方入口；
-3. 明确降级：Claude 复制精确 resume 命令，Codex 打开项目并标明“未定位到原会话”。
+3. 明确失败：不能验证原窗口时，保留当前界面并标明“未定位到原会话”，不创建任何东西。
 
 成功标准：
 
 - 对两个同时运行、同 cwd 的 Claude 会话，点击 A 只能前置 A，不得前置 B。
 - 对 Codex/Claude 各一条真实会话，验收证据同时含 session id、被前置窗口 identity、
   可见前台窗口截图；不能仅以 Process 成功启动为证据。
-- 原窗口已关闭时，UI 显示 `已复制 resume 命令` / `已打开项目（未定位原会话）`，
-  不能显示“已跳转”。
-- 所有 provider 的 fallback 都可单测；窗口定位失败不能吞掉错误。
+- 原窗口已关闭时，UI 显示 `未定位原会话，未打开任何新项目或会话`，不能显示“已跳转”。
+- 所有 provider 的失败路径都可单测；窗口定位失败不能吞掉错误或创建任何新东西。
 
 ## Story 3 · 项目别名与跨 provider 聚合
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 from typing import Any, Callable
 
@@ -49,21 +48,10 @@ def focus_terminal_locator(locator: dict[str, Any] | None, run: Run = subprocess
     return run_osascript_text(terminal_tty_script(terminal_tty), run) == f"focused:{terminal_tty}"
 
 
-def open_codex_project(cwd: str, run: Run = subprocess.run) -> bool:
-    app = os.environ.get("JINGLE_CODEX_APP", "ChatGPT")
-    try:
-        result = run(["open", "-a", app, cwd], text=True, capture_output=True, timeout=5, check=False)
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return result.returncode == 0
-
-
 def resume_codex(session_id: str, cwd: str, locator: dict[str, Any] | None = None, run: Run = subprocess.run) -> dict[str, str]:
     if focus_terminal_locator(locator, run):
         return {"status": "codex_focused", "message": "已聚焦原 Codex 终端会话。"}
-    if open_codex_project(cwd, run):
-        return {"status": "codex_project_opened", "message": "已打开 Codex 项目（未定位原会话）。"}
-    return {"status": "failed", "message": "未定位原 Codex 会话，且无法打开项目。"}
+    return {"status": "failed", "message": "未定位原 Codex 会话，未打开任何新项目或会话。"}
 
 
 def focus_claude_terminal(session_id: str, cwd: str, locator: dict[str, Any] | None = None, run: Run = subprocess.run) -> bool:
@@ -71,26 +59,15 @@ def focus_claude_terminal(session_id: str, cwd: str, locator: dict[str, Any] | N
     return focus_terminal_locator(locator, run)
 
 
-def copy_claude_resume(session_id: str, run: Run = subprocess.run) -> bool:
-    command = f"claude --resume {session_id}"
-    try:
-        result = run(["pbcopy"], input=command, text=True, capture_output=True, timeout=5, check=False)
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return result.returncode == 0
-
-
 def resume_claude(session_id: str, cwd: str, locator: dict[str, Any] | None = None, run: Run = subprocess.run) -> dict[str, str]:
     if focus_claude_terminal(session_id, cwd, locator, run):
         return {"status": "claude_focused", "message": "已聚焦原 Claude 终端会话。"}
-    if copy_claude_resume(session_id, run):
-        return {"status": "claude_resume_copied", "message": "未定位原 Claude 会话；已复制 claude --resume 命令，请粘贴执行。"}
-    return {"status": "failed", "message": "未定位原 Claude 会话，且无法复制 resume 命令。"}
+    return {"status": "failed", "message": "未定位原 Claude 会话，未打开任何新项目或会话。"}
 
 
 def route(provider: str, session_id: str, cwd: str, locator: dict[str, Any] | None = None, run: Run = subprocess.run) -> dict[str, str]:
-    if not session_id or not cwd:
-        return {"status": "failed", "message": "该 Work Unit 缺少 session 或项目路径。"}
+    if not session_id:
+        return {"status": "failed", "message": "该 Work Unit 缺少 session id，未执行跳转。"}
     if provider == "codex":
         return resume_codex(session_id, cwd, locator, run)
     if provider == "claude":
