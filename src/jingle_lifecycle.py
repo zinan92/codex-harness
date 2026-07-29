@@ -191,6 +191,38 @@ def attach_initial_summary(unit_id: str, summary: str) -> dict[str, Any]:
     return result
 
 
+def acknowledge_unit(unit_id: str) -> dict[str, Any]:
+    """Hide a completed Work Unit from the settlement queue without deleting it."""
+    def operation(state: dict[str, Any]) -> dict[str, Any]:
+        unit = state["units"].get(unit_id)
+        if not isinstance(unit, dict) or unit.get("state") == STATE_RUNNING:
+            return {"status": "ignored_acknowledgement", "changed": False}
+        if unit.get("seen_at"):
+            return {"status": "duplicate_acknowledgement", "unit": unit, "changed": False}
+        unit["seen_at"] = time.time()
+        return {"status": "acknowledged", "unit": unit, "changed": True}
+
+    result = _with_lock(operation)
+    append_event({"status": result["status"], "unit_id": unit_id})
+    return result
+
+
+def snooze_unit(unit_id: str, seconds: int) -> dict[str, Any]:
+    """Temporarily suppress a blocked call card; the Work Unit remains queued."""
+    bounded_seconds = max(60, min(int(seconds), 24 * 60 * 60))
+
+    def operation(state: dict[str, Any]) -> dict[str, Any]:
+        unit = state["units"].get(unit_id)
+        if not isinstance(unit, dict) or unit.get("state") != STATE_BLOCKED:
+            return {"status": "ignored_snooze", "changed": False}
+        unit["snoozed_until"] = time.time() + bounded_seconds
+        return {"status": "snoozed", "unit": unit, "changed": True}
+
+    result = _with_lock(operation)
+    append_event({"status": result["status"], "unit_id": unit_id, "seconds": bounded_seconds})
+    return result
+
+
 def _unit_id(provider: str, session_id: str, turn_id: str, sequence: int) -> str:
     if provider == "codex" and turn_id:
         return f"codex:{session_id}:{turn_id}"

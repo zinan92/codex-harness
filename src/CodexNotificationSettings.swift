@@ -887,52 +887,297 @@ struct ContentView: View {
     }
 }
 
-final class WidgetWindow: NSWindow {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
+struct WorkUnit: Codable, Identifiable {
+    let id: String
+    let provider: String
+    let sessionID: String
+    let cwd: String
+    let state: String
+    let startedAt: Double
+    let endedAt: Double?
+    let summary: String?
+    let tokenAccounting: TokenAccounting?
+    let seenAt: Double?
+    let snoozedUntil: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case id, provider, cwd, state, summary
+        case sessionID = "session_id"
+        case startedAt = "started_at"
+        case endedAt = "ended_at"
+        case tokenAccounting = "token_accounting"
+        case seenAt = "seen_at"
+        case snoozedUntil = "snoozed_until"
+    }
+
+    var elapsed: String {
+        let seconds = max(0, Int((endedAt ?? Date().timeIntervalSince1970) - startedAt))
+        if seconds < 60 { return "\(seconds) 秒" }
+        if seconds < 3_600 { return "\(seconds / 60) 分钟" }
+        return "\(seconds / 3_600) 小时 \((seconds % 3_600) / 60) 分"
+    }
+
+    var providerName: String { provider == "claude" ? "Claude" : "Codex" }
+    var badge: String { provider == "claude" ? "CL" : "CX" }
+    var tokenLabel: String {
+        guard let amount = tokenAccounting?.totalTokens else { return "本轮 token 不可用" }
+        return amount >= 1_000 ? String(format: "本轮 +%.1fk", Double(amount) / 1_000) : "本轮 +\(amount) token"
+    }
+}
+
+struct TokenAccounting: Codable {
+    let status: String
+    let totalTokens: Int?
+    enum CodingKeys: String, CodingKey { case status; case totalTokens = "total_tokens" }
+}
+
+struct WorkUnitStore: Codable { let units: [String: WorkUnit] }
+
+struct ProjectRule: Codable {
+    let prefix: String
+    let name: String
+    let color: String?
+}
+
+struct ProjectConfig: Codable { let projects: [ProjectRule] }
+
+struct ProjectIdentity {
+    let name: String
+    let color: Color
+}
+
+private func projectColor(_ raw: String?) -> Color {
+    switch raw?.lowercased() {
+    case "orange": return doneColor
+    case "green": return savedColor
+    case "red": return Color(red: 0.8, green: 0.36, blue: 0.3)
+    default: return lookColor
+    }
+}
+
+final class JingleModel: ObservableObject {
+    @Published var units: [WorkUnit] = []
+    @Published var actionMessage: String?
+
+    private let statePath: URL
+    private let projectsPath: URL
+    private var projects: [ProjectRule] = []
+
+    init() {
+        let environment = ProcessInfo.processInfo.environment
+        statePath = URL(fileURLWithPath: environment["JINGLE_STATE_PATH"] ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/jingle/work-units.json").path)
+        projectsPath = URL(fileURLWithPath: environment["JINGLE_PROJECTS_PATH"] ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/jingle/projects.json").path)
+        reload()
+        Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.reload() }
+    }
+
+    func reload() {
+        let loadedUnits = (try? Data(contentsOf: statePath)).flatMap { try? JSONDecoder().decode(WorkUnitStore.self, from: $0) }
+        let loadedProjects = (try? Data(contentsOf: projectsPath)).flatMap { try? JSONDecoder().decode(ProjectConfig.self, from: $0) }
+        DispatchQueue.main.async {
+            self.units = loadedUnits.map { Array($0.units.values) } ?? []
+            self.projects = loadedProjects?.projects ?? []
+        }
+    }
+
+    func identity(for unit: WorkUnit) -> ProjectIdentity {
+        let normalized = URL(fileURLWithPath: unit.cwd).standardized.path
+        if let rule = projects
+            .filter({ normalized == $0.prefix || normalized.hasPrefix($0.prefix.hasSuffix("/") ? $0.prefix : $0.prefix + "/") })
+            .max(by: { $0.prefix.count < $1.prefix.count }) {
+            return ProjectIdentity(name: rule.name, color: projectColor(rule.color))
+        }
+        let name = URL(fileURLWithPath: unit.cwd).lastPathComponent
+        return ProjectIdentity(name: name.isEmpty ? "未命名项目" : name, color: lookColor)
+    }
+
+    private var visible: [WorkUnit] { units.filter { $0.seenAt == nil } }
+    var blocked: [WorkUnit] { visible.filter { $0.state == "blocked" }.sorted { ($0.endedAt ?? 0) < ($1.endedAt ?? 0) } }
+    var callableBlocked: [WorkUnit] { blocked.filter { ($0.snoozedUntil ?? 0) <= Date().timeIntervalSince1970 } }
+    var done: [WorkUnit] { visible.filter { $0.state == "done" }.sorted { ($0.endedAt ?? 0) < ($1.endedAt ?? 0) } }
+    var running: [WorkUnit] { visible.filter { $0.state == "running" }.sorted { $0.startedAt < $1.startedAt } }
+    var pendingCount: Int { blocked.count + done.count }
+
+    func acknowledge(_ unit: WorkUnit) { runControl(["--acknowledge", unit.id], success: "已看") }
+    func snooze(_ unit: WorkUnit) { runControl(["--snooze", unit.id, "--seconds", "600"], success: "10 分钟后再喊你") }
+
+    private func runControl(_ arguments: [String], success: String) {
+        let controlPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks/jingle_control.py").path
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                _ = try runLocalPython(script: controlPath, arguments: arguments)
+                DispatchQueue.main.async { self.actionMessage = success; self.reload() }
+            } catch {
+                DispatchQueue.main.async { self.actionMessage = "操作失败：\(error.localizedDescription)" }
+            }
+        }
+    }
+}
+
+@discardableResult
+func runLocalPython(script: String, arguments: [String]) throws -> Data {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: pythonPath)
+    process.arguments = [script] + arguments
+    let output = Pipe()
+    let errors = Pipe()
+    process.standardOutput = output
+    process.standardError = errors
+    try process.run()
+    process.waitUntilExit()
+    let data = output.fileHandleForReading.readDataToEndOfFile()
+    guard process.terminationStatus == 0 else {
+        let error = String(data: errors.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "本地操作失败"
+        throw BridgeError.failed(error.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+    return data
+}
+
+struct WorkRow: View {
+    let unit: WorkUnit
+    let identity: ProjectIdentity
+    let compact: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            ZStack(alignment: .bottomTrailing) {
+                Text(identity.name.prefix(1).uppercased())
+                    .font(.system(size: compact ? 12 : 15, weight: .bold))
+                    .frame(width: compact ? 30 : 38, height: compact ? 30 : 38)
+                    .background(identity.color.opacity(0.22), in: Circle())
+                Text(unit.badge)
+                    .font(.system(size: 7, weight: .bold, design: .monospaced))
+                    .padding(.horizontal, 3).padding(.vertical, 2)
+                    .background(Color(nsColor: .windowBackgroundColor), in: Capsule())
+                    .overlay(Capsule().stroke(identity.color.opacity(0.7), lineWidth: 1))
+                    .offset(x: 3, y: 3)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(unit.summary ?? "处理中…")
+                    .font(.system(size: compact ? 12 : 16, weight: .semibold))
+                    .lineLimit(compact ? 2 : 3)
+                Text("\(identity.name) · \(unit.providerName)\(unit.state == "blocked" ? " 需要决定" : "")")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+                if unit.state == "running" {
+                    Text("已跑 \(unit.elapsed)").font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Text("本轮 \(unit.elapsed) · \(unit.tokenLabel)").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+struct QueueItem: View {
+    let unit: WorkUnit
+    @ObservedObject var model: JingleModel
+    let open: (WorkUnit) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            WorkRow(unit: unit, identity: model.identity(for: unit), compact: true)
+            if unit.state != "running" {
+                HStack(spacing: 7) {
+                    Spacer()
+                    Button("已看") { model.acknowledge(unit) }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    Button("回到会话") { open(unit) }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                }
+            }
+        }
+        .padding(10)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+struct SettlementView: View {
+    @ObservedObject var model: JingleModel
+    let open: (WorkUnit) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 13) {
+                HStack { Text("JINGLE").font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(.secondary); Spacer(); Text("清算").font(.headline) }
+                if !model.blocked.isEmpty { queue(title: "卡住了", color: .orange, units: model.blocked) }
+                if !model.done.isEmpty { queue(title: "做完了", color: .green, units: model.done) }
+                if !model.running.isEmpty { queue(title: "还在跑", color: .blue, units: model.running) }
+                if model.pendingCount == 0 && model.running.isEmpty {
+                    Text("现在没有待处理任务").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 30).frame(maxWidth: .infinity)
+                }
+                if let message = model.actionMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
+            }.padding(14)
+        }.frame(width: 380, height: 460)
+    }
+
+    @ViewBuilder private func queue(title: String, color: Color, units: [WorkUnit]) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(color)
+            ForEach(units) { QueueItem(unit: $0, model: model, open: open) }
+        }
+    }
+}
+
+struct CallView: View {
+    let unit: WorkUnit
+    @ObservedObject var model: JingleModel
+    let open: (WorkUnit) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack { Text("需要你处理").font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(.orange); Spacer(); Text("停了 \(unit.elapsed)").font(.caption).foregroundStyle(.secondary) }
+            WorkRow(unit: unit, identity: model.identity(for: unit), compact: false)
+            HStack(spacing: 8) {
+                Button("回到这个会话") { open(unit) }.buttonStyle(.borderedProminent)
+                Button("10 分钟后再喊我") { model.snooze(unit) }.buttonStyle(.bordered)
+            }
+            if let message = model.actionMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
+        }.padding(16).frame(width: 380)
+    }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var window: WidgetWindow?
+    private let model = JingleModel()
+    private var item: NSStatusItem!
+    private let popover = NSPopover()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let content = NSHostingController(rootView: ContentView())
-        let window = WidgetWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 344, height: 403),
-            styleMask: [.borderless, .closable],
-            backing: .buffered,
-            defer: false
-        )
-        window.contentViewController = content
-        window.title = "Codex Jingle"
-        window.isMovableByWindowBackground = true
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.hasShadow = true
-        window.hidesOnDeactivate = false
-        window.isReleasedWhenClosed = false
-        window.animationBehavior = .documentWindow
-        window.center()
-        self.window = window
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.button?.target = self
+        item.button?.action = #selector(toggle)
+        popover.behavior = .transient
+        Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.refresh() }
+        refresh()
     }
 
-    func applicationDidBecomeActive(_ notification: Notification) {
-        window?.makeKeyAndOrderFront(nil)
+    private func settlement() -> NSViewController { NSHostingController(rootView: SettlementView(model: model, open: open)) }
+    private func call(_ unit: WorkUnit) -> NSViewController { NSHostingController(rootView: CallView(unit: unit, model: model, open: open)) }
+
+    func refresh() {
+        let count = model.pendingCount
+        item.button?.title = count == 0 ? "•" : "\(count)"
+        item.button?.contentTintColor = count == 0 ? .secondaryLabelColor : (model.blocked.isEmpty ? .labelColor : .systemOrange)
+        if let first = model.callableBlocked.first, !popover.isShown, let button = item.button {
+            // A programmatic blocked-call popover must become the active accessory
+            // app first; a transient popover otherwise closes before it is visible.
+            NSApp.activate(ignoringOtherApps: true)
+            popover.contentViewController = call(first)
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
     }
 
-    func applicationShouldHandleReopen(
-        _ sender: NSApplication,
-        hasVisibleWindows flag: Bool
-    ) -> Bool {
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        return true
+    @objc func toggle() {
+        guard let button = item.button else { return }
+        if popover.isShown { popover.performClose(nil) }
+        else { popover.contentViewController = settlement(); popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY) }
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        false
+    private func open(_ unit: WorkUnit) {
+        model.actionMessage = "会话跳转将在下一阶段启用（\(unit.providerName)）。"
     }
 }
 
@@ -942,15 +1187,11 @@ enum CodexNotificationSettingsApp {
 
     static func main() {
         let app = NSApplication.shared
-        app.setActivationPolicy(.regular)
+        app.setActivationPolicy(.accessory)
         let mainMenu = NSMenu()
         let appMenuItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(
-            withTitle: "退出 Codex Jingle",
-            action: #selector(NSApplication.terminate(_:)),
-            keyEquivalent: "q"
-        )
+        appMenu.addItem(withTitle: "退出 Codex Jingle", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)
         app.mainMenu = mainMenu
