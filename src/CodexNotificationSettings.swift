@@ -1126,6 +1126,7 @@ struct CallView: View {
     let unit: WorkUnit
     @ObservedObject var model: JingleModel
     let open: (WorkUnit) -> Void
+    let snooze: (WorkUnit) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -1133,7 +1134,7 @@ struct CallView: View {
             WorkRow(unit: unit, identity: model.identity(for: unit), compact: false)
             HStack(spacing: 8) {
                 Button("回到这个会话") { open(unit) }.buttonStyle(.borderedProminent)
-                Button("10 分钟后再喊我") { model.snooze(unit) }.buttonStyle(.bordered)
+                Button("10 分钟后再喊我") { snooze(unit) }.buttonStyle(.bordered)
             }
             if let message = model.actionMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
         }.padding(16).frame(width: 380)
@@ -1144,6 +1145,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let model = JingleModel()
     private var item: NSStatusItem!
     private let popover = NSPopover()
+    private var calledUnitIDs: Set<String> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -1155,17 +1157,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func settlement() -> NSViewController { NSHostingController(rootView: SettlementView(model: model, open: open)) }
-    private func call(_ unit: WorkUnit) -> NSViewController { NSHostingController(rootView: CallView(unit: unit, model: model, open: open)) }
+    private func call(_ unit: WorkUnit) -> NSViewController {
+        NSHostingController(rootView: CallView(unit: unit, model: model, open: open, snooze: snooze))
+    }
 
     func refresh() {
         let count = model.pendingCount
         item.button?.title = count == 0 ? "•" : "\(count)"
         item.button?.contentTintColor = count == 0 ? .secondaryLabelColor : (model.blocked.isEmpty ? .labelColor : .systemOrange)
-        if let first = model.callableBlocked.first, !popover.isShown, let button = item.button {
+        if let first = model.callableBlocked.first(where: { !calledUnitIDs.contains($0.id) }), !popover.isShown, let button = item.button {
             // A programmatic blocked-call popover must become the active accessory
             // app first; a transient popover otherwise closes before it is visible.
             NSApp.activate(ignoringOtherApps: true)
             popover.contentViewController = call(first)
+            calledUnitIDs.insert(first.id)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
     }
@@ -1178,6 +1183,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func open(_ unit: WorkUnit) {
         model.actionMessage = "会话跳转将在下一阶段启用（\(unit.providerName)）。"
+    }
+
+    private func snooze(_ unit: WorkUnit) {
+        // Dismissing a call is quiet; only an explicit snooze makes this unit
+        // eligible to call again after its requested delay.
+        calledUnitIDs.remove(unit.id)
+        model.snooze(unit)
+        popover.performClose(nil)
     }
 }
 
