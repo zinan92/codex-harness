@@ -58,6 +58,7 @@ mkdir -p "$new_app/Contents/MacOS"
 swiftc -O -parse-as-library \
   -framework AppKit \
   -framework SwiftUI \
+  "$repo_dir/src/JinglePanelLayout.swift" \
   "$repo_dir/src/CodexNotificationSettings.swift" \
   -o "$new_app/Contents/MacOS/CodexNotificationSettings"
 install -m 644 \

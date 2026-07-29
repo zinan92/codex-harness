@@ -1098,6 +1098,7 @@ struct QueueItem: View {
     let unit: WorkUnit
     @ObservedObject var model: JingleModel
     let open: (WorkUnit) -> Void
+    let acknowledge: (WorkUnit) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -1105,7 +1106,7 @@ struct QueueItem: View {
             if unit.state != "running" {
                 HStack(spacing: 7) {
                     Spacer()
-                    Button("已看") { model.acknowledge(unit) }
+                    Button("已看") { acknowledge(unit) }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                     Button(model.routingUnitID == unit.id ? "正在打开" : "回到会话") { open(unit) }
@@ -1123,6 +1124,8 @@ struct QueueItem: View {
 struct SettlementView: View {
     @ObservedObject var model: JingleModel
     let open: (WorkUnit) -> Void
+    let acknowledge: (WorkUnit) -> Void
+    let panelHeight: CGFloat
 
     var body: some View {
         ScrollView {
@@ -1136,13 +1139,13 @@ struct SettlementView: View {
                 }
                 if let message = model.actionMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
             }.padding(14)
-        }.frame(width: 380, height: 460)
+        }.frame(width: 380, height: panelHeight)
     }
 
     @ViewBuilder private func queue(title: String, color: Color, units: [WorkUnit]) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(color)
-            ForEach(units) { QueueItem(unit: $0, model: model, open: open) }
+            ForEach(units) { QueueItem(unit: $0, model: model, open: open, acknowledge: acknowledge) }
         }
     }
 }
@@ -1152,60 +1155,141 @@ struct CallView: View {
     @ObservedObject var model: JingleModel
     let open: (WorkUnit) -> Void
     let snooze: (WorkUnit) -> Void
+    let panelHeight: CGFloat
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack { Text("需要你处理").font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(.orange); Spacer(); Text("停了 \(unit.elapsed)").font(.caption).foregroundStyle(.secondary) }
-            WorkRow(unit: unit, identity: model.identity(for: unit), compact: false)
-            HStack(spacing: 8) {
-                Button(model.routingUnitID == unit.id ? "正在打开" : "回到这个会话") { open(unit) }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(model.routingUnitID != nil)
-                Button("10 分钟后再喊我") { snooze(unit) }.buttonStyle(.bordered)
-            }
-            if let message = model.actionMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
-        }.padding(16).frame(width: 380)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack { Text("需要你处理").font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(.orange); Spacer(); Text("停了 \(unit.elapsed)").font(.caption).foregroundStyle(.secondary) }
+                WorkRow(unit: unit, identity: model.identity(for: unit), compact: false)
+                HStack(spacing: 8) {
+                    Button(model.routingUnitID == unit.id ? "正在打开" : "回到这个会话") { open(unit) }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(model.routingUnitID != nil)
+                    Button("10 分钟后再喊我") { snooze(unit) }.buttonStyle(.bordered)
+                }
+                if let message = model.actionMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
+            }.padding(16)
+        }.frame(width: 380, height: panelHeight)
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let model = JingleModel()
     private var item: NSStatusItem!
-    private let popover = NSPopover()
+    private var panel: NSPanel?
     private var calledUnitIDs: Set<String> = []
+    private var frontmostApplicationBeforePanel: pid_t?
+
+    private enum PanelMode {
+        case settlement
+        case call(WorkUnit)
+
+        var preferredHeight: CGFloat {
+            switch self {
+            case .settlement: return 460
+            case .call: return 280
+            }
+        }
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.target = self
         item.button?.action = #selector(toggle)
-        popover.behavior = .transient
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(closeForOtherApplication(_:)),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
         Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.refresh() }
         refresh()
     }
 
-    private func settlement() -> NSViewController { NSHostingController(rootView: SettlementView(model: model, open: open)) }
-    private func call(_ unit: WorkUnit) -> NSViewController {
-        NSHostingController(rootView: CallView(unit: unit, model: model, open: open, snooze: snooze))
+    @objc private func closeForOtherApplication(_ notification: Notification) {
+        guard let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+              let originalApplication = frontmostApplicationBeforePanel,
+              application.processIdentifier != ProcessInfo.processInfo.processIdentifier,
+              application.processIdentifier != originalApplication else { return }
+        dismissPanel()
+    }
+
+    private func makePanel() -> NSPanel {
+        let panel = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.level = .statusBar
+        panel.isFloatingPanel = true
+        // Accessory apps are not always allowed to become frontmost. Let the
+        // panel remain visible after an automatic call, then close it from the
+        // workspace activation observer above when the user changes apps.
+        panel.hidesOnDeactivate = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = true
+        return panel
+    }
+
+    private func settlement(height: CGFloat) -> NSViewController {
+        NSHostingController(rootView: SettlementView(model: model, open: open, acknowledge: acknowledge, panelHeight: height))
+    }
+
+    private func call(_ unit: WorkUnit, height: CGFloat) -> NSViewController {
+        NSHostingController(rootView: CallView(unit: unit, model: model, open: open, snooze: snooze, panelHeight: height))
+    }
+
+    private func statusItemFrame(on button: NSStatusBarButton) -> CGRect? {
+        guard let window = button.window else { return nil }
+        return window.convertToScreen(button.convert(button.bounds, to: nil))
+    }
+
+    @discardableResult
+    private func present(_ mode: PanelMode) -> Bool {
+        guard model.pendingCount > 0, let button = item.button, let anchor = statusItemFrame(on: button) else {
+            return false
+        }
+        let anchorCenter = CGPoint(x: anchor.midX, y: anchor.midY)
+        let screen = button.window?.screen ?? NSScreen.screens.first(where: { $0.frame.contains(anchorCenter) }) ?? NSScreen.main
+        guard let screen else { return false }
+        let frame = JinglePanelLayout.frame(anchor: anchor, visibleFrame: screen.visibleFrame, preferredSize: CGSize(width: 380, height: mode.preferredHeight))
+        guard !frame.isEmpty else {
+            return false
+        }
+        let panel = self.panel ?? makePanel()
+        self.panel = panel
+        frontmostApplicationBeforePanel = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        switch mode {
+        case .settlement:
+            panel.contentViewController = settlement(height: frame.height)
+        case .call(let unit):
+            panel.contentViewController = call(unit, height: frame.height)
+        }
+        panel.setFrame(frame, display: true)
+        panel.orderFrontRegardless()
+        return panel.isVisible
+    }
+
+    private func dismissPanel() {
+        panel?.orderOut(nil)
+        panel?.close()
+        panel = nil
+        frontmostApplicationBeforePanel = nil
     }
 
     func refresh() {
         let count = model.pendingCount
         item.button?.title = count == 0 ? "•" : "\(count)"
         item.button?.contentTintColor = count == 0 ? .secondaryLabelColor : (model.blocked.isEmpty ? .labelColor : .systemOrange)
-        if let first = model.callableBlocked.first(where: { !calledUnitIDs.contains($0.id) }), !popover.isShown, let button = item.button {
-            // A programmatic blocked-call popover must become the active accessory
-            // app first; a transient popover otherwise closes before it is visible.
-            NSApp.activate(ignoringOtherApps: true)
-            popover.contentViewController = call(first)
-            calledUnitIDs.insert(first.id)
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .maxY)
+        if count == 0 { dismissPanel() }
+        if let first = model.callableBlocked.first(where: { !calledUnitIDs.contains($0.id) }), !(panel?.isVisible ?? false) {
+            if present(.call(first)) { calledUnitIDs.insert(first.id) }
         }
     }
 
     @objc func toggle() {
-        guard let button = item.button else { return }
-        if popover.isShown { popover.performClose(nil) }
-        else { popover.contentViewController = settlement(); popover.show(relativeTo: button.bounds, of: button, preferredEdge: .maxY) }
+        guard model.pendingCount > 0 else { dismissPanel(); return }
+        if panel?.isVisible ?? false { dismissPanel() }
+        else { present(.settlement) }
     }
 
     private func open(_ unit: WorkUnit) {
@@ -1217,7 +1301,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // eligible to call again after its requested delay.
         calledUnitIDs.remove(unit.id)
         model.snooze(unit)
-        popover.performClose(nil)
+        dismissPanel()
+    }
+
+    private func acknowledge(_ unit: WorkUnit) {
+        model.acknowledge(unit)
+        dismissPanel()
     }
 }
 
