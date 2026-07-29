@@ -21,9 +21,46 @@ Codex 每个 JSONL 文件仅使用其最后一个 `total_token_usage` 累计值�
 python3 -m router "把 X 改成 Y" --workspace /要修改的项目
 # 只让 Fable 判难度、生成合同／stories，不修改目标工作区：
 python3 -m router "把 X 改成 Y" --workspace /要修改的项目 --dry-run
+
+# 汇总 run 收据：不需要 task 和 workspace，默认读取 router/runs/*.json
+python3 -m router --summary
+# 指定目录（常用于临时目录/回归测试）：
+python3 -m router --summary --runs-dir /path/to/router/runs
 ```
 
 v0 的判断权只在 `claude-fable-5`：它把任务分为 `simple`、`medium`、`complex`，选择对应的固定 SOP，**不会**估算成本、读取历史成功率或按金额选模型。
+
+### Router 收据汇总（`--summary`）
+
+`--summary` 会输出纯 JSON，字段包括：
+
+```json
+{
+  "completed_runs": 0,
+  "total_cost_cents": 0,
+  "by_profile": {
+    "complex": 1,
+    "medium": 2,
+    "simple": 3,
+    "unclassified": 1
+  },
+  "by_status": {
+    "failed_machine_gate": 1,
+    "failed_review": 1,
+    "succeeded": 5
+  },
+  "invalid_receipts": {
+    "invalid_structure": 0,
+    "malformed_json": 2
+  }
+}
+```
+
+- `completed_runs`：已完成且非 `dry-run` 的收据数量。
+- `total_cost_cents`：上述收据内 `model_call` 里 `cost_cents` 的合计。
+- `by_profile`：按 profile（`triage` 的 `complexity`，缺失则归入 `unclassified`）聚合。
+- `by_status`：按收据顶层状态聚合，已完成且非 `dry-run`。
+- `invalid_receipts`：解析失败的收据桶，`malformed_json`（JSON 解码失败）、`invalid_structure`（非字典或缺少必需字段）。
 
 - `simple`：Codex 实现／机器闸（最多 2 次）→ Opus 审核。
 - `medium`：Fable 写合同 → Codex 实现／机器闸（每轮最多 2 次）→ Opus 审核（最多 2 轮）。机器闸失败和审核打回都会把原因带进下一次实现。

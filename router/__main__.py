@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import sys
 
 from .adapters import ClaudeAdapter, CodexAdapter, MachineGate
 from .ledger import RunStore
+from .summary import aggregate_runs
 from .workflow import Workflow
 
 
@@ -16,7 +18,8 @@ def main(argv: list[str] | None = None) -> int:
         prog="tr",
         description="Route one task through the fixed TokenRouter v0 SOP.",
     )
-    parser.add_argument("task", help="The task to execute.")
+    parser.add_argument("task", nargs="?", help="The task to execute.")
+    parser.add_argument("--summary", action="store_true", help="Print JSON summary of run receipts.")
     parser.add_argument(
         "--workspace",
         type=Path,
@@ -24,11 +27,27 @@ def main(argv: list[str] | None = None) -> int:
         help="Workspace in which Codex and the machine gate run (default: current directory).",
     )
     parser.add_argument(
+        "--runs-dir",
+        type=Path,
+        default=None,
+        help="Path to router/runs for summary output (defaults to router/runs).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Run Fable triage without editing the target workspace, gating, or review.",
     )
     args = parser.parse_args(argv)
+
+    if args.summary:
+        package_root = Path(__file__).resolve().parent
+        runs_dir = args.runs_dir or (package_root / "runs")
+        runs_dir = runs_dir.expanduser().resolve()
+        print(json.dumps(aggregate_runs(runs_dir), ensure_ascii=False, sort_keys=True))
+        return 0
+
+    if not args.task:
+        parser.error("task is required unless --summary is used")
 
     workspace = args.workspace.expanduser().resolve()
     if not workspace.is_dir():
