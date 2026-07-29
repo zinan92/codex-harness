@@ -28,6 +28,13 @@ python3 -m router --summary
 python3 -m router --summary --runs-dir /path/to/router/runs
 ```
 
+机器闸的命令优先级是：显式 `--gate "..."`、工作区根目录 `.router-gate` 的第一行、内置默认
+`bash scripts/check.sh`。`.router-gate` 使用 shell-like 参数格式解析，例如 fixture 可写入：
+
+```sh
+python3 -m unittest discover tests -v
+```
+
 v0 的判断权只在 `claude-fable-5`：它把任务分为 `simple`、`medium`、`complex`，选择对应的固定 SOP，**不会**估算成本、读取历史成功率或按金额选模型。
 
 ### Router 收据汇总（`--summary`）
@@ -77,6 +84,9 @@ python3 -m router --summary --runs-dir /path/to/router/runs
 - `simple`：Codex 实现／机器闸（最多 2 次）→ Opus 审核。
 - `medium`：Fable 写合同 → Codex 实现／机器闸（每轮最多 2 次）→ Opus 审核（最多 2 轮）。机器闸失败和审核打回都会把原因带进下一次实现。
 - `complex`：Fable 写合同和可演示 stories → Codex 按 story 串行实现（每条复用中等任务的 2 次实现／机器闸上限）→ Opus 审核。
+
+complex 每条 story 若任务要求本地提交，该提交只能包含当前 story 所必需的文件；不得夹带其他或后续
+story 的文件。
 
 实现模型固定为 `gpt-5.3-codex-spark`，审核模型固定为 `opus`；重试也绝不换更贵的模型。到达上述硬上限、任何模型调用失败或审核仍打回时，流程停止并在 `router/runs/` 写明原因。没有并发或 Telegram 告警。Fable 与 Opus 的 CLI 回执成本、以及 Codex 调用前后从既有只读 collector 得到的增量成本，写入本地 append-only `router/ledger.jsonl`。两者均为运行数据，不进 Git；因此 `--dry-run` 仍会留下路由收据，但绝不修改目标工作区。
 

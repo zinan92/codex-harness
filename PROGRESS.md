@@ -1,5 +1,15 @@
 # Ledger progress
 
+## 2026-07-29 · Story 提交边界 + workspace gate 自动发现
+
+- Task 0 baseline: `bash scripts/check.sh` exited 0 and `python3 -m unittest discover router/tests -v` passed 22/22 before this change; protected-path diff was empty.
+- Task A implementation: `developer_prompt()` now adds a hard commit boundary only for a non-null complex `story`: a required commit may contain only files necessary for the current story, never files from another/later story. Two pure prompt tests prove its presence for a story and absence for `story=None`.
+- Task B implementation: CLI gate selection is now `--gate` (parsed by `shlex.split`) > `<workspace>/.router-gate` first line (also `shlex.split`) > `config.MACHINE_GATE`. Three CLI tests prove explicit priority without any `.router-gate` read, workspace-file selection, and default fallback.
+- Fixture baseline: added four independent existing function/test pairs plus `router/fixtures/demo_project/.router-gate` containing its unchanged real acceptance command, `python3 -m unittest discover tests -v`; baseline and implementation shipped in `509e006`.
+- Real complex proof (non-dry-run `run-20260729T052338Z-c4cb166e`): Fable classified the four requested independent additions as `complex`; Spark implemented four serial stories; every story gate recorded `['python3', '-m', 'unittest', 'discover', 'tests', '-v']`; Opus verdict was `pass`; status `succeeded`. The four real story commits were `8e608a1` (only `calculator.py`, `tests/test_calculator.py`), `6caa6d0` (only `text_tools.py`, `tests/test_text_tools.py`), `0ec5edc` (only `number_tools.py`, `tests/test_number_tools.py`), and `2ca2f59` (only `labels.py`, `tests/test_labels.py`). Their `git show --stat` outputs each list exactly those two files.
+- Real workspace-gate proof (non-dry-run `run-20260729T053157Z-1840f451`, invoked with no `--gate`): Fable triage=`simple`; Spark changed only `greeting.py` / `tests/test_greeting.py` in commit `6c77d75`; its `machine_gate` event recorded `command=['python3', '-m', 'unittest', 'discover', 'tests', '-v']`, not the TokenRouter default `['bash', 'scripts/check.sh']`; Opus verdict=`pass`; status `succeeded`.
+- Final verification follows this delivery-record commit: full router suite, protected-path diff, and `bash scripts/check.sh`.
+
 ## 2026-07-29 · 可配置 workspace 机器闸 + fixture 实跑
 
 - Task 0 baseline: `bash scripts/check.sh` exited 0 and `python3 -m unittest discover router/tests -v` passed 19/19 before this change.
