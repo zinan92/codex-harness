@@ -12,4 +12,4 @@ Codex Jingle 已有原生 macOS 菜单栏 app 和本地通知回调。方向 D �
 
 ## 下一步
 
-真实 Codex/Claude hook 回合已验证并已恢复临时配置：两边的 `session_id` / `cwd` / `transcript_path` 都与适配器一致，Codex 另有 `turn_id`、Claude 没有。下一阶段实现并验证「回到会话」：Codex 指定 session 的 resume/项目 fallback，Claude 原终端聚焦/复制 resume 命令 fallback 与失败提示。
+方向 D 已完成：真实 Codex/Claude hook 回合验证过两边的 `session_id` / `cwd` / `transcript_path` 与适配器一致（Codex 另有 `turn_id`、Claude 没有）；菜单栏主按钮现用这些字段回到会话。Codex 用当前 CLI 的指定 session resume，失败时打开 Codex 项目；Claude 先尝试聚焦匹配的终端，失败则复制精确 resume 命令，并把所有失败显示在卡片内。下一步仅在真实日常回合中观察这一动作的终端焦点命中率，不改变状态模型或 hook 配置。
