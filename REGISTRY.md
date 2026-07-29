@@ -2,7 +2,7 @@
 
 ## 现在在哪里
 
-Codex Jingle 已有原生 macOS 设置 Widget 和本地通知回调。Issue #2 新增了三个桌面注意力组件方向，用于比较 Codex 与 Claude Code 的跨任务监控、耗时与 Token 增量，以及待检查收件箱。
+Codex Jingle 已有原生 macOS 设置 Widget 和本地通知回调。方向 D 的第 1 阶段已完成：Codex/Claude 的 `UserPromptSubmit` 与结束 hook 可将主任务落为本地 `running` / `blocked` / `done` Work Unit，且子 agent 不会单独入队。状态文件与事件日志不保存 prompt 或 assistant 正文；实际启用全局 hook 仍须用户按文档显式配置并信任。
 
 可比较的 mockup：
 
@@ -12,4 +12,4 @@ Codex Jingle 已有原生 macOS 设置 Widget 和本地通知回调。Issue #2 �
 
 ## 下一步
 
-由 Park 选择一个主方向，以及需要从另外两版保留的组件。确认后再拆生产实现 issue，不在 mockup 阶段接入真实 Session 事件或 Token 数据。
+方向 D 已获确认，下一阶段是 Work Unit 账本：只在结束时读取一次历史 session 数据，分别验证 Codex 的累计差值与 Claude 的增量求和；运行态继续只显示时长，不读取或展示 token。
