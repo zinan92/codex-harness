@@ -8,6 +8,7 @@ from pathlib import Path
 import shlex
 import sys
 
+from . import config
 from .adapters import ClaudeAdapter, CodexAdapter, MachineGate
 from .ledger import RunStore
 from .summary import aggregate_runs
@@ -57,11 +58,21 @@ def main(argv: list[str] | None = None) -> int:
     workspace = args.workspace.expanduser().resolve()
     if not workspace.is_dir():
         parser.error("--workspace must name an existing directory")
-    gate_command = None
+    gate_command: tuple[str, ...]
     if args.gate is not None:
         gate_command = tuple(shlex.split(args.gate))
         if not gate_command:
             parser.error("--gate must contain a command")
+    else:
+        gate_file = workspace / ".router-gate"
+        if gate_file.is_file():
+            gate_lines = gate_file.read_text(encoding="utf-8").splitlines()
+            gate_line = gate_lines[0] if gate_lines else ""
+            gate_command = tuple(shlex.split(gate_line))
+            if not gate_command:
+                parser.error(".router-gate first line must contain a command")
+        else:
+            gate_command = config.MACHINE_GATE
 
     package_root = Path(__file__).resolve().parent
     workflow = Workflow(

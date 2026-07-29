@@ -9,7 +9,8 @@ from unittest.mock import patch
 from router.adapters import CallResult, MachineGate
 from router.config import DEVELOPER_MODEL, MACHINE_GATE
 from router.ledger import RunStore
-from router.schema import SchemaError, Triage
+from router.prompts import developer_prompt
+from router.schema import SchemaError, Story, Triage
 from router.workflow import RunResult, Workflow
 
 
@@ -151,17 +152,67 @@ class MachineGateTests(unittest.TestCase):
 
     @patch("router.__main__.Workflow")
     @patch("router.__main__.MachineGate")
-    def test_cli_parses_gate_and_passes_command_to_machine_gate(self, machine_gate, workflow_class):
+    def test_cli_explicit_gate_takes_priority_without_reading_workspace_file(self, machine_gate, workflow_class):
+        workflow_class.return_value.run.return_value = RunResult("run-test", "planned", "simple")
+        with tempfile.TemporaryDirectory() as workspace:
+            Path(workspace, ".router-gate").write_text("python3 -m unittest discover tests -v\n")
+            from router.__main__ import main
+
+            with patch("pathlib.Path.read_text") as read_text:
+                status = main([
+                    "small change", "--workspace", workspace, "--dry-run", "--gate", "echo ok",
+                ])
+
+        self.assertEqual(0, status)
+        machine_gate.assert_called_once_with(command=("echo", "ok"))
+        read_text.assert_not_called()
+
+    @patch("router.__main__.Workflow")
+    @patch("router.__main__.MachineGate")
+    def test_cli_reads_workspace_router_gate_when_no_explicit_gate(self, machine_gate, workflow_class):
+        workflow_class.return_value.run.return_value = RunResult("run-test", "planned", "simple")
+        with tempfile.TemporaryDirectory() as workspace:
+            Path(workspace, ".router-gate").write_text("python3 -m unittest discover tests -v\n")
+            from router.__main__ import main
+
+            status = main(["small change", "--workspace", workspace, "--dry-run"])
+
+        self.assertEqual(0, status)
+        machine_gate.assert_called_once_with(command=("python3", "-m", "unittest", "discover", "tests", "-v"))
+
+    @patch("router.__main__.Workflow")
+    @patch("router.__main__.MachineGate")
+    def test_cli_uses_default_gate_when_workspace_has_no_router_gate(self, machine_gate, workflow_class):
         workflow_class.return_value.run.return_value = RunResult("run-test", "planned", "simple")
         with tempfile.TemporaryDirectory() as workspace:
             from router.__main__ import main
 
-            status = main([
-                "small change", "--workspace", workspace, "--dry-run", "--gate", "echo ok",
-            ])
+            status = main(["small change", "--workspace", workspace, "--dry-run"])
 
         self.assertEqual(0, status)
-        machine_gate.assert_called_once_with(command=("echo", "ok"))
+        machine_gate.assert_called_once_with(command=MACHINE_GATE)
+
+
+class DeveloperPromptTests(unittest.TestCase):
+    def test_story_prompt_has_hard_current_story_commit_boundary(self):
+        triage = Triage.from_response(triage_payload("complex", [
+            {"title": "change one", "demo_path": ["open", "change", "verify"]},
+        ]))
+        prompt = developer_prompt(
+            "make independent changes", triage, Story("change one", ("open", "change", "verify"))
+        )
+
+        self.assertIn("Hard commit boundary for this story", prompt)
+        self.assertIn("only files necessary to implement the current supplied story", prompt)
+        self.assertIn("Do not include files that belong to any other story", prompt)
+        self.assertIn("do not opportunistically include files for later stories", prompt)
+
+    def test_non_story_prompt_does_not_add_story_commit_boundary(self):
+        triage = Triage.from_response(triage_payload("simple"))
+
+        prompt = developer_prompt("change one thing", triage, story=None)
+
+        self.assertNotIn("Hard commit boundary for this story", prompt)
 
 
 class RouterWorkflowTests(unittest.TestCase):
