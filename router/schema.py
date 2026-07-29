@@ -138,6 +138,7 @@ class Review:
 
     @classmethod
     def from_response(cls, payload: Any) -> "Review":
+        """Parse Claude output and reject malformed pass/fail review verdicts."""
         value = _object_from_response(payload)
         verdict = _text(value.get("verdict"), "verdict")
         if verdict not in {"pass", "fail"}:
