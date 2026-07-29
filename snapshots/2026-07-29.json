@@ -1,17 +1,17 @@
 {
  "date": "2026-07-29",
- "generated_at": "2026-07-29T00:05:31+08:00",
- "grand_total_cents": 2035713,
+ "generated_at": "2026-07-29T03:16:03+08:00",
+ "grand_total_cents": 2046842,
  "projects": {
   "tokenrouter": {
-   "cost_cents": 67719,
-   "claude_cents": 67664,
+   "cost_cents": 74791,
+   "claude_cents": 74736,
    "codex_cents": 55,
    "active_days": 3
   },
   "trading-orchestrator": {
-   "cost_cents": 550684,
-   "claude_cents": 545048,
+   "cost_cents": 551604,
+   "claude_cents": 545968,
    "codex_cents": 5636,
    "active_days": 52
   },
@@ -22,8 +22,8 @@
    "active_days": 2
   },
   "trading-co": {
-   "cost_cents": 154143,
-   "claude_cents": 153792,
+   "cost_cents": 154200,
+   "claude_cents": 153849,
    "codex_cents": 351,
    "active_days": 32
   },
@@ -70,15 +70,15 @@
    "active_days": 5
   },
   "New project": {
-   "cost_cents": 327052,
-   "claude_cents": 267662,
+   "cost_cents": 327318,
+   "claude_cents": 267928,
    "codex_cents": 59390,
    "active_days": 48
   },
   "投研面板": {
-   "cost_cents": 199704,
-   "claude_cents": 30097,
-   "codex_cents": 169607,
+   "cost_cents": 202158,
+   "claude_cents": 31430,
+   "codex_cents": 170728,
    "active_days": 8
   },
   "电商工作台": {
@@ -88,9 +88,9 @@
    "active_days": 3
   },
   "内容制作": {
-   "cost_cents": 397996,
+   "cost_cents": 398346,
    "claude_cents": 0,
-   "codex_cents": 397996,
+   "codex_cents": 398346,
    "active_days": 24
   },
   "知识库": {
@@ -136,10 +136,10 @@
    "active_days": 0
   },
   "未归类": {
-   "cost_cents": 40447,
-   "claude_cents": 1668,
+   "cost_cents": 40457,
+   "claude_cents": 1678,
    "codex_cents": 38779,
-   "active_days": 70
+   "active_days": 71
   }
  }
 }
