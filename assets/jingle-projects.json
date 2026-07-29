@@ -1,0 +1,38 @@
+{
+  "projects": [
+    {
+      "project_id": "token-router",
+      "name": "TokenRouter",
+      "color": "orange",
+      "aliases": [
+        {"provider": "codex", "prefix": "/Users/wendy/tokenrouter"},
+        {"provider": "claude", "prefix": "/Users/wendy/tokenrouter"},
+        {"prefix": "/Users/wendy/token router"}
+      ]
+    },
+    {
+      "project_id": "grid-trading",
+      "name": "网格交易",
+      "color": "green",
+      "aliases": [
+        {"prefix": "/Users/wendy/Documents/产品网格交互"},
+        {"prefix": "/Users/wendy/Documents/网格交易"}
+      ]
+    },
+    {
+      "project_id": "research-panel",
+      "name": "投研面板",
+      "color": "red",
+      "aliases": [
+        {"prefix": "/Users/wendy/Documents/投研面板"},
+        {"prefix": "/Users/wendy/work/research-panel"}
+      ]
+    },
+    {
+      "project_id": "input-to-park",
+      "name": "Input to Park",
+      "color": "orange",
+      "aliases": [{"prefix": "/Users/wendy/work/input-to-park"}]
+    }
+  ]
+}

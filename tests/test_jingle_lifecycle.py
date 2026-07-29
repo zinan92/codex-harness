@@ -110,6 +110,15 @@ class JingleLifecycleTests(unittest.TestCase):
         duplicate = lifecycle.finish_work_unit("codex", self.payload("Stop", last_assistant_message="Completed."), classifier)
         self.assertEqual(duplicate["status"], "duplicate_finish")
 
+    def test_next_start_supersedes_unseen_terminal_item_but_keeps_ledger_row(self) -> None:
+        first = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="turn-1"))
+        lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="turn-1", last_assistant_message="Completed."), classifier)
+        second = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="turn-2"))
+        units = lifecycle.load_state()["units"]
+        self.assertEqual(len(units), 2)
+        self.assertIn("superseded_at", units[first["unit"]["id"]])
+        self.assertNotIn("superseded_at", units[second["unit"]["id"]])
+
     def test_acknowledge_hides_completed_unit_without_deleting_its_ledger(self) -> None:
         started = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit"))
         lifecycle.finish_work_unit(
