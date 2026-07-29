@@ -164,6 +164,43 @@ class JingleLifecycleTests(unittest.TestCase):
         self.assertEqual(locator["terminal_tty"], "/dev/ttys999")
         self.assertNotIn("prompt", locator)
 
+    def test_workflow_suppresses_internal_done_until_explicit_finish(self) -> None:
+        self.assertEqual(lifecycle.start_workflow("codex", "session-1", "/tmp/project-a")["status"], "workflow_started")
+        first = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="one"))
+        first_done = lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="one", last_assistant_message="Completed."), classifier)
+        self.assertTrue(first_done["unit"]["attention_suppressed"])
+        second = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="two"))
+        second_done = lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="two", last_assistant_message="Completed."), classifier)
+        self.assertTrue(second_done["unit"]["attention_suppressed"])
+        terminal = lifecycle.finish_workflow("codex", "session-1")
+        self.assertEqual(terminal["status"], lifecycle.STATE_DONE)
+        self.assertEqual(terminal["unit"]["id"], second["unit"]["id"])
+        self.assertFalse(terminal["unit"]["attention_suppressed"])
+        self.assertIn(first["unit"]["id"], lifecycle.load_state()["units"])
+
+    def test_blocked_only_suppresses_done_but_not_blocked(self) -> None:
+        done_start = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="done", notification_policy="blocked_only"))
+        done = lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="done", last_assistant_message="Completed."), classifier)
+        self.assertTrue(done["unit"]["attention_suppressed"])
+        blocked_start = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="blocked", notification_policy="blocked_only"))
+        blocked = lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="blocked", last_assistant_message="I need input."), classifier)
+        self.assertFalse(blocked["unit"]["attention_suppressed"])
+        self.assertTrue(blocked["delivery_eligible"])
+        self.assertIn(done_start["unit"]["id"], lifecycle.load_state()["units"])
+        self.assertIn(blocked_start["unit"]["id"], lifecycle.load_state()["units"])
+
+    def test_project_policy_is_explicit_and_unmapped_falls_back_to_task_terminal(self) -> None:
+        projects = Path(self.temporary.name) / "projects.json"
+        projects.write_text(json.dumps({"projects": [{"project_id": "quiet", "notification_policy": "blocked_only", "aliases": [{"provider": "claude", "prefix": "/tmp/project-a"}]}]}), encoding="utf-8")
+        previous = os.environ.get("JINGLE_PROJECTS_PATH")
+        os.environ["JINGLE_PROJECTS_PATH"] = str(projects)
+        try:
+            self.assertEqual(lifecycle.notification_policy({"cwd": "/tmp/project-a"}, "claude"), "blocked_only")
+            self.assertEqual(lifecycle.notification_policy({"cwd": "/tmp/project-a"}, "codex"), "task_terminal")
+        finally:
+            if previous is None: os.environ.pop("JINGLE_PROJECTS_PATH", None)
+            else: os.environ["JINGLE_PROJECTS_PATH"] = previous
+
     def test_cli_emits_a_machine_readable_result_for_a_hook_fixture(self) -> None:
         payload = self.payload("UserPromptSubmit")
         completed = subprocess.run(

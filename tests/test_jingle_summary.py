@@ -30,7 +30,7 @@ class SummaryTests(unittest.TestCase):
             unit=load_state()['units']['codex:s:t']
             self.assertEqual(unit['summary'], '具体产出已经完成'); self.assertEqual(unit['summary_status'], 'pending')
             text.assert_called_once(); launch.assert_called_once()
-            notify.assert_called_once()
+            notify.assert_not_called()
             self.assertEqual(result['summary']['status'], 'summary_initial')
     def test_no_key_and_request_failure_keep_fallback_safe(self):
         with mock.patch.dict(os.environ, {'JINGLE_DEEPSEEK_KEY_PATH':'/missing'}, clear=False):
