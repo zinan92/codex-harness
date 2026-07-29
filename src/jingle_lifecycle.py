@@ -12,6 +12,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import time
 from typing import Any, Callable
@@ -27,6 +28,7 @@ STATE_BLOCKED = "blocked"
 STATE_DONE = "done"
 VALID_STATES = {STATE_RUNNING, STATE_BLOCKED, STATE_DONE}
 VALID_PROVIDERS = {"codex", "claude"}
+LOCATOR_FIELDS = ("terminal_app", "terminal_tty", "terminal_session_id", "parent_pid")
 
 
 def runtime_path(variable: str, default: Path) -> Path:
@@ -118,6 +120,57 @@ def append_event(event: dict[str, Any]) -> None:
 
 def session_key(provider: str, session_id: str) -> str:
     return f"{provider}:{session_id}"
+
+
+def _process_locator() -> dict[str, Any]:
+    """Find the inherited terminal TTY without retaining command-line text."""
+    pid = os.getppid()
+    for _ in range(12):
+        try:
+            result = subprocess.run(
+                ["ps", "-o", "pid=,ppid=,tty=", "-p", str(pid)],
+                text=True,
+                capture_output=True,
+                timeout=1,
+                check=False,
+            )
+            fields = result.stdout.split()
+            if result.returncode != 0 or len(fields) < 3:
+                break
+            current_pid, parent_pid, tty = fields[0], fields[1], fields[2]
+        except (OSError, subprocess.TimeoutExpired):
+            break
+        if tty not in {"?", "??"}:
+            normalized_tty = tty if tty.startswith("/dev/") else f"/dev/{tty}"
+            return {"terminal_tty": normalized_tty, "parent_pid": int(current_pid)}
+        if parent_pid == current_pid:
+            break
+        pid = int(parent_pid)
+    return {}
+
+
+def capture_session_locator(payload: dict[str, Any]) -> dict[str, Any]:
+    """Persist only stable terminal identity metadata needed for an exact return."""
+    locator: dict[str, Any] = {}
+    for field in LOCATOR_FIELDS:
+        value = payload.get(field)
+        if field == "parent_pid" and isinstance(value, int) and value > 0:
+            locator[field] = value
+        elif field != "parent_pid" and isinstance(value, str) and value.strip():
+            locator[field] = value
+    terminal_program = os.environ.get("TERM_PROGRAM", "")
+    if not locator.get("terminal_app"):
+        locator["terminal_app"] = {
+            "Apple_Terminal": "Terminal",
+            "iTerm.app": "iTerm2",
+            "WarpTerminal": "Warp",
+        }.get(terminal_program, "")
+    if not locator.get("terminal_session_id"):
+        session = os.environ.get("TERM_SESSION_ID") or os.environ.get("ITERM_SESSION_ID")
+        if session:
+            locator["terminal_session_id"] = session
+    locator.update({key: value for key, value in _process_locator().items() if not locator.get(key)})
+    return {key: locator[key] for key in LOCATOR_FIELDS if locator.get(key) not in {None, ""}}
 
 
 def _valid_identity(provider: str, session_id: str) -> bool:
@@ -273,6 +326,7 @@ def begin_work_unit(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
             "turn_id": turn_id or None,
             "cwd": cwd,
             "transcript_path": str(payload.get("transcript_path") or "").strip(),
+            "session_locator": capture_session_locator(payload),
             "state": STATE_RUNNING,
             "started_at": time.time(),
         }

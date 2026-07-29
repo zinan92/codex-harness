@@ -897,6 +897,7 @@ struct WorkUnit: Codable, Identifiable {
     let endedAt: Double?
     let summary: String?
     let tokenAccounting: TokenAccounting?
+    let sessionLocator: SessionLocator?
     let seenAt: Double?
     let snoozedUntil: Double?
 
@@ -906,6 +907,7 @@ struct WorkUnit: Codable, Identifiable {
         case startedAt = "started_at"
         case endedAt = "ended_at"
         case tokenAccounting = "token_accounting"
+        case sessionLocator = "session_locator"
         case seenAt = "seen_at"
         case snoozedUntil = "snoozed_until"
     }
@@ -922,6 +924,20 @@ struct WorkUnit: Codable, Identifiable {
     var tokenLabel: String {
         guard let amount = tokenAccounting?.totalTokens else { return "本轮 token 不可用" }
         return amount >= 1_000 ? String(format: "本轮 +%.1fk", Double(amount) / 1_000) : "本轮 +\(amount) token"
+    }
+}
+
+struct SessionLocator: Codable {
+    let terminalApp: String?
+    let terminalTTY: String?
+    let terminalSessionID: String?
+    let parentPID: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case terminalApp = "terminal_app"
+        case terminalTTY = "terminal_tty"
+        case terminalSessionID = "terminal_session_id"
+        case parentPID = "parent_pid"
     }
 }
 
@@ -1013,7 +1029,8 @@ final class JingleModel: ObservableObject {
         let resumePath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks/jingle_resume.py").path
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                let data = try runLocalPython(script: resumePath, arguments: ["--provider", unit.provider, "--session-id", unit.sessionID, "--cwd", unit.cwd])
+                let locator = try String(data: JSONEncoder().encode(unit.sessionLocator), encoding: .utf8) ?? "{}"
+                let data = try runLocalPython(script: resumePath, arguments: ["--provider", unit.provider, "--session-id", unit.sessionID, "--cwd", unit.cwd, "--locator-json", locator])
                 let result = try JSONDecoder().decode(ResumeResult.self, from: data)
                 DispatchQueue.main.async { self.routingUnitID = nil; self.actionMessage = result.message }
             } catch {
