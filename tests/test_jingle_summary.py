@@ -8,6 +8,7 @@ ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 import jingle_hook
 import jingle_summary
+import codex_spoken_notify
 from jingle_lifecycle import load_state
 
 class SummaryTests(unittest.TestCase):
@@ -23,12 +24,13 @@ class SummaryTests(unittest.TestCase):
     def test_initial_card_precedes_detached_summary_launch(self):
         start={'hook_event_name':'UserPromptSubmit','session_id':'s','turn_id':'t','cwd':'/tmp'}
         stop={**start,'hook_event_name':'Stop','last_assistant_message':'Completed.'}
-        with mock.patch.object(jingle_summary, 'last_assistant_text', return_value='具体产出已经完成') as text, mock.patch.object(jingle_summary, 'launch') as launch:
+        with mock.patch.object(jingle_summary, 'last_assistant_text', return_value='具体产出已经完成') as text, mock.patch.object(jingle_summary, 'launch') as launch, mock.patch.object(codex_spoken_notify, 'launch_worker') as notify:
             jingle_hook.handle('codex', start)
             result=jingle_hook.handle('codex', stop)
             unit=load_state()['units']['codex:s:t']
             self.assertEqual(unit['summary'], '具体产出已经完成'); self.assertEqual(unit['summary_status'], 'pending')
             text.assert_called_once(); launch.assert_called_once()
+            notify.assert_called_once()
             self.assertEqual(result['summary']['status'], 'summary_initial')
     def test_no_key_and_request_failure_keep_fallback_safe(self):
         with mock.patch.dict(os.environ, {'JINGLE_DEEPSEEK_KEY_PATH':'/missing'}, clear=False):

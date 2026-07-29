@@ -479,7 +479,7 @@ class SpokenNotifyTests(unittest.TestCase):
         self.assertEqual(calls[0][0:2], ("sound", notifier.STATUS_ATTENTION))
         speak.assert_not_called()
 
-    def test_sound_failure_is_logged_without_retry_and_speech_still_runs(self) -> None:
+    def test_done_sound_failure_is_logged_without_retry_or_speech(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             runtime = Path(temp_dir)
             with (
@@ -491,7 +491,7 @@ class SpokenNotifyTests(unittest.TestCase):
                     notifier, "load_settings", return_value=notifier.DEFAULT_SETTINGS
                 ),
                 mock.patch.object(notifier, "play_sound", return_value=False),
-                mock.patch.object(notifier, "speak", return_value=True) as speak,
+                mock.patch.object(notifier, "speak") as speak,
             ):
                 notifier.worker(
                     "turn-sound-failure",
@@ -505,12 +505,8 @@ class SpokenNotifyTests(unittest.TestCase):
             )
             self.assertEqual(completed["status"], "notification_partial_failure")
             self.assertFalse(completed["sound_played"])
-            self.assertTrue(completed["speech_spoken"])
-            speak.assert_called_once_with(
-                "交易系统。任务已完成。",
-                settings=notifier.DEFAULT_SETTINGS,
-                classification=notifier.STATUS_SUCCESS,
-            )
+            self.assertIsNone(completed["speech_spoken"])
+            speak.assert_not_called()
 
     def test_worker_loads_settings_once_and_logs_only_safe_profile(self) -> None:
         runtime_settings = {
@@ -552,7 +548,7 @@ class SpokenNotifyTests(unittest.TestCase):
         self.assertEqual(started["voice_profile"], "warm_female")
         self.assertEqual(started["speech_content"], "title_status")
 
-    def test_worker_speaks_task_name_after_status_sound(self) -> None:
+    def test_worker_speaks_task_name_only_for_attention_after_its_sound(self) -> None:
         calls = []
         with tempfile.TemporaryDirectory() as temp_dir:
             runtime = Path(temp_dir)
@@ -583,20 +579,34 @@ class SpokenNotifyTests(unittest.TestCase):
                     "thread-spoken",
                     "电商系统",
                     "test",
-                    notifier.STATUS_SUCCESS,
+                    notifier.STATUS_ATTENTION,
                 )
         self.assertEqual(
             calls,
             [
-                ("sound", notifier.STATUS_SUCCESS),
+                ("sound", notifier.STATUS_ATTENTION),
                 (
                     "speech",
-                    "电商系统。任务已完成。",
+                    "电商系统。任务已结束，但还有事项需要确认。",
                     notifier.DEFAULT_SETTINGS,
-                    notifier.STATUS_SUCCESS,
+                    notifier.STATUS_ATTENTION,
                 ),
             ],
         )
+
+    def test_worker_done_never_speaks_even_when_speech_is_enabled(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runtime = Path(temp_dir)
+            with (
+                mock.patch.object(notifier, "RUNTIME_DIR", runtime),
+                mock.patch.object(notifier, "STATE_PATH", runtime / "state.json"),
+                mock.patch.object(notifier, "LOCK_PATH", runtime / "sound.lock"),
+                mock.patch.object(notifier, "EVENT_LOG_PATH", runtime / "events.jsonl"),
+                mock.patch.object(notifier, "play_sound", return_value=True),
+                mock.patch.object(notifier, "speak") as speak,
+            ):
+                notifier.worker("turn-done", "thread-done", "交易系统", "test", notifier.STATUS_SUCCESS)
+        speak.assert_not_called()
 
     def test_sound_timeout_is_non_fatal(self) -> None:
         with mock.patch.object(

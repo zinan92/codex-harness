@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 import sys
 from typing import Any
 
@@ -37,7 +38,22 @@ def handle(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
             from jingle_summary import first_line, last_assistant_text, launch
             source = last_assistant_text(provider, str(result['unit'].get('transcript_path') or ''))
             from jingle_lifecycle import attach_initial_summary
-            result['summary'] = attach_initial_summary(result['unit']['id'], first_line(source))
+            card_title = first_line(source)
+            result['summary'] = attach_initial_summary(result['unit']['id'], card_title)
+            # Delivery is detached and happens before the DeepSeek summary. Codex
+            # reuses its turn id so an existing legacy notify callback and this
+            # lifecycle hook share one at-most-once sound delivery; Claude uses
+            # the immutable Work Unit id because it has no turn id.
+            from codex_spoken_notify import STATUS_ATTENTION, STATUS_SUCCESS, launch_worker
+            notification_id = str(result['unit'].get('turn_id') or result['unit']['id'])
+            project = Path(str(result['unit'].get('cwd') or '')).name or provider
+            launch_worker(
+                notification_id,
+                str(result['unit'].get('session_id') or ''),
+                f"{project}：{card_title}",
+                "jingle_lifecycle",
+                STATUS_ATTENTION if result['status'] == 'blocked' else STATUS_SUCCESS,
+            )
             accounting = collect_accounting(result["unit"])
             result["accounting"] = attach_accounting(result["unit"]["id"], accounting)
             launch(result['unit']['id'], provider, str(result['unit'].get('transcript_path') or ''))

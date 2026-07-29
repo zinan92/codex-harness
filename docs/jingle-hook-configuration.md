@@ -28,8 +28,11 @@ the path if needed. Codex asks you to trust a newly added command hook through
 
 `UserPromptSubmit` creates `running`; `Stop` resolves it to `done` unless its
 explicit hook outcome or the existing deterministic attention fallback marks it
-`blocked`. Codex's current `Stop` event is the reliable end signal; its old
-`notify` callback remains installed for the existing speech feature.
+`blocked`. Codex's current `Stop` event is the reliable end signal. The lifecycle
+hook launches Jingle's detached local delivery after it has made that decision:
+`done` is the success sound only; `blocked` is the attention sound plus speech.
+If the existing Codex `notify` callback is still installed, both paths use the
+same turn id and its existing at-most-once lock suppresses the duplicate.
 
 ## Claude Code
 
@@ -51,7 +54,9 @@ Claude's `UserPromptSubmit`/`Stop` payloads do not include a turn ID, so Jingle
 links the active Work Unit by provider + session. `StopFailure` always becomes
 `blocked`; `Stop` normally becomes `done` unless the deterministic fallback
 finds an unfinished/needs-input marker. Explicit subagent/teammate payloads are
-ignored before they touch the state file.
+ignored before they touch the state file. The same detached delivery is launched
+with the immutable Claude Work Unit id, so Claude has the same two-sound contract
+without needing Codex's old `notify` callback.
 
 ## Local verification without changing global configuration
 
