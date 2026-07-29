@@ -9,7 +9,8 @@ from pathlib import Path
 import subprocess
 from typing import Any, Sequence
 
-from .config import DEVELOPER_MODEL, MACHINE_GATE, REVIEWER_MODEL, TRIAGE_MODEL
+from . import config
+from .config import DEVELOPER_MODEL, REVIEWER_MODEL, TRIAGE_MODEL
 
 
 @dataclass(frozen=True)
@@ -72,7 +73,10 @@ class CodexAdapter:
 
 
 class MachineGate:
-    """The approved repository machine gate; its exit code is the only gate verdict."""
+    """A workspace machine gate; its command's exit code is the only verdict."""
+
+    def __init__(self, command: Sequence[str] | None = None):
+        self.command = tuple(config.MACHINE_GATE if command is None else command)
 
     def check(self, workspace: Path) -> CallResult:
-        return _run(MACHINE_GATE, workspace)
+        return _run(self.command, workspace)

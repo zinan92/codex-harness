@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import shlex
 import sys
 
 from .adapters import ClaudeAdapter, CodexAdapter, MachineGate
@@ -37,6 +38,10 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Run Fable triage without editing the target workspace, gating, or review.",
     )
+    parser.add_argument(
+        "--gate",
+        help="Machine-gate command to run in the workspace (default: configured repository gate).",
+    )
     args = parser.parse_args(argv)
 
     if args.summary:
@@ -52,12 +57,17 @@ def main(argv: list[str] | None = None) -> int:
     workspace = args.workspace.expanduser().resolve()
     if not workspace.is_dir():
         parser.error("--workspace must name an existing directory")
+    gate_command = None
+    if args.gate is not None:
+        gate_command = tuple(shlex.split(args.gate))
+        if not gate_command:
+            parser.error("--gate must contain a command")
 
     package_root = Path(__file__).resolve().parent
     workflow = Workflow(
         triage=ClaudeAdapter(),
         developer=CodexAdapter(),
-        gate=MachineGate(),
+        gate=MachineGate(command=gate_command),
         reviewer=ClaudeAdapter(),
         store=RunStore(package_root),
     )

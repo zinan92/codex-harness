@@ -100,6 +100,7 @@ class Workflow:
             self.store.event(run, "machine_gate", {
                 "ok": gate.ok, "returncode": gate.returncode, "story": story_index,
                 "review_round": review_round, "attempt": attempt,
+                "command": list(getattr(self.gate, "command", ())),
             })
             if gate.ok:
                 return True, ""

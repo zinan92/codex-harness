@@ -6,11 +6,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from router.adapters import CallResult
-from router.config import DEVELOPER_MODEL
+from router.adapters import CallResult, MachineGate
+from router.config import DEVELOPER_MODEL, MACHINE_GATE
 from router.ledger import RunStore
 from router.schema import SchemaError, Triage
-from router.workflow import Workflow
+from router.workflow import RunResult, Workflow
 
 
 def triage_payload(profile="medium", stories=None):
@@ -126,6 +126,42 @@ class RouterSchemaTests(unittest.TestCase):
         self.assertEqual(("requested feature", "targeted area"), triage.contract.in_scope)
         self.assertEqual(("unrelated paths", "other modules"), triage.contract.out_scope)
         self.assertEqual(("delete", "modify tests"), triage.contract.forbidden)
+
+
+class MachineGateTests(unittest.TestCase):
+    @patch("router.adapters._run")
+    def test_machine_gate_defaults_to_configured_command(self, run):
+        workspace = Path("/tmp/target")
+        run.return_value = CallResult(True, "", "", 0)
+
+        MachineGate().check(workspace)
+
+        self.assertEqual(MACHINE_GATE, MachineGate().command)
+        run.assert_called_once_with(MACHINE_GATE, workspace)
+
+    @patch("router.adapters._run")
+    def test_machine_gate_executes_custom_command(self, run):
+        workspace = Path("/tmp/target")
+        command = ("python3", "-m", "unittest")
+        run.return_value = CallResult(True, "", "", 0)
+
+        MachineGate(command=command).check(workspace)
+
+        run.assert_called_once_with(command, workspace)
+
+    @patch("router.__main__.Workflow")
+    @patch("router.__main__.MachineGate")
+    def test_cli_parses_gate_and_passes_command_to_machine_gate(self, machine_gate, workflow_class):
+        workflow_class.return_value.run.return_value = RunResult("run-test", "planned", "simple")
+        with tempfile.TemporaryDirectory() as workspace:
+            from router.__main__ import main
+
+            status = main([
+                "small change", "--workspace", workspace, "--dry-run", "--gate", "echo ok",
+            ])
+
+        self.assertEqual(0, status)
+        machine_gate.assert_called_once_with(command=("echo", "ok"))
 
 
 class RouterWorkflowTests(unittest.TestCase):

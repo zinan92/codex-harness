@@ -1,5 +1,15 @@
 # Ledger progress
 
+## 2026-07-29 · 可配置 workspace 机器闸 + fixture 实跑
+
+- Task 0 baseline: `bash scripts/check.sh` exited 0 and `python3 -m unittest discover router/tests -v` passed 19/19 before this change.
+- Machine gate is now workspace-configurable without a bypass: `MachineGate(command=None)` retains `config.MACHINE_GATE`; `--gate` is parsed with `shlex.split` into a command tuple; its subprocess exit code remains the sole pass/fail signal. Gate events now preserve the exact command for audit.
+- Unit coverage: 3 new stubbed cases prove the default configured command, a custom command's actual execution, and CLI parsing/passing of `--gate "echo ok"`. Router suite passed 22/22 after the change.
+- Fixture: `router/fixtures/demo_project/` is an isolated pure-function project with its own acceptance command, `python3 -m unittest discover tests -v`, rather than TokenRouter's `bash scripts/check.sh`.
+- Real non-dry-run proof (canonical receipt `run-20260729T044728Z-958f8240`): workspace=`/Users/wendy/tokenrouter/router/fixtures/demo_project`; Fable triage=`simple` (62 cents) → Codex implementation=`ok` (41 cents) → gate command=`["python3", "-m", "unittest", "discover", "tests", "-v"]`, exit 0 → Opus review=`pass` (111 cents) → final status=`succeeded`; recorded total=214 cents. Codex changed `greeting(name)` to return `Welcome, {name}!` and synchronized the fixture's exact-return unittest assertion.
+- The initial direct call, `run-20260729T044502Z-088fc522`, also completed successfully after its terminal wrapper returned early: simple triage 99 cents → developer 24 cents → the same fixture gate exit 0 → reviewer pass 146 cents → succeeded (269 cents), changing `Hello` to `Welcome`. The canonical second run above made the final exclamation-mark change. This duplicate spend is retained as fact, not represented as a retry or a gate failure.
+- Protected-path checks before and after the real calls are clean: `git diff --exit-code -- ledger scripts assets workbench.html ARCHITECTURE.md CLAUDE.md`; no TokenRouter `scripts/check.sh`, legacy `ledger/`, or `snapshots/` file was changed by the fixture runs.
+
 ## 2026-07-29 · TokenRouter retry + real-run evidence
 
 - Task 0 baseline: `bash scripts/check.sh` exited 0 (23 Python, 17 Node, ledger/snapshot invariants, clean tree, gitleaks); `python3 -m unittest discover router/tests -v` passed 5/5 before this change.
