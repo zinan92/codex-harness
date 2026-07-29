@@ -124,7 +124,7 @@
     }
 
     .page {
-      width: min(1480px, calc(100% - 48px));
+      width: min(1820px, calc(100% - 48px));
       margin: 0 auto;
       padding: 32px 0 52px;
     }
@@ -239,7 +239,9 @@
 
     .mockup-grid {
       display: grid;
-      grid-template-columns: minmax(340px, 0.88fr) minmax(405px, 1.08fr) minmax(370px, 0.96fr);
+      grid-template-columns:
+        minmax(320px, 0.86fr) minmax(380px, 1.04fr)
+        minmax(350px, 0.94fr) minmax(390px, 1.06fr);
       align-items: start;
       gap: 24px;
     }
@@ -939,6 +941,225 @@
       font-size: 10px;
     }
 
+    /* ---------- Concept D ---------- */
+    .d-stack { display: grid; gap: 14px; }
+
+    .d-caption {
+      padding: 0 4px;
+      color: var(--quiet);
+      font-size: 10.5px;
+      line-height: 1.45;
+    }
+
+    .widget.calling { border-color: color-mix(in srgb, var(--red), transparent 52%); }
+
+    /* 项目人格工牌：色块 + 项目字 + 角上 provider 标记 */
+    .persona {
+      position: relative;
+      display: grid;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      background: linear-gradient(150deg, var(--p-hi), var(--p-lo));
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .persona.sm { width: 30px; height: 30px; border-radius: 10px; font-size: 12px; }
+
+    .persona[data-p="research"] { --p-hi: #7ba7c9; --p-lo: #3d6d92; }
+    .persona[data-p="shop"] { --p-hi: #d9a05f; --p-lo: #a5661f; }
+    .persona[data-p="content"] { --p-hi: #a48cc4; --p-lo: #6c5195; }
+    .persona[data-p="trade"] { --p-hi: #7cb69a; --p-lo: #3f7a5f; }
+    .persona[data-p="router"] { --p-hi: #c99191; --p-lo: #8d5050; }
+
+    .persona b {
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      padding: 1px 3px;
+      border: 1px solid var(--panel-solid);
+      border-radius: 5px;
+      background: var(--panel-solid);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 8px;
+      font-weight: 800;
+      text-shadow: none;
+    }
+
+    /* 呼叫态 */
+    .call-body { padding: 15px 15px 14px; }
+
+    .call-who { display: flex; align-items: center; gap: 11px; }
+
+    .call-who-text { min-width: 0; }
+
+    .call-who-text strong { display: block; font-size: 13px; letter-spacing: -0.01em; }
+
+    .call-who-text span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+
+    .call-ask {
+      margin: 14px 0 0;
+      font-size: 15px;
+      font-weight: 660;
+      letter-spacing: -0.02em;
+      line-height: 1.4;
+    }
+
+    .call-cost {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-top: 13px;
+      padding: 10px 12px;
+      border: 1px solid color-mix(in srgb, var(--red), transparent 66%);
+      border-radius: var(--radius-sm);
+      background: var(--red-soft);
+    }
+
+    .call-cost strong {
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 18px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+    }
+
+    .call-cost span { color: var(--muted); font-size: 10.5px; line-height: 1.4; }
+
+    .call-unit {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 0 2px;
+      color: var(--quiet);
+      font-size: 10.5px;
+    }
+
+    .call-actions { display: flex; gap: 7px; margin-top: 12px; }
+
+    /* 清算态：三条通道 */
+    .lane-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 15px 8px;
+    }
+
+    .lane-name { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 680; }
+
+    .lane-name i { display: block; width: 7px; height: 7px; border-radius: 50%; }
+
+    .lane-stuck .lane-name i { background: var(--red); }
+    .lane-done .lane-name i { background: var(--accent); }
+    .lane-run .lane-name i { background: var(--green); }
+
+    .lane-why { color: var(--quiet); font-size: 10px; }
+
+    .lane { padding: 0 9px 9px; }
+
+    .item {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 6px;
+      border-radius: var(--radius-sm);
+      transition: background 160ms ease, opacity 200ms ease;
+    }
+
+    .item:hover { background: var(--panel-2); }
+
+    .item + .item { border-top: 1px solid var(--line); }
+
+    .item-main { min-width: 0; }
+
+    .item-said {
+      overflow: hidden;
+      font-size: 12.5px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .item-who { margin-top: 4px; color: var(--muted); font-size: 10.5px; }
+
+    .item-who em { color: var(--quiet); font-style: normal; }
+
+    .item-right { display: flex; align-items: center; gap: 8px; }
+
+    /* 右侧数字栈：上=催你的，下=本轮账 */
+    .figures { display: grid; justify-items: end; gap: 3px; white-space: nowrap; }
+
+    .waited {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .waited.stale,
+    .waited.burning { color: var(--red); font-weight: 700; }
+
+    /* 本轮账只在 Work Unit 结束后才有值 */
+    .unit {
+      color: var(--quiet);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .run-item {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 6px;
+    }
+
+    .run-item + .run-item { border-top: 1px solid var(--line); }
+
+    .run-main { min-width: 0; }
+
+    .run-main strong {
+      display: block;
+      overflow: hidden;
+      font-size: 12px;
+      font-weight: 620;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .run-main span { display: block; margin-top: 3px; color: var(--quiet); font-size: 10px; }
+
+    .elapsed {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .button.alarm {
+      border-color: color-mix(in srgb, var(--red), transparent 40%);
+      background: var(--red);
+      color: #fff;
+    }
+
+    .button.alarm:hover { background: color-mix(in srgb, var(--red), #fff 12%); }
+
+    .button.sm { min-height: 27px; padding: 0 10px; font-size: 11px; }
+
     .mock-note {
       margin: 20px 6px 0;
       color: var(--quiet);
@@ -952,7 +1173,8 @@
 
     .reviewed .speech,
     .reviewed.review-card,
-    .reviewed.inbox-strip {
+    .reviewed.inbox-strip,
+    .reviewed.item {
       border-color: color-mix(in srgb, var(--green), transparent 62%);
       background: var(--green-soft);
     }
@@ -977,6 +1199,14 @@
 
       .concept-b { animation-delay: 70ms; }
       .concept-c { animation-delay: 140ms; }
+      .concept-d { animation-delay: 210ms; }
+
+      .widget.calling { animation: nudge 2.6s ease-in-out infinite; }
+
+      @keyframes nudge {
+        0%, 92%, 100% { box-shadow: var(--shadow); }
+        96% { box-shadow: var(--shadow), 0 0 0 5px color-mix(in srgb, var(--red), transparent 82%); }
+      }
 
       @keyframes breathe {
         0%, 100% { opacity: 0.52; transform: scale(0.82); }
@@ -989,7 +1219,7 @@
       }
     }
 
-    @media (max-width: 1180px) {
+    @media (max-width: 1560px) {
       .mockup-grid {
         grid-template-columns: repeat(2, minmax(340px, 1fr));
       }
@@ -1061,6 +1291,10 @@
     body[data-capture="single"] .concept-c {
       width: 400px;
     }
+
+    body[data-capture="single"] .concept-d {
+      width: 420px;
+    }
   </style>
 </head>
 <body>
@@ -1071,8 +1305,8 @@
           <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
           Codex Jingle
         </div>
-        <h1>三个桌面 Widget 方向</h1>
-        <p class="intro">同一组示例数据，比较三种注意力管理方式。没有虚假的完成百分比，只显示任务状态、耗时、Token 增量和是否等待你检查。</p>
+        <h1>四个桌面 Widget 方向</h1>
+        <p class="intro">同一组示例数据，比较四种注意力管理方式。没有虚假的完成百分比，只显示任务状态、耗时、Token 增量和是否等待你检查。A / B / C 是三个并列的面板；D 是对前提的反驳——它认为你根本不会主动去看面板。</p>
       </div>
       <div class="controls" aria-label="Mockup controls">
         <div class="segmented" aria-label="选择方案">
@@ -1080,6 +1314,7 @@
           <button type="button" data-filter="a" aria-pressed="false">A</button>
           <button type="button" data-filter="b" aria-pressed="false">B</button>
           <button type="button" data-filter="c" aria-pressed="false">C</button>
+          <button type="button" data-filter="d" aria-pressed="false">D</button>
         </div>
         <button class="theme-button" type="button" data-theme-button aria-label="切换明暗主题">◐</button>
       </div>
@@ -1380,6 +1615,175 @@
           </div>
         </div>
       </article>
+
+      <article class="concept concept-d" data-concept="d">
+        <div class="concept-label">
+          <strong>D. 中断路由器</strong>
+          <span>两个界面 · 三看两听</span>
+        </div>
+
+        <div class="d-stack">
+          <p class="d-caption">
+            前三个都假设你会去看它。D 假设你不会——所以它有两个界面：卡住时不请自来，其余时候你主动点开。
+            0 待办时它在桌面上不存在，只剩菜单栏一个灰点。
+          </p>
+
+          <div class="widget calling">
+            <div class="window-drag">
+              <div class="window-title">
+                <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+                有人卡住了
+              </div>
+              <div class="window-actions"><span class="count">1</span></div>
+            </div>
+
+            <div class="call-body" data-reviewable>
+              <div class="call-who">
+                <span class="persona" data-p="research" aria-hidden="true">投<b>CL</b></span>
+                <div class="call-who-text">
+                  <strong>投研面板</strong>
+                  <span>Claude · 需要你做决定</span>
+                </div>
+              </div>
+
+              <p class="call-ask">数据源要我换成 akshare 还是继续用 tushare？</p>
+
+              <div class="call-cost">
+                <strong>6:12</strong>
+                <span>已经停在这里没动<br>这段时间什么也没产出</span>
+              </div>
+
+              <div class="call-unit">
+                <span>本轮到此为止</span>
+                <span class="unit">14m · +31.2k</span>
+              </div>
+
+              <div class="call-actions">
+                <button class="button alarm" type="button" data-review data-review-label="已跳转">回到这个会话</button>
+                <button class="button" type="button">10 分钟后再喊我</button>
+              </div>
+            </div>
+
+            <div class="sound-row">
+              <span>只有「卡住」会出声喊人</span>
+              <div class="sound-prefs"><span>做完的安静排队</span></div>
+            </div>
+          </div>
+
+          <div class="widget">
+            <div class="window-drag">
+              <div class="window-title">
+                <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+                Jingle
+              </div>
+              <div class="window-actions">等你 <span class="count">4</span></div>
+            </div>
+
+            <div class="lane-head lane-stuck">
+              <div class="lane-name"><i aria-hidden="true"></i> 卡住了</div>
+              <div class="lane-why">时间在走</div>
+            </div>
+            <div class="lane">
+              <div class="item" data-reviewable>
+                <span class="persona sm" data-p="research" aria-hidden="true">投<b>CL</b></span>
+                <div class="item-main">
+                  <div class="item-said">数据源要我换成 akshare 还是继续用 tushare？</div>
+                  <div class="item-who">投研面板 <em>· Claude 需要决定</em></div>
+                </div>
+                <div class="item-right">
+                  <div class="figures">
+                    <span class="waited burning">停了 6m</span>
+                    <span class="unit">本轮 14m · +31.2k</span>
+                  </div>
+                  <button class="button alarm sm" type="button" data-review data-review-label="已跳转">回到会话</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="lane-head lane-done">
+              <div class="lane-name"><i aria-hidden="true"></i> 做完了</div>
+              <div class="lane-why">攒着不吃亏，但别忘了</div>
+            </div>
+            <div class="lane">
+              <div class="item" data-reviewable>
+                <span class="persona sm" data-p="shop" aria-hidden="true">电<b>CX</b></span>
+                <div class="item-main">
+                  <div class="item-said">完成事件现在只会播报一次了</div>
+                  <div class="item-who">电商工作台 <em>· Codex 已完成</em></div>
+                </div>
+                <div class="item-right">
+                  <div class="figures">
+                    <span class="waited stale">等了 2 天</span>
+                    <span class="unit">本轮 12m · +23.6k</span>
+                  </div>
+                  <button class="button primary sm" type="button" data-review data-review-label="已跳转">回到会话</button>
+                </div>
+              </div>
+              <div class="item" data-reviewable>
+                <span class="persona sm" data-p="content" aria-hidden="true">内<b>CL</b></span>
+                <div class="item-main">
+                  <div class="item-said">日报结构改成了倒金字塔，示例已重写</div>
+                  <div class="item-who">内容制作 <em>· Claude 已完成</em></div>
+                </div>
+                <div class="item-right">
+                  <div class="figures">
+                    <span class="waited">等了 4h</span>
+                    <span class="unit">本轮 8m · +14.1k</span>
+                  </div>
+                  <button class="button primary sm" type="button" data-review data-review-label="已跳转">回到会话</button>
+                </div>
+              </div>
+              <div class="item" data-reviewable>
+                <span class="persona sm" data-p="router" aria-hidden="true">T<b>CX</b></span>
+                <div class="item-main">
+                  <div class="item-said">账本不变量测试补齐，check.sh 全绿</div>
+                  <div class="item-who">tokenrouter <em>· Codex 已完成</em></div>
+                </div>
+                <div class="item-right">
+                  <div class="figures">
+                    <span class="waited">等了 25m</span>
+                    <span class="unit">本轮 41m · +88.5k</span>
+                  </div>
+                  <button class="button primary sm" type="button" data-review data-review-label="已跳转">回到会话</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="lane-head lane-run">
+              <div class="lane-name"><i aria-hidden="true"></i> 还在跑</div>
+              <div class="lane-why">本轮账要等它跑完才结</div>
+            </div>
+            <div class="lane">
+              <div class="run-item">
+                <span class="persona sm" data-p="trade" aria-hidden="true">交<b>CX</b></span>
+                <div class="run-main">
+                  <strong>交易系统</strong>
+                  <span>Codex 工作中</span>
+                </div>
+                <div class="elapsed">已跑 18m</div>
+              </div>
+              <div class="run-item">
+                <span class="persona sm" data-p="research" aria-hidden="true">投<b>CX</b></span>
+                <div class="run-main">
+                  <strong>投研面板 · 回测批跑</strong>
+                  <span>Codex 工作中</span>
+                </div>
+                <div class="elapsed">已跑 1h52m</div>
+              </div>
+            </div>
+
+            <div class="sound-row">
+              <span>做完的一直留着，直到你真的打开过它</span>
+              <div class="sound-prefs"><span>播报过 ≠ 已检查</span></div>
+            </div>
+          </div>
+
+          <p class="d-caption">
+            完整论证（状态阶梯、与 A/B/C 的五处分歧、摘要数据源的验证结果）在
+            <a href="jingle-direction-d.html">jingle-direction-d.html</a>。
+          </p>
+        </div>
+      </article>
     </section>
 
     <p class="mock-note">所有任务名称、耗时和 Token 数字均为示例数据。点击“检查”按钮可以预览待检查状态被清除后的反馈。</p>
@@ -1394,7 +1798,7 @@
       document.documentElement.dataset.theme = requestedTheme;
     }
 
-    if (capture === "a" || capture === "b" || capture === "c") {
+    if (["a", "b", "c", "d"].includes(capture)) {
       document.body.dataset.capture = "single";
       document.querySelectorAll("[data-concept]").forEach((concept) => {
         concept.dataset.hidden = concept.dataset.concept === capture ? "false" : "true";
@@ -1427,8 +1831,8 @@
       button.addEventListener("click", () => {
         const reviewable = button.closest("[data-reviewable]");
         reviewable?.classList.add("reviewed");
-        button.textContent = "已检查";
-        button.classList.remove("primary");
+        button.textContent = button.dataset.reviewLabel || "已检查";
+        button.classList.remove("primary", "alarm");
         button.classList.add("done");
       });
     });
