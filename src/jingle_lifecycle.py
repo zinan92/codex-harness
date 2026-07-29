@@ -146,6 +146,29 @@ def ignore_subagent_event(provider: str, payload: dict[str, Any]) -> dict[str, A
     return {"status": "ignored_subagent", "changed": False}
 
 
+def attach_accounting(unit_id: str, accounting: dict[str, Any]) -> dict[str, Any]:
+    """Persist end-only accounting; a running unit is never eligible."""
+    def operation(state: dict[str, Any]) -> dict[str, Any]:
+        unit = state["units"].get(unit_id)
+        if not isinstance(unit, dict) or unit.get("state") == STATE_RUNNING:
+            return {"status": "ignored_accounting", "changed": False}
+        if "token_accounting" in unit:
+            return {"status": "duplicate_accounting", "unit": unit, "changed": False}
+        unit["token_accounting"] = accounting
+        return {"status": "accounting_recorded", "unit": unit, "changed": True}
+
+    result = _with_lock(operation)
+    append_event(
+        {
+            "status": result["status"],
+            "unit_id": unit_id,
+            "provider": str(accounting.get("provider") or ""),
+            "accounting_status": str(accounting.get("status") or ""),
+        }
+    )
+    return result
+
+
 def _unit_id(provider: str, session_id: str, turn_id: str, sequence: int) -> str:
     if provider == "codex" and turn_id:
         return f"codex:{session_id}:{turn_id}"
@@ -195,6 +218,7 @@ def begin_work_unit(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
             "session_id": session_id,
             "turn_id": turn_id or None,
             "cwd": cwd,
+            "transcript_path": str(payload.get("transcript_path") or "").strip(),
             "state": STATE_RUNNING,
             "started_at": time.time(),
         }
