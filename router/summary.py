@@ -128,8 +128,24 @@ def _ordered_nested(mapping: dict[str, int]) -> dict[str, int]:
     return {key: mapping[key] for key in sorted(mapping)}
 
 
+def _empty_summary() -> dict[str, Any]:
+    return {
+        "completed_runs": 0,
+        "total_cost_cents": 0,
+        "by_profile": {},
+        "by_status": {},
+        "invalid_receipts": _ordered_nested({
+            "malformed_json": 0,
+            "invalid_structure": 0,
+        }),
+    }
+
+
 def aggregate_runs(runs_dir: Path) -> dict[str, Any]:
     """Aggregate completed, non-dry-run run receipts into a deterministic summary."""
+    if not runs_dir.is_dir():
+        return _empty_summary()
+
     profile_counts: ProfileCounter = defaultdict(int)
     status_counts: StatusCounter = defaultdict(int)
     invalid_receipts = {

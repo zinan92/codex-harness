@@ -125,3 +125,24 @@ class SummaryFocusTests(unittest.TestCase):
             self.assertEqual({"simple": 1}, summary["by_profile"])
             self.assertEqual({"succeeded": 1}, summary["by_status"])
             self.assertEqual(13, summary["total_cost_cents"])
+
+    def test_summary_invalid_runs_dir_matches_empty_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as workspace:
+            runs_dir = Path(workspace)
+            file_path = runs_dir / "not-a-directory.txt"
+            file_path.write_text("{}", encoding="utf-8")
+
+            expected = aggregate_runs(runs_dir)
+            for runs_dir_path in (runs_dir / "does-not-exist", file_path):
+                actual = aggregate_runs(runs_dir_path)
+                self.assertEqual(expected, actual)
+
+    def test_summary_invalid_runs_dir_is_deterministic(self) -> None:
+        with tempfile.TemporaryDirectory() as workspace:
+            runs_dir = Path(workspace)
+            file_path = runs_dir / "not-a-directory.txt"
+            file_path.write_text("{}", encoding="utf-8")
+
+            first = aggregate_runs(file_path)
+            second = aggregate_runs(file_path)
+            self.assertEqual(first, second)
