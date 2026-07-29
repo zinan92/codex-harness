@@ -4,7 +4,11 @@
 
 ## 待决
 
-- 无（本次 TokenRouter retry + real-run evidence 交付没有待决项）。
+- **B3 complex 的 story 提交边界失败（2026-07-29）**：真实运行
+  `run-20260729T030604Z-86ed3383` 的 Opus 审核判定失败。Spark 虽按顺序完成 4 条 story 且每次机器闸均通过，
+  但首个提交 `dbc36eb` 同时包含 `router/summary.py`、CLI、README 和测试，违反合同中每条 story 只能提交自身
+  允许文件的规则。该运行保留为真实失败证据，绝不改写成成功；如要把该功能重新验收为成功，需要以新的真实任务
+  产生符合 story 边界的提交历史。
 
 ## 需要你动手的事（不是阻塞，是权限所在）
 

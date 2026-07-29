@@ -13,6 +13,12 @@
 - B2 first passed, so its real receipt contains one developer call and no retry event. This is not presented as retry evidence; the retry path remains covered by the deterministic unit tests. No artificial gate failure was introduced.
 - Post-B2 direct verification: `python3 -m unittest discover router/tests -v` passed 11/11. Final protected-path and full quality-gate verification are next.
 
+## 2026-07-29 · 5 条真实记录补齐（进行中）
+
+- Task 0 baseline complete: `bash scripts/check.sh` exited 0 and `python3 -m unittest discover router/tests -v` passed 11/11 before this round.
+- B3 real run `run-20260729T030604Z-86ed3383`: Fable classified the intentionally multi-part task as `complex`; Spark executed all 4 stories serially and every story machine gate passed; Opus returned `failed_review`. The failure is real and retained: first commit `dbc36eb` bundled the summary module, CLI, README, and a test file instead of one scoped commit per story. It is not counted as a successful complex closure and is recorded in `BLOCKED.md`; no receipt or protected path was changed.
+- Remaining: run two further real non-dry-run tasks to bring the receipt count from 3 to 5, then use the new summary CLI plus direct receipt inspection to report success/failure and costs honestly.
+
 ## 2026-07-29 · TokenRouter v0 执行
 
 - Task 0 已执行：`codex --version` = 0.146.0，`claude --version` = 2.1.218，均满足最低版本。
