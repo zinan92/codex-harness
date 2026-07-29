@@ -12,6 +12,7 @@ import unittest
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 import jingle_hook  # noqa: E402
+import jingle_summary  # noqa: E402
 
 
 class JingleHookTests(unittest.TestCase):
@@ -43,7 +44,10 @@ class JingleHookTests(unittest.TestCase):
         }
         stop = {**start, "hook_event_name": "Stop", "last_assistant_message": "Completed."}
         expected = {"provider": "codex", "status": "unavailable", "reason": "missing_transcript"}
-        with mock.patch.object(jingle_hook, "collect_accounting", return_value=expected) as collect:
+        with (
+            mock.patch.object(jingle_hook, "collect_accounting", return_value=expected) as collect,
+            mock.patch.object(jingle_summary, "launch") as launch,
+        ):
             running = jingle_hook.handle("codex", start)
             self.assertEqual(running["status"], "running")
             self.assertNotIn("token_accounting", running["unit"])
@@ -53,6 +57,7 @@ class JingleHookTests(unittest.TestCase):
             self.assertEqual(done["status"], "done")
             collect.assert_called_once()
             self.assertEqual(done["accounting"]["status"], "accounting_recorded")
+            launch.assert_called_once()
 
             duplicate = jingle_hook.handle("codex", stop)
             self.assertEqual(duplicate["status"], "duplicate_finish")

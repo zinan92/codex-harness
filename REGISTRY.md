@@ -2,7 +2,7 @@
 
 ## 现在在哪里
 
-Codex Jingle 已有原生 macOS 设置 Widget 和本地通知回调。方向 D 的前两阶段已完成：Codex/Claude 的 `UserPromptSubmit` 与结束 hook 可将主任务落为本地 `running` / `blocked` / `done` Work Unit，且子 agent 不会单独入队。结束时会单次读取历史 session，按 provider 正确公式写入不可变 token 账本；运行态只有时长、没有 token。状态文件与事件日志不保存 prompt 或 assistant 正文；实际启用全局 hook 仍须用户按文档显式配置并信任。
+Codex Jingle 已有原生 macOS 设置 Widget 和本地通知回调。方向 D 的前三阶段已完成：Codex/Claude 的 `UserPromptSubmit` 与结束 hook 可将主任务落为本地 `running` / `blocked` / `done` Work Unit，且子 agent 不会单独入队。结束时会单次读取历史 session，按 provider 正确公式写入不可变 token 账本；运行态只有时长、没有 token。卡片先同步显示裸首行/“处理中…”，再由后台 DeepSeek worker patch 摘要；摘要失败保留弱标记，绝不影响状态判断。状态文件与事件日志不保存 prompt 或 assistant 正文；实际启用全局 hook 仍须用户按文档显式配置并信任。
 
 可比较的 mockup：
 
@@ -12,4 +12,4 @@ Codex Jingle 已有原生 macOS 设置 Widget 和本地通知回调。方向 D �
 
 ## 下一步
 
-下一阶段是卡片摘要：结束事件先用裸首行或“处理中…”立即出卡，再异步请求 DeepSeek 生成 ≤24 字摘要并 patch；摘要失败弱标记兜底，状态判定、声音与呼叫绝不能等待它。
+UI 前先完成一次真实 Codex/Claude hook 回合验证，确认实际 payload 字段与本地适配器一致；通过后实现菜单栏呼叫卡与三通道清算视图。
