@@ -1,5 +1,16 @@
 # Ledger progress
 
+## 2026-07-29 · TokenRouter v0 执行
+
+- Task 0 已执行：`codex --version` = 0.146.0，`claude --version` = 2.1.218，均满足最低版本。
+- `bash scripts/check.sh` 的五项可运行检查均通过；仅因动工前已有 `snapshots/2026-07-29.json` 未提交改动而以 1 退出。该受保护路径不在本任务允许范围，已记入 `BLOCKED.md`，未修改、未清理。
+- 下一项：仅在 `router/` 实现串行 v0（Fable 分诊/合同，Codex 实现，机器闸，Opus 审核，事后账本）；不做告警、并发、历史成功率路由或失败升级。
+- 已完成实现：新增标准库 `router` 包和 `python3 -m router` CLI；Fable 对每个任务做 `simple`/`medium`/`complex` 判断，中等/复杂任务强制结构化合同，复杂任务强制串行 stories；Codex 固定实现、既有 `bash scripts/check.sh` 固定机器闸、Opus 固定只读审核。所有失败立即停止并记入独立的本地运行收据；Codex 成本从现有只读 collector 的调用前后差额记账。
+- 已完成测试：`/usr/local/bin/python3 -m unittest discover router/tests -v` 通过 5/5；`compileall`、CLI `--help` 与空白检查通过。真实 `--dry-run` 已调用本机 Fable：成功分到 `medium`，写出有效合同与运行收据，直接回执成本为 94¢；未调用 Codex/Opus、未改目标工作区。
+- 最终验证完成：ledger 13/13、scripts 10/10、router 5/5、Node 17/17 全绿；`git diff --exit-code -- ledger scripts assets workbench.html` 与 `ARCHITECTURE.md`/`CLAUDE.md` 保护核验均为空。完整质量闸的其余五项均绿，唯一失败是工作树未提交状态（本轮待交付文件 + 动工前已有的 `snapshots/2026-07-29.json`）。
+- 交付已提交：`feat(router): add fixed local model workflow`。提交仅含 `router/`、`README.md`、`PROGRESS.md`、`BLOCKED.md`；`snapshots/2026-07-29.json` 仍是动工前原样保留的唯一未提交改动。
+- 收尾：提交此状态记录后重跑质量闸。预期唯一失败仍是上述受保护快照脏改动；无需、也不得为此修改快照。
+
 - Task 0 complete (2026-07-28): source counts verified: Claude 106 directories; Codex 889 JSONL files (within the stated tolerance).
 - Goal: build a standard-library, reproducible local cost ledger by project and channel, with explicit unclassified coverage.
 - Order: lock Codex final-cumulative extraction; collect Claude; assign each source key once; report and gaps; fixture tests plus mutation proof.

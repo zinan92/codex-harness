@@ -13,6 +13,26 @@ Codex 每个 JSONL 文件仅使用其最后一个 `total_token_usage` 累计值�
 `input_tokens - cached_input_tokens`。无法通过 `ledger/registry.py` 的保守最长前缀规则
 确认归属的记录会显示在 `未归类`，不会被猜测性归集。
 
+## TokenRouter v0
+
+在同一仓库内，路由器的可执行入口是：
+
+```sh
+python3 -m router "把 X 改成 Y" --workspace /要修改的项目
+# 只让 Fable 判难度、生成合同／stories，不修改目标工作区：
+python3 -m router "把 X 改成 Y" --workspace /要修改的项目 --dry-run
+```
+
+v0 的判断权只在 `claude-fable-5`：它把任务分为 `simple`、`medium`、`complex`，选择对应的固定 SOP，**不会**估算成本、读取历史成功率或按金额选模型。
+
+- `simple`：Codex 单次实现 → `bash scripts/check.sh` → Opus 审核。
+- `medium`：Fable 写合同 → Codex 单次实现 → 机器闸 → Opus 审核。
+- `complex`：Fable 写合同和可演示 stories → Codex 按 story 串行实现、每条后跑机器闸 → Opus 审核。
+
+实现模型固定为 `gpt-5.3-codex-spark`，审核模型固定为 `opus`。任何模型调用、机器闸或审核失败都会立即停止并在 `router/runs/` 写明原因；**没有**自动重试、贵模型升级、并发或 Telegram 告警。Fable 与 Opus 的 CLI 回执成本、以及 Codex 调用前后从既有只读 collector 得到的增量成本，写入本地 append-only `router/ledger.jsonl`。两者均为运行数据，不进 Git；因此 `--dry-run` 仍会留下路由收据，但绝不修改目标工作区。
+
+仓库边界不允许安装同名的全局裸 `tr` 命令（系统已有该文本转换命令）；本轮安全入口是上面的 `python3 -m router`。裸命令的安装决策已记录在 `BLOCKED.md`。
+
 ## Workbench 的三个数据文件
 
 | 文件 | 内容 | 刷新方式 |
