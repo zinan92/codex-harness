@@ -35,35 +35,29 @@ class ResumeTests(unittest.TestCase):
         with mock.patch.object(resume, "run_osascript_text", return_value="focused:/dev/ttys015"):
             self.assertFalse(resume.focus_claude_terminal("session-a", "/same/cwd", LOCATOR))
 
-    def test_two_claude_sessions_with_one_cwd_cannot_fall_back_to_title_guessing(self) -> None:
-        with mock.patch.object(resume, "focus_terminal_locator", return_value=False) as focus, mock.patch.object(resume, "copy_claude_resume", return_value=True):
+    def test_two_claude_sessions_with_one_cwd_fail_instead_of_creating_a_fallback(self) -> None:
+        with mock.patch.object(resume, "focus_terminal_locator", return_value=False) as focus:
             result = resume.route("claude", "session-a", "/same/cwd", LOCATOR)
         focus.assert_called_once_with(LOCATOR, mock.ANY)
-        self.assertEqual(result["status"], "claude_resume_copied")
-        self.assertIn("未定位原 Claude 会话", result["message"])
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("未打开任何新项目或会话", result["message"])
 
-    def test_codex_focuses_exact_terminal_or_explicitly_opens_project(self) -> None:
+    def test_codex_focuses_exact_terminal_or_fails_without_opening_a_project(self) -> None:
         with mock.patch.object(resume, "focus_terminal_locator", return_value=True):
             focused = resume.route("codex", "session-1", "/tmp/project", LOCATOR)
         self.assertEqual(focused["status"], "codex_focused")
 
-        with mock.patch.object(resume, "focus_terminal_locator", return_value=False), mock.patch.object(resume, "open_codex_project", return_value=True) as opened:
+        with mock.patch.object(resume, "focus_terminal_locator", return_value=False):
             fallback = resume.route("codex", "session-1", "/tmp/project", LOCATOR)
-        opened.assert_called_once_with("/tmp/project", mock.ANY)
-        self.assertEqual(fallback["status"], "codex_project_opened")
-        self.assertIn("未定位原会话", fallback["message"])
+        self.assertEqual(fallback["status"], "failed")
+        self.assertIn("未打开任何新项目或会话", fallback["message"])
 
-    def test_claude_fallback_copies_only_the_documented_resume_command(self) -> None:
-        captured: dict[str, object] = {}
-
-        def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
-            captured["args"] = args
-            captured["input"] = kwargs.get("input")
-            return completed()
-
-        self.assertTrue(resume.copy_claude_resume("session-2", fake_run))
-        self.assertEqual(captured["args"], (["pbcopy"],))
-        self.assertEqual(captured["input"], "claude --resume session-2")
+    def test_route_has_no_command_that_creates_or_resumes_a_session(self) -> None:
+        source = (ROOT / "src" / "jingle_resume.py").read_text(encoding="utf-8")
+        self.assertNotIn('"open"', source)
+        self.assertNotIn('"pbcopy"', source)
+        self.assertNotIn("codex resume", source)
+        self.assertNotIn("claude --resume", source)
 
     def test_malformed_locator_degrades_to_an_empty_object(self) -> None:
         self.assertEqual(resume.parse_locator("not-json"), {})
