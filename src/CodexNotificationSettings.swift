@@ -901,6 +901,7 @@ struct WorkUnit: Codable, Identifiable {
     let seenAt: Double?
     let snoozedUntil: Double?
     let supersededAt: Double?
+    let attentionSuppressed: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id, provider, cwd, state, summary
@@ -912,6 +913,7 @@ struct WorkUnit: Codable, Identifiable {
         case seenAt = "seen_at"
         case snoozedUntil = "snoozed_until"
         case supersededAt = "superseded_at"
+        case attentionSuppressed = "attention_suppressed"
     }
 
     var elapsed: String {
@@ -1051,7 +1053,7 @@ final class JingleModel: ObservableObject {
         return ProjectIdentity(id: "unmapped:\(normalized)", name: name.isEmpty ? "未命名项目" : name, color: lookColor)
     }
 
-    private var visible: [WorkUnit] { units.filter { $0.seenAt == nil && $0.supersededAt == nil } }
+    private var visible: [WorkUnit] { units.filter { $0.seenAt == nil && $0.supersededAt == nil && $0.attentionSuppressed != true } }
     private var currentBySession: [WorkUnit] {
         Dictionary(grouping: visible, by: { "\($0.provider):\($0.sessionID)" })
             .compactMap { $0.value.max { $0.startedAt < $1.startedAt } }

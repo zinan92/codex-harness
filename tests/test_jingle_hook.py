@@ -60,14 +60,12 @@ class JingleHookTests(unittest.TestCase):
             collect.assert_called_once()
             self.assertEqual(done["accounting"]["status"], "accounting_recorded")
             launch.assert_called_once()
-            notify.assert_called_once_with(
-                "turn-1", "session-1", "project：处理中…", "jingle_lifecycle", codex_spoken_notify.STATUS_SUCCESS
-            )
+            notify.assert_not_called()
 
             duplicate = jingle_hook.handle("codex", stop)
             self.assertEqual(duplicate["status"], "duplicate_finish")
             collect.assert_called_once()
-            notify.assert_called_once()
+            notify.assert_not_called()
 
     def test_claude_blocked_turn_uses_attention_delivery_with_work_unit_id(self) -> None:
         start = {"hook_event_name": "UserPromptSubmit", "session_id": "claude-session", "cwd": "/tmp/brief"}

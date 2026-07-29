@@ -29,6 +29,10 @@ STATE_DONE = "done"
 VALID_STATES = {STATE_RUNNING, STATE_BLOCKED, STATE_DONE}
 VALID_PROVIDERS = {"codex", "claude"}
 LOCATOR_FIELDS = ("terminal_app", "terminal_tty", "terminal_session_id", "parent_pid")
+POLICY_TASK_TERMINAL = "task_terminal"
+POLICY_WORKFLOW_TERMINAL = "workflow_terminal"
+POLICY_BLOCKED_ONLY = "blocked_only"
+VALID_POLICIES = {POLICY_TASK_TERMINAL, POLICY_WORKFLOW_TERMINAL, POLICY_BLOCKED_ONLY}
 
 
 def runtime_path(variable: str, default: Path) -> Path:
@@ -55,6 +59,7 @@ def empty_state() -> dict[str, Any]:
         "units": {},
         "active_by_session": {},
         "next_sequence_by_session": {},
+        "workflows": {},
         "updated_at": 0,
     }
 
@@ -76,7 +81,7 @@ def load_state(path: Path | None = None) -> dict[str, Any]:
     if not isinstance(candidate, dict) or candidate.get("schema_version") != 1:
         return empty_state()
     state = empty_state()
-    for key in ("units", "active_by_session", "next_sequence_by_session"):
+    for key in ("units", "active_by_session", "next_sequence_by_session", "workflows"):
         if isinstance(candidate.get(key), dict):
             state[key] = candidate[key]
     return state
@@ -120,6 +125,60 @@ def append_event(event: dict[str, Any]) -> None:
 
 def session_key(provider: str, session_id: str) -> str:
     return f"{provider}:{session_id}"
+
+
+def notification_policy(payload: dict[str, Any], provider: str = "", default: str = POLICY_TASK_TERMINAL) -> str:
+    policy = str(payload.get("notification_policy") or "").strip()
+    if not policy:
+        projects_path = runtime_path("JINGLE_PROJECTS_PATH", JINGLE_RUNTIME_DIR / "projects.json")
+        try:
+            projects = json.loads(projects_path.read_text(encoding="utf-8")).get("projects", [])
+        except (OSError, json.JSONDecodeError, AttributeError):
+            projects = []
+        cwd = str(payload.get("cwd") or "").rstrip("/")
+        matches: list[tuple[int, str]] = []
+        for project in projects if isinstance(projects, list) else []:
+            if not isinstance(project, dict): continue
+            candidate = str(project.get("notification_policy") or "")
+            for alias in project.get("aliases", []):
+                if not isinstance(alias, dict): continue
+                prefix = str(alias.get("prefix") or "").rstrip("/")
+                if prefix and alias.get("provider") in {None, provider} and (cwd == prefix or cwd.startswith(prefix + "/")):
+                    matches.append((len(prefix), candidate))
+        policy = max(matches, default=(0, default))[1]
+    return policy if policy in VALID_POLICIES else default
+
+
+def start_workflow(provider: str, session_id: str, cwd: str, policy: str = POLICY_WORKFLOW_TERMINAL) -> dict[str, Any]:
+    if not _valid_identity(provider, session_id):
+        return {"status": "ignored_missing_session", "changed": False}
+    policy = policy if policy in VALID_POLICIES else POLICY_WORKFLOW_TERMINAL
+    key = session_key(provider, session_id)
+    def operation(state: dict[str, Any]) -> dict[str, Any]:
+        state["workflows"][key] = {"provider": provider, "session_id": session_id, "cwd": cwd, "policy": policy, "started_at": time.time()}
+        return {"status": "workflow_started", "changed": True}
+    result = _with_lock(operation)
+    append_event({"status": result["status"], "provider": provider, "session_id": session_id, "policy": policy})
+    return result
+
+
+def finish_workflow(provider: str, session_id: str, outcome: str = STATE_DONE) -> dict[str, Any]:
+    key = session_key(provider, session_id)
+    terminal_state = STATE_BLOCKED if outcome == STATE_BLOCKED else STATE_DONE
+    def operation(state: dict[str, Any]) -> dict[str, Any]:
+        workflow = state["workflows"].pop(key, None)
+        if not isinstance(workflow, dict): return {"status": "ignored_missing_workflow", "changed": False}
+        candidates = [unit for unit in state["units"].values() if isinstance(unit, dict) and unit.get("workflow_id") == key]
+        if not candidates: return {"status": "ignored_empty_workflow", "changed": True}
+        unit = max(candidates, key=lambda item: float(item.get("ended_at") or item.get("started_at") or 0))
+        unit["attention_suppressed"] = False
+        unit["workflow_terminal"] = True
+        unit["state"] = terminal_state
+        unit["ended_at"] = time.time()
+        return {"status": terminal_state, "unit": unit, "changed": True}
+    result = _with_lock(operation)
+    append_event({"status": result["status"], "provider": provider, "session_id": session_id, "workflow_terminal": True})
+    return result
 
 
 def _process_locator() -> dict[str, Any]:
@@ -310,6 +369,8 @@ def begin_work_unit(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
 
     def operation(state: dict[str, Any]) -> dict[str, Any]:
         key = session_key(provider, session_id)
+        workflow = state["workflows"].get(key)
+        policy = str(workflow.get("policy") if isinstance(workflow, dict) else notification_policy(payload, provider))
         if provider == "codex" and turn_id:
             unit_id = _unit_id(provider, session_id, turn_id, 0)
             existing = state["units"].get(unit_id)
@@ -339,6 +400,8 @@ def begin_work_unit(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
             "cwd": cwd,
             "transcript_path": str(payload.get("transcript_path") or "").strip(),
             "session_locator": capture_session_locator(payload),
+            "notification_policy": policy,
+            "workflow_id": key if isinstance(workflow, dict) else None,
             "state": STATE_RUNNING,
             "started_at": time.time(),
         }
@@ -417,8 +480,13 @@ def finish_work_unit(
         unit["state"] = target_state
         unit["ended_at"] = time.time()
         unit["outcome_reason"] = reason
+        policy = str(unit.get("notification_policy") or POLICY_TASK_TERMINAL)
+        if target_state == STATE_DONE and (policy == POLICY_BLOCKED_ONLY or unit.get("workflow_id")):
+            unit["attention_suppressed"] = True
+        else:
+            unit["attention_suppressed"] = False
         state["active_by_session"].pop(key, None)
-        return {"status": target_state, "unit": unit, "changed": True}
+        return {"status": target_state, "unit": unit, "delivery_eligible": target_state == STATE_BLOCKED, "changed": True}
 
     result = _with_lock(operation)
     log = {"status": result["status"], "provider": provider, "session_id": session_id}
