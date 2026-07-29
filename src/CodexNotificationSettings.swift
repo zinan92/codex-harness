@@ -931,6 +931,11 @@ struct TokenAccounting: Codable {
     enum CodingKeys: String, CodingKey { case status; case totalTokens = "total_tokens" }
 }
 
+struct ResumeResult: Codable {
+    let status: String
+    let message: String
+}
+
 struct WorkUnitStore: Codable { let units: [String: WorkUnit] }
 
 struct ProjectRule: Codable {
@@ -958,6 +963,7 @@ private func projectColor(_ raw: String?) -> Color {
 final class JingleModel: ObservableObject {
     @Published var units: [WorkUnit] = []
     @Published var actionMessage: String?
+    @Published var routingUnitID: String?
 
     private let statePath: URL
     private let projectsPath: URL
@@ -1000,6 +1006,24 @@ final class JingleModel: ObservableObject {
 
     func acknowledge(_ unit: WorkUnit) { runControl(["--acknowledge", unit.id], success: "已看") }
     func snooze(_ unit: WorkUnit) { runControl(["--snooze", unit.id, "--seconds", "600"], success: "10 分钟后再喊你") }
+
+    func resume(_ unit: WorkUnit) {
+        guard !unit.sessionID.isEmpty else { actionMessage = "无法回到会话：该 Work Unit 没有 session id。"; return }
+        routingUnitID = unit.id
+        let resumePath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks/jingle_resume.py").path
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let data = try runLocalPython(script: resumePath, arguments: ["--provider", unit.provider, "--session-id", unit.sessionID, "--cwd", unit.cwd])
+                let result = try JSONDecoder().decode(ResumeResult.self, from: data)
+                DispatchQueue.main.async { self.routingUnitID = nil; self.actionMessage = result.message }
+            } catch {
+                DispatchQueue.main.async {
+                    self.routingUnitID = nil
+                    self.actionMessage = "无法回到会话：\(error.localizedDescription)"
+                }
+            }
+        }
+    }
 
     private func runControl(_ arguments: [String], success: String) {
         let controlPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks/jingle_control.py").path
@@ -1084,9 +1108,10 @@ struct QueueItem: View {
                     Button("已看") { model.acknowledge(unit) }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                    Button("回到会话") { open(unit) }
+                    Button(model.routingUnitID == unit.id ? "正在打开" : "回到会话") { open(unit) }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
+                        .disabled(model.routingUnitID != nil)
                 }
             }
         }
@@ -1133,7 +1158,9 @@ struct CallView: View {
             HStack { Text("需要你处理").font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(.orange); Spacer(); Text("停了 \(unit.elapsed)").font(.caption).foregroundStyle(.secondary) }
             WorkRow(unit: unit, identity: model.identity(for: unit), compact: false)
             HStack(spacing: 8) {
-                Button("回到这个会话") { open(unit) }.buttonStyle(.borderedProminent)
+                Button(model.routingUnitID == unit.id ? "正在打开" : "回到这个会话") { open(unit) }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(model.routingUnitID != nil)
                 Button("10 分钟后再喊我") { snooze(unit) }.buttonStyle(.bordered)
             }
             if let message = model.actionMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
@@ -1182,7 +1209,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func open(_ unit: WorkUnit) {
-        model.actionMessage = "会话跳转将在下一阶段启用（\(unit.providerName)）。"
+        model.resume(unit)
     }
 
     private func snooze(_ unit: WorkUnit) {

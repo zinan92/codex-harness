@@ -9,6 +9,7 @@ lifecycle_path="$hook_dir/jingle_lifecycle.py"
 lifecycle_hook_path="$hook_dir/jingle_hook.py"
 summary_path="$hook_dir/jingle_summary.py"
 control_path="$hook_dir/jingle_control.py"
+resume_path="$hook_dir/jingle_resume.py"
 app_path="$HOME/Applications/Codex 通知设置.app"
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -29,7 +30,7 @@ if config_path.exists():
 PY
 
 rm -f "$notifier_path"
-rm -f "$lifecycle_path" "$lifecycle_hook_path" "$summary_path" "$control_path"
+rm -f "$lifecycle_path" "$lifecycle_hook_path" "$summary_path" "$control_path" "$resume_path"
 while IFS= read -r asset_name; do
   rm -f "$hook_dir/sounds/$asset_name"
 done < <(find "$repo_dir/assets/sounds" -maxdepth 1 -type f -exec basename {} \;)
