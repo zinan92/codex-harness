@@ -37,7 +37,7 @@ def developer_prompt(
         "story": story.as_json() if story else None,
         "previous_failure": previous_failure,
     }
-    return """You are the implementation worker in a fixed TokenRouter SOP. Implement exactly the assigned task in the current workspace. Respect the contract and, when present, implement only the supplied story. Do not change acceptance criteria, do not create a new plan, do not delegate, do not commit, push, delete data, or change permissions. Run focused checks that are useful to the implementation. The orchestrator will run the required machine gate after this call.
+    return """You are the implementation worker in a fixed TokenRouter SOP. Implement exactly the assigned task in the current workspace. Respect the contract and, when present, implement only the supplied story. Do not change acceptance criteria, do not create a new plan, do not delegate, push, delete data, or change permissions. Do not commit unless the assignment explicitly requires a scoped local commit so the repository's required machine gate can inspect a clean workspace. Run focused checks that are useful to the implementation. The orchestrator will run the required machine gate after this call.
 
 Assignment JSON (the `previous_failure` field is empty on the first attempt; when present, fix it before completing the assignment):
 """ + json.dumps(scope, ensure_ascii=False, indent=2)
