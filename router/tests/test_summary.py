@@ -100,6 +100,16 @@ class RouterSummaryTests(unittest.TestCase):
             second_output = args2[0]
             self.assertEqual(first_output, second_output)
             self.assertEqual(
+                json.dumps({
+                    "completed_runs": 1,
+                    "total_cost_cents": 5,
+                    "by_profile": {"complex": 1},
+                    "by_status": {"succeeded": 1},
+                    "invalid_receipts": {"invalid_structure": 0, "malformed_json": 0},
+                }, ensure_ascii=False, sort_keys=True),
+                first_output,
+            )
+            self.assertEqual(
                 {"completed_runs": 1, "total_cost_cents": 5, "by_profile": {"complex": 1},
                  "by_status": {"succeeded": 1}, "invalid_receipts": {"invalid_structure": 0, "malformed_json": 0}},
                 json.loads(first_output)
