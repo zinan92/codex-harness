@@ -1198,14 +1198,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.activate(ignoringOtherApps: true)
             popover.contentViewController = call(first)
             calledUnitIDs.insert(first.id)
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .maxY)
         }
     }
 
     @objc func toggle() {
         guard let button = item.button else { return }
         if popover.isShown { popover.performClose(nil) }
-        else { popover.contentViewController = settlement(); popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY) }
+        else { popover.contentViewController = settlement(); popover.show(relativeTo: button.bounds, of: button, preferredEdge: .maxY) }
     }
 
     private func open(_ unit: WorkUnit) {
