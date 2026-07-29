@@ -34,8 +34,13 @@ def handle(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
     if event_name in END_EVENTS:
         result = finish_work_unit(provider, payload, classify_outcome)
         if result.get("changed") and result.get("status") in {"blocked", "done"}:
+            from jingle_summary import first_line, last_assistant_text, launch
+            source = last_assistant_text(provider, str(result['unit'].get('transcript_path') or ''))
+            from jingle_lifecycle import attach_initial_summary
+            result['summary'] = attach_initial_summary(result['unit']['id'], first_line(source))
             accounting = collect_accounting(result["unit"])
             result["accounting"] = attach_accounting(result["unit"]["id"], accounting)
+            launch(result['unit']['id'], provider, str(result['unit'].get('transcript_path') or ''))
         return result
     return {"status": "ignored_event", "changed": False}
 

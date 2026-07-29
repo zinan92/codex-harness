@@ -168,6 +168,28 @@ def attach_accounting(unit_id: str, accounting: dict[str, Any]) -> dict[str, Any
     )
     return result
 
+def attach_summary(unit_id: str, summary: str | None) -> dict[str, Any]:
+    def operation(state: dict[str, Any]) -> dict[str, Any]:
+        unit = state['units'].get(unit_id)
+        if not isinstance(unit, dict): return {'status': 'ignored_summary', 'changed': False}
+        unit['summary'] = summary or unit.get('summary') or '处理中…'
+        unit['summary_status'] = 'ready' if summary else 'failed'
+        unit['summary_weak_marker'] = None if summary else '摘要生成失败'
+        return {'status': 'summary_patched', 'unit': unit, 'changed': True}
+    result = _with_lock(operation)
+    append_event({"status": result["status"], "unit_id": unit_id, "summary_status": "ready" if summary else "failed"})
+    return result
+
+def attach_initial_summary(unit_id: str, summary: str) -> dict[str, Any]:
+    def operation(state: dict[str, Any]) -> dict[str, Any]:
+        unit = state['units'].get(unit_id)
+        if not isinstance(unit, dict): return {'status': 'ignored_summary', 'changed': False}
+        unit['summary'], unit['summary_status'] = summary, 'pending'
+        return {'status': 'summary_initial', 'unit': unit, 'changed': True}
+    result = _with_lock(operation)
+    append_event({"status": result["status"], "unit_id": unit_id, "summary_status": "pending"})
+    return result
+
 
 def _unit_id(provider: str, session_id: str, turn_id: str, sequence: int) -> str:
     if provider == "codex" and turn_id:
