@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).parents[1]
@@ -18,6 +19,9 @@ assert SPEC and SPEC.loader
 lifecycle = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = lifecycle
 SPEC.loader.exec_module(lifecycle)
+sys.path.insert(0, str(ROOT / "src"))
+import jingle_workflow  # noqa: E402
+import codex_spoken_notify  # noqa: E402
 
 
 def classifier(message: str) -> tuple[str, str]:
@@ -177,6 +181,24 @@ class JingleLifecycleTests(unittest.TestCase):
         self.assertEqual(terminal["unit"]["id"], second["unit"]["id"])
         self.assertFalse(terminal["unit"]["attention_suppressed"])
         self.assertIn(first["unit"]["id"], lifecycle.load_state()["units"])
+
+    def test_explicit_workflow_blocked_marker_delivers_once_without_prompt_text(self) -> None:
+        lifecycle.start_workflow("codex", "session-1", "/tmp/project-a")
+        started = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="waiting"))
+        lifecycle.finish_work_unit(
+            "codex", self.payload("Stop", turn_id="waiting", last_assistant_message="Completed internal step."), classifier
+        )
+        terminal = lifecycle.finish_workflow("codex", "session-1", lifecycle.STATE_BLOCKED)
+        with mock.patch.object(jingle_workflow, "launch_worker") as notify:
+            jingle_workflow.deliver_blocked_workflow(terminal)
+            jingle_workflow.deliver_blocked_workflow({**terminal, "status": lifecycle.STATE_DONE})
+        notify.assert_called_once_with(
+            started["unit"]["turn_id"],
+            "session-1",
+            "project-a：workflow 需要决定",
+            "jingle_workflow",
+            codex_spoken_notify.STATUS_ATTENTION,
+        )
 
     def test_blocked_only_suppresses_done_but_not_blocked(self) -> None:
         done_start = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="done", notification_policy="blocked_only"))
