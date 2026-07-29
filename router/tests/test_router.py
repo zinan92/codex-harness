@@ -94,6 +94,39 @@ class RouterSchemaTests(unittest.TestCase):
         with self.assertRaises(SchemaError):
             Triage.from_response(payload)
 
+    def test_contract_rejects_duplicate_normalized_values(self):
+        duplicate_cases = {
+            "acceptance": ["Open menu", " Open menu ", "Confirm"],
+            "in_scope": ["feature area", "  feature area  "],
+            "out_scope": ["unrelated change", "   unrelated change"],
+            "forbidden": ["delete", " delete "],
+        }
+
+        for field, values in duplicate_cases.items():
+            with self.subTest(field=field):
+                payload = triage_payload("medium")
+                payload_dict = json.loads(payload["result"])
+                payload_dict["contract"][field] = values
+                payload["result"] = json.dumps(payload_dict)
+                with self.assertRaises(SchemaError):
+                    Triage.from_response(payload)
+
+    def test_contract_distinct_normalized_values_are_accepted(self):
+        payload = triage_payload("medium")
+        payload_dict = json.loads(payload["result"])
+        payload_dict["contract"]["acceptance"] = ["Open menu", " Perform Action ", "Verify result"]
+        payload_dict["contract"]["in_scope"] = [" requested feature", "targeted area"]
+        payload_dict["contract"]["out_scope"] = ["  unrelated paths", " other modules "]
+        payload_dict["contract"]["forbidden"] = [" delete", "modify tests "]
+        payload["result"] = json.dumps(payload_dict)
+
+        triage = Triage.from_response(payload)
+        self.assertIsNotNone(triage.contract)
+        self.assertEqual(("Open menu", "Perform Action", "Verify result"), triage.contract.acceptance)
+        self.assertEqual(("requested feature", "targeted area"), triage.contract.in_scope)
+        self.assertEqual(("unrelated paths", "other modules"), triage.contract.out_scope)
+        self.assertEqual(("delete", "modify tests"), triage.contract.forbidden)
+
 
 class RouterWorkflowTests(unittest.TestCase):
     def make_workflow(self, payload, gate_outcomes=(True,), verdicts=("pass",)):

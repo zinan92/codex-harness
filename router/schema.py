@@ -19,14 +19,24 @@ def _text(value: Any, field: str) -> str:
     return value.strip()
 
 
-def _strings(value: Any, field: str, minimum: int = 0, maximum: int | None = None) -> tuple[str, ...]:
+def _strings(
+    value: Any,
+    field: str,
+    minimum: int = 0,
+    maximum: int | None = None,
+    *,
+    unique: bool = False,
+) -> tuple[str, ...]:
     if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
         raise SchemaError("{} must be an array of non-empty strings".format(field))
     if len(value) < minimum or (maximum is not None and len(value) > maximum):
         raise SchemaError("{} must contain {}{} items".format(
             field, minimum, " to {}".format(maximum) if maximum is not None else " or more"
         ))
-    return tuple(item.strip() for item in value)
+    values = tuple(item.strip() for item in value)
+    if unique and len(set(values)) != len(values):
+        raise SchemaError("{} must not contain duplicate values".format(field))
+    return values
 
 
 def _object_from_response(payload: Any) -> dict[str, Any]:
@@ -62,10 +72,10 @@ class Contract:
             raise SchemaError("contract must be an object")
         return cls(
             outcome=_text(value.get("outcome"), "contract.outcome"),
-            acceptance=_strings(value.get("acceptance"), "contract.acceptance", 3, 7),
-            in_scope=_strings(value.get("in_scope"), "contract.in_scope", 1),
-            out_scope=_strings(value.get("out_scope", []), "contract.out_scope"),
-            forbidden=_strings(value.get("forbidden", []), "contract.forbidden"),
+            acceptance=_strings(value.get("acceptance"), "contract.acceptance", 3, 7, unique=True),
+            in_scope=_strings(value.get("in_scope"), "contract.in_scope", 1, unique=True),
+            out_scope=_strings(value.get("out_scope", []), "contract.out_scope", unique=True),
+            forbidden=_strings(value.get("forbidden", []), "contract.forbidden", unique=True),
         )
 
     def as_json(self) -> dict[str, object]:
