@@ -2,7 +2,9 @@
 
 ## 现在在哪里
 
-Codex Jingle 已有原生 macOS 菜单栏 app 和本地通知回调。方向 D 的前四阶段已完成：Codex/Claude 的 `UserPromptSubmit` 与结束 hook 可将主任务落为本地 `running` / `blocked` / `done` Work Unit，且子 agent 不会单独入队。结束时会单次读取历史 session，按 provider 正确公式写入不可变 token 账本；运行态只有时长、没有 token。卡片先同步显示裸首行/“处理中…”，再由后台 DeepSeek worker patch 摘要；摘要失败保留弱标记，绝不影响状态判断。菜单栏在零待办时仅显示灰点，完成项静默入队，卡住项只呼叫一张卡；清算视图按「卡住了 / 做完了 / 还在跑」展示，项目人格用本地 cwd 前缀映射并保留 CX/CL 徽章。状态文件与事件日志不保存 prompt 或 assistant 正文；实际启用全局 hook 仍须用户按文档显式配置并信任。
+Codex Jingle 已有原生 macOS 菜单栏 app 和本地通知回调。Codex/Claude 的 `UserPromptSubmit` 与结束 hook 可将主任务落为本地 `running` / `blocked` / `done` Work Unit，且子 agent 不会单独入队。结束时会单次读取历史 session，按 provider 正确公式写入不可变 token 账本；运行态只有时长、没有 token。卡片先同步显示裸首行/“处理中…”，再由后台 DeepSeek worker patch 摘要；摘要失败保留弱标记，绝不影响状态判断。
+
+菜单栏数字按项目级 `needs_attention` 计数：普通独立任务完成会入队、轻响且显示「已完成：」，卡住会入队、自动弹一张卡并语音显示「需要决定：」。`/go` workflow 内部完成与 `blocked_only` 项目完成保持静默；完成不会自动弹卡。项目别名合并、同 session 新状态覆盖旧状态和主任务/子 agent 抑制均已生效。升级前的历史账本不会被重新唤醒。面板为实色且只显示“该我了”的项目；同项目并行会话保留 provider 与开始时间。回到会话只尝试精确聚焦原 Terminal TTY，未验证时明确失败，不创建项目、会话、终端或 resume 命令。状态文件与事件日志不保存 prompt 或 assistant 正文。
 
 可比较的 mockup：
 
@@ -12,4 +14,4 @@ Codex Jingle 已有原生 macOS 菜单栏 app 和本地通知回调。方向 D �
 
 ## 下一步
 
-方向 D 已完成：真实 Codex/Claude hook 回合验证过两边的 `session_id` / `cwd` / `transcript_path` 与适配器一致（Codex 另有 `turn_id`、Claude 没有）。Story 1 已将呼叫/清算呈现改为屏幕内 clamp 的临时 panel，并以真实桌面 fixture 验收。Story 2 将会话返回改为启动时记录的终端 TTY 精确匹配：Terminal 会话只能命中原 TTY；没有该定位器的桌面会话安全降级为「未定位原会话」，Codex 打开项目、Claude 复制 resume 命令，绝不再把新 Terminal 或同 cwd 窗口误称为原会话。Story 3–4 已将注意力队列投影为显式项目别名组，并在同 session 新任务开始时 supersede 旧终态但保留账本；本机 36 条账本行只读回放为 20 条当前 session、5 个可行动项目组。Story 5–6 已提供显式 workflow marker 与 `task_terminal` / `workflow_terminal` / `blocked_only` 策略：真实 3-turn marker 回放在 finish 前 0 个可见项、finish 后恰好 1 个终态项。V2 项目级注意力路由已完成；下一步是持续用真实 hook 回合观察项目别名和 marker 的配置覆盖率。
+继续用真实 hook 回合观察项目别名覆盖率与 workflow marker 使用率；若出现未映射 cwd，先补显式 alias，再决定是否应合并。只有在用户明确反馈需要时，才重新调整「完成轻响 / 卡住语音」的双声音默认。
