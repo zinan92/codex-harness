@@ -40,6 +40,9 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertNotIn('Text("还在跑")', source)
         self.assertIn("panel.isOpaque = true", source)
         self.assertIn("panel.backgroundColor = .windowBackgroundColor", source)
+        self.assertIn("struct DecisionDetails", source)
+        self.assertNotIn("struct WorkRow", source)
+        self.assertIn('Button("已处理")', source)
         lifecycle = (ROOT / "src/jingle_lifecycle.py").read_text(encoding="utf-8")
         self.assertIn('existing["superseded_at"]', lifecycle)
 

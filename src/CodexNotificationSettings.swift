@@ -1129,39 +1129,27 @@ func runLocalPython(script: String, arguments: [String]) throws -> Data {
     return data
 }
 
-struct WorkRow: View {
+struct DecisionDetails: View {
     let unit: WorkUnit
     let identity: ProjectIdentity
-    let compact: Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            ZStack(alignment: .bottomTrailing) {
-                Text(identity.name.prefix(1).uppercased())
-                    .font(.system(size: compact ? 12 : 15, weight: .bold))
-                    .frame(width: compact ? 30 : 38, height: compact ? 30 : 38)
-                    .background(identity.color.opacity(0.22), in: Circle())
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 7) {
+                Text(identity.name)
+                    .font(.system(size: 16, weight: .semibold))
                 Text(unit.badge)
-                    .font(.system(size: 7, weight: .bold, design: .monospaced))
-                    .padding(.horizontal, 3).padding(.vertical, 2)
-                    .background(Color(nsColor: .windowBackgroundColor), in: Capsule())
-                    .overlay(Capsule().stroke(identity.color.opacity(0.7), lineWidth: 1))
-                    .offset(x: 3, y: 3)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(identity.color)
+                Spacer(minLength: 0)
             }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(unit.summary ?? "处理中…")
-                    .font(.system(size: compact ? 12 : 16, weight: .semibold))
-                    .lineLimit(compact ? 2 : 3)
-                Text("\(identity.name) · \(unit.providerName)\(unit.state == "blocked" ? " 需要决定" : "")")
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(.secondary)
-                if unit.state == "running" {
-                    Text("已跑 \(unit.elapsed)").font(.caption).foregroundStyle(.secondary)
-                } else {
-                    Text("本轮 \(unit.elapsed) · \(unit.tokenLabel)").font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            Spacer(minLength: 0)
+            Text(unit.summary ?? "需要你的决定")
+                .font(.system(size: 13.5, weight: .regular))
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("\(unit.providerName) · 已停 \(unit.elapsed)")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
         }
     }
 }
@@ -1173,23 +1161,20 @@ struct QueueItem: View {
     let acknowledge: (WorkUnit) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            WorkRow(unit: unit, identity: model.identity(for: unit), compact: true)
-            if unit.state != "running" {
-                HStack(spacing: 7) {
-                    Spacer()
-                    Button("已看") { acknowledge(unit) }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    Button(model.routingUnitID == unit.id ? "正在打开" : "回到会话") { open(unit) }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        .disabled(model.routingUnitID != nil)
-                }
+        VStack(alignment: .leading, spacing: 10) {
+            DecisionDetails(unit: unit, identity: model.identity(for: unit))
+            HStack(spacing: 8) {
+                Button("已处理") { acknowledge(unit) }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                Spacer()
+                Button(model.routingUnitID == unit.id ? "正在跳转" : "回到会话") { open(unit) }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(model.routingUnitID != nil)
             }
         }
-        .padding(10)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.top, 4)
     }
 }
 
@@ -1210,8 +1195,12 @@ struct AttentionGroupItem: View {
             }
             ForEach(group.units) { QueueItem(unit: $0, model: model, open: open, acknowledge: acknowledge) }
         }
-        .padding(9)
-        .background(group.identity.color.opacity(0.08), in: RoundedRectangle(cornerRadius: 11))
+        .padding(14)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+        }
     }
 }
 
@@ -1257,8 +1246,10 @@ struct CallView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                HStack { Text("需要你处理").font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(.orange); Spacer(); Text("停了 \(unit.elapsed)").font(.caption).foregroundStyle(.secondary) }
-                WorkRow(unit: unit, identity: model.identity(for: unit), compact: false)
+                Text("需要你决定")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.orange)
+                DecisionDetails(unit: unit, identity: model.identity(for: unit))
                 HStack(spacing: 8) {
                     Button(model.routingUnitID == unit.id ? "正在打开" : "回到这个会话") { open(unit) }
                         .buttonStyle(.borderedProminent)
