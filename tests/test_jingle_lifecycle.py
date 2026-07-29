@@ -103,6 +103,27 @@ class JingleLifecycleTests(unittest.TestCase):
         duplicate = lifecycle.finish_work_unit("codex", self.payload("Stop", last_assistant_message="Completed."), classifier)
         self.assertEqual(duplicate["status"], "duplicate_finish")
 
+    def test_acknowledge_hides_completed_unit_without_deleting_its_ledger(self) -> None:
+        started = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit"))
+        lifecycle.finish_work_unit(
+            "codex", self.payload("Stop", last_assistant_message="Completed."), classifier
+        )
+        acknowledged = lifecycle.acknowledge_unit(started["unit"]["id"])
+        self.assertEqual(acknowledged["status"], "acknowledged")
+        unit = lifecycle.load_state()["units"][started["unit"]["id"]]
+        self.assertIn("seen_at", unit)
+        self.assertEqual(unit["state"], lifecycle.STATE_DONE)
+
+    def test_snooze_only_applies_to_blocked_units_and_uses_bounded_duration(self) -> None:
+        started = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit"))
+        lifecycle.finish_work_unit(
+            "codex", self.payload("Stop", last_assistant_message="I need input."), classifier
+        )
+        snoozed = lifecycle.snooze_unit(started["unit"]["id"], 600)
+        self.assertEqual(snoozed["status"], "snoozed")
+        self.assertGreater(snoozed["unit"]["snoozed_until"], snoozed["unit"]["ended_at"])
+        self.assertEqual(lifecycle.snooze_unit(started["unit"]["id"], 0)["status"], "snoozed")
+
     def test_state_and_event_log_are_private_and_do_not_store_messages(self) -> None:
         secret = "never-write-this-assistant-message"
         lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", prompt="never-write-this-prompt"))
