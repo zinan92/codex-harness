@@ -24,16 +24,22 @@ Task:
 """ + task
 
 
-def developer_prompt(task: str, triage: Triage, story: Story | None) -> str:
+def developer_prompt(
+    task: str,
+    triage: Triage,
+    story: Story | None,
+    previous_failure: str = "",
+) -> str:
     scope = {
         "task": task,
         "profile": triage.profile,
         "contract": triage.contract.as_json() if triage.contract else None,
         "story": story.as_json() if story else None,
+        "previous_failure": previous_failure,
     }
     return """You are the implementation worker in a fixed TokenRouter SOP. Implement exactly the assigned task in the current workspace. Respect the contract and, when present, implement only the supplied story. Do not change acceptance criteria, do not create a new plan, do not delegate, do not commit, push, delete data, or change permissions. Run focused checks that are useful to the implementation. The orchestrator will run the required machine gate after this call.
 
-Assignment JSON:
+Assignment JSON (the `previous_failure` field is empty on the first attempt; when present, fix it before completing the assignment):
 """ + json.dumps(scope, ensure_ascii=False, indent=2)
 
 
@@ -44,7 +50,7 @@ def review_prompt(task: str, triage: Triage) -> str:
         "contract": triage.contract.as_json() if triage.contract else None,
         "stories": [story.as_json() for story in triage.stories],
     }
-    return """You are the final reviewer after a passing machine gate. Inspect the current workspace against the assignment below. Do not edit files. Return JSON only: {"verdict":"pass|fail","summary":"...","evidence":["..."]}. A failing review stops the run; do not suggest a more expensive model or a retry.
+    return """You are the final reviewer after a passing machine gate. Inspect the current workspace against the assignment below. Do not edit files. Return JSON only: {"verdict":"pass|fail","summary":"...","evidence":["..."]}. A failing review is recorded for the orchestrator's fixed, bounded retry policy; do not select a model, suggest a more expensive model, or alter that policy.
 
 Assignment JSON:
 """ + json.dumps(scope, ensure_ascii=False, indent=2)

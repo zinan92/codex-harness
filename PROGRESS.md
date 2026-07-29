@@ -1,5 +1,13 @@
 # Ledger progress
 
+## 2026-07-29 · TokenRouter retry + real-run evidence
+
+- Task 0 baseline: `bash scripts/check.sh` exited 0 (23 Python, 17 Node, ledger/snapshot invariants, clean tree, gitleaks); `python3 -m unittest discover router/tests -v` passed 5/5 before this change.
+- Goal: complete both missing original acceptance items in one delivery: fixed retry limits with feedback, then two real non-dry-run runs that exercise simple and medium SOPs.
+- Chain: implement constants/prompt/workflow retries → replace conflicting router tests and prove four retry cases → run B1/B2 with real Fable/Codex/Opus → record evidence and final protected-path check.
+- Maximum risk: a real model can make an out-of-scope edit or a real B2 can pass first try; use narrow router-only prompts, inspect each receipt, and report an untriggered retry honestly.
+- Task A complete: added `SIMPLE_MAX_ATTEMPTS = 2`, `MEDIUM_IMPL_MAX_ATTEMPTS = 2`, and `MEDIUM_REVIEW_MAX_ROUNDS = 2`; failures feed gate output or review summary/evidence into the next fixed-model developer prompt. Router tests are 9/9, including all four requested retry scenarios; commit `2276d60`.
+
 ## 2026-07-29 · TokenRouter v0 执行
 
 - Task 0 已执行：`codex --version` = 0.146.0，`claude --version` = 2.1.218，均满足最低版本。

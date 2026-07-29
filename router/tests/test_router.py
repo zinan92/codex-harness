@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from router.adapters import CallResult
+from router.config import DEVELOPER_MODEL
 from router.ledger import RunStore
 from router.schema import SchemaError, Triage
 from router.workflow import Workflow
@@ -41,9 +42,11 @@ class FakeTriage:
 class FakeDeveloper:
     def __init__(self):
         self.calls = 0
+        self.prompts = []
 
     def implement(self, prompt, workspace):
         self.calls += 1
+        self.prompts.append(prompt)
         return CallResult(True, "implemented", "", 0)
 
 
@@ -59,14 +62,17 @@ class FakeGate:
 
 
 class FakeReviewer:
-    def __init__(self, verdict="pass"):
+    def __init__(self, verdicts=("pass",)):
         self.calls = 0
-        self.verdict = verdict
+        self.verdicts = list(verdicts)
 
     def review(self, prompt, workspace):
         self.calls += 1
+        verdict = self.verdicts[self.calls - 1]
         payload = {"result": json.dumps({
-            "verdict": self.verdict, "summary": "reviewed", "evidence": ["machine gate passed"],
+            "verdict": verdict,
+            "summary": "review {}".format(self.calls),
+            "evidence": ["evidence {}".format(self.calls)],
         })}
         return CallResult(True, "", "", 0, payload, 0.02)
 
@@ -90,14 +96,15 @@ class RouterSchemaTests(unittest.TestCase):
 
 
 class RouterWorkflowTests(unittest.TestCase):
-    def make_workflow(self, payload, gate_outcomes=(True,), verdict="pass"):
+    def make_workflow(self, payload, gate_outcomes=(True,), verdicts=("pass",)):
         self.developer = FakeDeveloper()
         self.gate = FakeGate(gate_outcomes)
-        self.reviewer = FakeReviewer(verdict)
+        self.reviewer = FakeReviewer(verdicts)
         self.tempdir = tempfile.TemporaryDirectory()
+        self.store = RunStore(Path(self.tempdir.name))
         return Workflow(
             triage=FakeTriage(payload), developer=self.developer, gate=self.gate,
-            reviewer=self.reviewer, store=RunStore(Path(self.tempdir.name)),
+            reviewer=self.reviewer, store=self.store,
         )
 
     def tearDown(self):
@@ -105,27 +112,74 @@ class RouterWorkflowTests(unittest.TestCase):
             self.tempdir.cleanup()
 
     @patch("router.workflow._codex_snapshot", return_value={})
-    def test_medium_is_one_implementation_one_gate_one_review(self, _snapshot):
-        workflow = self.make_workflow(triage_payload("medium"))
-        result = workflow.run(task="change X to Y", workspace=Path.cwd())
+    def test_simple_first_attempt_passes_with_one_developer_call(self, _snapshot):
+        workflow = self.make_workflow(triage_payload("simple"))
+        result = workflow.run(task="change one wording", workspace=Path.cwd())
         self.assertEqual("succeeded", result.status)
         self.assertEqual(1, self.developer.calls)
         self.assertEqual(1, self.gate.calls)
         self.assertEqual(1, self.reviewer.calls)
 
     @patch("router.workflow._codex_snapshot", return_value={})
-    def test_complex_is_serial_and_stops_at_first_failed_gate(self, _snapshot):
-        workflow = self.make_workflow(
-            triage_payload("complex", [
-                {"title": "one", "demo_path": ["open", "act"]},
-                {"title": "two", "demo_path": ["open", "act"]},
-            ]), gate_outcomes=(True, False),
-        )
-        result = workflow.run(task="build a feature", workspace=Path.cwd())
+    def test_simple_two_failed_gates_stop_after_configured_attempts(self, _snapshot):
+        workflow = self.make_workflow(triage_payload("simple"), gate_outcomes=(False, False))
+        result = workflow.run(task="change one wording", workspace=Path.cwd())
         self.assertEqual("failed_machine_gate", result.status)
         self.assertEqual(2, self.developer.calls)
         self.assertEqual(2, self.gate.calls)
         self.assertEqual(0, self.reviewer.calls)
+        self.assertIn("gate error", self.developer.prompts[1])
+        events = json.loads((self.store.runs / "{}.json".format(result.run_id)).read_text())["events"]
+        developer_models = [event["model"] for event in events if event["kind"] == "model_call"
+                            and event["role"] == "developer"]
+        self.assertEqual([DEVELOPER_MODEL, DEVELOPER_MODEL], developer_models)
+
+    @patch("router.workflow._codex_snapshot", return_value={})
+    def test_medium_review_rejection_reimplements_with_review_feedback(self, _snapshot):
+        workflow = self.make_workflow(
+            triage_payload("medium"), gate_outcomes=(True, True), verdicts=("fail", "pass")
+        )
+        result = workflow.run(task="change X to Y", workspace=Path.cwd())
+        self.assertEqual("succeeded", result.status)
+        self.assertEqual(2, self.developer.calls)
+        self.assertEqual(2, self.gate.calls)
+        self.assertEqual(2, self.reviewer.calls)
+        self.assertIn("review 1", self.developer.prompts[1])
+        self.assertIn("evidence 1", self.developer.prompts[1])
+
+    @patch("router.workflow._codex_snapshot", return_value={})
+    def test_medium_two_review_rejections_stop_after_two_developer_calls(self, _snapshot):
+        workflow = self.make_workflow(
+            triage_payload("medium"), gate_outcomes=(True, True), verdicts=("fail", "fail")
+        )
+        result = workflow.run(task="change X to Y", workspace=Path.cwd())
+        self.assertEqual("failed_review", result.status)
+        self.assertEqual(2, self.developer.calls)
+        self.assertEqual(2, self.gate.calls)
+        self.assertEqual(2, self.reviewer.calls)
+
+    @patch("router.workflow._codex_snapshot", return_value={})
+    def test_medium_gate_failure_retries_with_gate_feedback(self, _snapshot):
+        workflow = self.make_workflow(triage_payload("medium"), gate_outcomes=(False, True))
+        result = workflow.run(task="change X to Y", workspace=Path.cwd())
+        self.assertEqual("succeeded", result.status)
+        self.assertEqual(2, self.developer.calls)
+        self.assertIn("gate error", self.developer.prompts[1])
+
+    @patch("router.workflow._codex_snapshot", return_value={})
+    def test_complex_retries_failed_story_gate_before_next_story(self, _snapshot):
+        workflow = self.make_workflow(
+            triage_payload("complex", [
+                {"title": "one", "demo_path": ["open", "act"]},
+                {"title": "two", "demo_path": ["open", "act"]},
+            ]), gate_outcomes=(True, False, True),
+        )
+        result = workflow.run(task="build a feature", workspace=Path.cwd())
+        self.assertEqual("succeeded", result.status)
+        self.assertEqual(3, self.developer.calls)
+        self.assertEqual(3, self.gate.calls)
+        self.assertEqual(1, self.reviewer.calls)
+        self.assertIn("gate error", self.developer.prompts[2])
 
     @patch("router.workflow._codex_snapshot", return_value={})
     def test_dry_run_stops_after_triage(self, _snapshot):

@@ -25,11 +25,11 @@ python3 -m router "把 X 改成 Y" --workspace /要修改的项目 --dry-run
 
 v0 的判断权只在 `claude-fable-5`：它把任务分为 `simple`、`medium`、`complex`，选择对应的固定 SOP，**不会**估算成本、读取历史成功率或按金额选模型。
 
-- `simple`：Codex 单次实现 → `bash scripts/check.sh` → Opus 审核。
-- `medium`：Fable 写合同 → Codex 单次实现 → 机器闸 → Opus 审核。
-- `complex`：Fable 写合同和可演示 stories → Codex 按 story 串行实现、每条后跑机器闸 → Opus 审核。
+- `simple`：Codex 实现／机器闸（最多 2 次）→ Opus 审核。
+- `medium`：Fable 写合同 → Codex 实现／机器闸（每轮最多 2 次）→ Opus 审核（最多 2 轮）。机器闸失败和审核打回都会把原因带进下一次实现。
+- `complex`：Fable 写合同和可演示 stories → Codex 按 story 串行实现（每条复用中等任务的 2 次实现／机器闸上限）→ Opus 审核。
 
-实现模型固定为 `gpt-5.3-codex-spark`，审核模型固定为 `opus`。任何模型调用、机器闸或审核失败都会立即停止并在 `router/runs/` 写明原因；**没有**自动重试、贵模型升级、并发或 Telegram 告警。Fable 与 Opus 的 CLI 回执成本、以及 Codex 调用前后从既有只读 collector 得到的增量成本，写入本地 append-only `router/ledger.jsonl`。两者均为运行数据，不进 Git；因此 `--dry-run` 仍会留下路由收据，但绝不修改目标工作区。
+实现模型固定为 `gpt-5.3-codex-spark`，审核模型固定为 `opus`；重试也绝不换更贵的模型。到达上述硬上限、任何模型调用失败或审核仍打回时，流程停止并在 `router/runs/` 写明原因。没有并发或 Telegram 告警。Fable 与 Opus 的 CLI 回执成本、以及 Codex 调用前后从既有只读 collector 得到的增量成本，写入本地 append-only `router/ledger.jsonl`。两者均为运行数据，不进 Git；因此 `--dry-run` 仍会留下路由收据，但绝不修改目标工作区。
 
 仓库边界不允许安装同名的全局裸 `tr` 命令（系统已有该文本转换命令）；本轮安全入口是上面的 `python3 -m router`。裸命令的安装决策已记录在 `BLOCKED.md`。
 

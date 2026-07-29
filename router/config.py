@@ -10,6 +10,11 @@ DEVELOPER_MODEL = "gpt-5.3-codex-spark"
 REVIEWER_MODEL = "opus"
 MACHINE_GATE = ("bash", "scripts/check.sh")
 
+# Attempt/round ceilings are contractual: retries never escalate to another model.
+SIMPLE_MAX_ATTEMPTS = 2
+MEDIUM_IMPL_MAX_ATTEMPTS = 2
+MEDIUM_REVIEW_MAX_ROUNDS = 2
+
 
 @dataclass(frozen=True)
 class Sop:
