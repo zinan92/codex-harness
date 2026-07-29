@@ -12,4 +12,4 @@ Codex Jingle 已有原生 macOS 设置 Widget 和本地通知回调。方向 D �
 
 ## 下一步
 
-UI 前先完成一次真实 Codex/Claude hook 回合验证，确认实际 payload 字段与本地适配器一致；通过后实现菜单栏呼叫卡与三通道清算视图。
+真实 Codex/Claude hook 回合已验证并已恢复临时配置：两边的 `session_id` / `cwd` / `transcript_path` 都与适配器一致，Codex 另有 `turn_id`、Claude 没有。下一阶段实现菜单栏呼叫卡与三通道清算视图。
