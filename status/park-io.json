@@ -1,0 +1,41 @@
+{
+ "project": "park-io",
+ "assessed_at": "2026-07-29",
+ "assessor": "claude-sonnet-5（workbench 会话）",
+ "sources": [
+  "README.md（顶层结构表 + 硬规则）",
+  "AGENTS.md（harness bootstrap，启动读取顺序）",
+  "001_agent-os/roles/README.md / workflows/README.md / skills/README.md",
+  "001_agent-os/decision-log.md",
+  "skills-lock.json",
+  "002_个人收藏/（本会话复核 ls 为空）",
+  "006_ai daily newsletter/ 与 007_finance daily newsletter/（文件名列表，最新到 2026-07-29）",
+  "008_codex session insights and decision logs/_daily-closeout.md 及各 daily-update.md（本会话复核 mtime 停在 2026-07-22 00:05）",
+  "_inbox/health-alerts.md（2026-07-28、2026-07-29 两条记录）",
+  "git log --oneline（本会话复核 8 个 commit）、git status --short（本会话复核 380 行改动）、git remote -v（空）"
+ ],
+ "note_on_shape": "这不是软件项目，是 Park 的第二大脑 vault（README/AGENTS.md 自述：identity + Single Source of Truth）。2026-07-19 前后经历一次『split』：内容生产相关的角色/workflow/skill 整体迁往另一个『MBP brain vault』（本次评估范围外，未读取，无法核实其现状）。park-io 现在留下的是身份骨架、_inbox 抓取管道、006/007 newsletter 产出、002 收藏归档和 008 跨项目治理日志。模块按『vault 各功能区的健康度』拆，不按代码。",
+ "modules": [
+  {"name": "身份与结构文档一致性", "pct": 55, "light": "yellow", "verdict": "文档滞后",
+   "note": "README.md 顶层结构表列出 000_park-os/003_park原始输出/004_内容加工中/005_自媒体发出内容/009_product-os 共5个目录；仓库根目录实测仅有 001/002/006/007/008 五个编号目录，前述5个全部不存在；AGENTS.md『启动读取顺序』第2步仍指向不存在的 000_park-os/PARK-OS.md"},
+  {"name": "原始信息抓取管道（_inbox/raw）", "pct": 70, "light": "green", "verdict": "抓取持续",
+   "note": "_inbox/raw/ 目录 2026-07-20~2026-07-29 共10天里9天有新文件夹（仅07-26缺）；抓取本身未停，问题在下游信源健康"},
+  {"name": "信源健康与故障处理", "pct": 40, "light": "yellow", "verdict": "带病运行",
+   "note": "_inbox/health-alerts.md 2026-07-29 09:30 记录12项未解问题：公众号登录态连续多日失效、缺 PARKIO_DEEPSEEK LLM key 导致3条播客转录失败、7个信源持续502；07-28记录还含『今日简报未发送』；同类问题在07-28、07-29两次快照里重复出现，未见修复动作"},
+  {"name": "Newsletter 产出与分发（006/007）", "pct": 45, "light": "yellow", "verdict": "断更后恢复",
+   "note": "006_ai daily newsletter/ 文件列表显示 07-07~07-21基本连续，07-22~07-28七天无新文件，07-29恢复；007_finance daily newsletter/ 同样07-19/07-20缺失且07-22~07-27六天无新文件，07-28/07-29恢复；两目录最近一次被git提交都停在 e8c2fb5(07-18)，此后产出全部是未提交状态"},
+  {"name": "飞书个人收藏归档（002）", "pct": 5, "light": "red", "verdict": "空目录",
+   "note": "002_个人收藏/ 本会话复核为空目录（0文件），与README定义『Park发到飞书好文收藏的外部内容，飞书是唯一入口』的角色不符；入口是否还接通依赖飞书侧状态，本次未查证，只能确认本地落地为0"},
+  {"name": "Agent OS 治理骨架（001）", "pct": 35, "light": "red", "verdict": "骨架单薄",
+   "note": "001_agent-os/roles/README.md 显示post-split后仅剩Wendy/Mark两个路由角色；001_agent-os/skills/README.md原文『（内容类 skill 已随内容线迁往 MBP；impeccable 以全局安装为准，vault 副本已删）』，当前skill表为空——但根目录 skills-lock.json 仍锁定 isjiamu/gzh-design-skill 一条记录，文档与实际未同步；workflows/README.md仅剩3个非内容类入口"},
+  {"name": "每日闭环治理自动化（008）", "pct": 20, "light": "red", "verdict": "自动化停跑",
+   "note": "_daily-closeout.md 及各 daily-update.md 的mtime本会话复核确认全部停在2026-07-22 00:04-00:05；文件内最新一条记录标题为『今日闭环｜2026-07-21』，距assessed_at(07-29)约7天未更新；该自动化在07-15~07-21的记录里自称是『Agent OS日闭环能力上线』的旗舰功能。本项为全局瓶颈：停跑之后其余各项『现状』只能靠人工巡检重新拼出，且与仓库卫生问题同源——治理层先停，账目自然跟着脏"},
+  {"name": "版本化与仓库卫生", "pct": 15, "light": "red", "verdict": "工作树严重脏",
+   "note": "git status --short 本会话复核380行改动（删除+未跟踪+修改混杂）；git log --oneline总共只有8个commit，最近一条(07-28)只改了一处CLAUDE.md全局指针，不含任何006/007/008当日产出；git remote -v为空，本地无任何远程备份，与README自称的『Single Source of Truth』定位不符"}
+ ],
+ "tracking": {
+  "now": "vault在2026-07-19前后完成一次『split』：内容生产相关角色/workflow/skill整体迁往另一个『MBP brain vault』（本次未读取，无法核实其现状），park-io保留身份骨架（README/AGENTS.md）、_inbox抓取管道（跑着）、006/007 newsletter产出（断更后恢复）、002收藏归档（空）和008跨项目治理日志（已停跑约7天）。工作树有380项未提交改动",
+  "working_on": "未查证——最近一条有意义的提交只是把CLAUDE.md全局指针改向~/work/park-operating-system/manual.md（该仓库本次未读取），仓库内看不到当前主攻内容；_inbox/health-alerts.md（07-28、07-29两条快照）显示的12项抓取/登录故障，是目前唯一可确认『有自动化在跑、有人在看告警』的信号",
+  "next": "三个可核实的具体缺口：① 008 daily-closeout自动化为何在07-22后停跑需要排查（约7天未动，是本项目最大瓶颈）；② 002_个人收藏为空目录，需确认飞书收藏入口是否还接通；③ 380项未提交改动（尤其006/007/008每日产出）需要决定纳入版本控制还是保持只读快照式仓库。另外health-alerts.md里连续两日重复出现的PARKIO_DEEPSEEK key缺失和公众号登录失效，是最容易先修的两项"
+ }
+}

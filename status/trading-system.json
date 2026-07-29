@@ -1,0 +1,42 @@
+{
+ "project": "trading-system",
+ "assessed_at": "2026-07-29",
+ "assessor": "claude-sonnet-5（workbench 会话）",
+ "sources": [
+  "README.md（本地 checkout + origin/main，两者一致，末次改动 2026-07-08，本会话复核确认）",
+  "ROADMAP.md（本地 + origin/main 一致，末次改动 2026-07-01，本会话复核确认）",
+  "REGISTRY.md（origin/main 2026-07-29 版：『权威实施基线 implementation-plan-2026-07-24.md，完整产品 65% 评估』，本会话复核确认原文）",
+  "docs/plans/2026-07-18-a7-architecture-fitness-audit.md（架构评分 83%；self-repair 58%、self-evolution 62%；全量回归 1741 passed/7 skipped）",
+  "git show origin/main:docs/plans/implementation-plan-2026-07-24.md",
+  "decision-log.md（本地尾部 + origin/main 尾部，累计 223 条日期化决策记录）",
+  "git log --all --since='30 days ago'（本会话复核 621 commits，与 agent 一致；作者 Wendy/zinan92/park-ai-bot/parkzz/trading-orchestrator，均为同一人不同环境身份）",
+  "git branch --show-current / git rev-list HEAD..origin/main（本会话复核：当前签出 codex/issue-139-registry-smart-fill，落后 origin/main 262 commits，非 main 分支）",
+  "docs/plans/ 目录列表（18 个文件，均落款 2026-07-18）",
+  "tests/ 目录抽查（test_risk_port.py 24 用例、test_grid_sizing.py 28 用例）"
+ ],
+ "modules": [
+  {"name": "架构（ports-and-adapters 重构）", "pct": 82, "light": "green", "verdict": "重构收口",
+   "note": "docs/plans/2026-07-18-a7-architecture-fitness-audit.md：19 节重构自评 83%（非满分，残留耦合已点名），全量回归 1741 passed/7 skipped；implementation-plan-2026-07-24.md 把该重构列为已完成前提"},
+  {"name": "Grid 网格生命周期与对账", "pct": 68, "light": "green", "verdict": "已有真实闭环",
+   "note": "REGISTRY.md(origin/main 07-29)：当日周期 38/38 委托、1 真实 entry fill，execution reconciliation=ok、canonical accounting=pass；implementation-plan 仍把『重复真实 Paper 生命周期证据』列为剩余项，非收口"},
+  {"name": "DCA 分批建仓", "pct": 55, "light": "yellow", "verdict": "首轮已闭环",
+   "note": "REGISTRY.md 07-24 记录：#226 attended Paper DCA 两次加仓后聚合 TP 于 2026-07-24T06:20:00Z 自然成交，lifecycle=target_closed、reconciliation=ok。implementation-plan-2026-07-24.md 仍要求更多真实生命周期证据，当前只有这一轮"},
+  {"name": "策略进化 / Shadow 推广", "pct": 35, "light": "yellow", "verdict": "样本不足",
+   "note": "REGISTRY.md：#305/#306 已部署 5 组同窗口 What-if Shadow，推广门槛需 ≥100 笔可比已平仓交易+两个完整周期才 proposal_ready；当前累计真实成交远低于 100 笔门槛（07-29 周期仅 1 笔真实 fill），未查证是否已有策略达标"},
+  {"name": "Cloud Paper 部署与运维", "pct": 58, "light": "yellow", "verdict": "云端未收口",
+   "note": "REGISTRY.md 07-29：Cloud M1-M6a 均已实现（Linux preflight、systemd、每日自复盘、离线恢复包、Cloudflare Access 网关）；#403 完成 sole Alibaba Cloud owner 切换，4 常驻服务+5 timers active。但 cloud-health 因 07-28 自复盘不完整显示 degraded，首个完整北京自然日报告要 2026-07-30 01:10 后才能验收，M6b 被动主机仍 in progress"},
+  {"name": "Dashboard / 前端体验", "pct": 60, "light": "yellow", "verdict": "主路径可用",
+   "note": "implementation-plan-2026-07-24.md：主 UI 路径与聚焦浏览器覆盖已具备，剩余『最终人工验收+仅回归的图表审查』；REGISTRY 07-29 仍在合并前端/调度展示细节修复，未查证是否已跑完人工验收"},
+  {"name": "运行时可信与自愈", "pct": 55, "light": "yellow", "verdict": "边界收窄中",
+   "note": "implementation-plan-2026-07-24.md：trusted-market gate、tick health、故障分级已有，剩余『one operational truth + complete recovery diagnosis』；self-repair 明确订单/仓位/参数/风险/真钱一律 requires_human_confirmation，尚无执行器"},
+  {"name": "Live 就绪（真钱路径）", "pct": 15, "light": "red", "verdict": "决策门",
+   "note": "implementation-plan-2026-07-24.md §1：真钱路径明确排除在本计划外，仍需 live-readiness/attended-canary/Park 本人 park-approved 三道闸；未查证 naked-position mainnet attended canary 是否已通过"},
+  {"name": "顶层文档与实际状态一致性", "pct": 20, "light": "red", "verdict": "顶层文档失真",
+   "note": "README.md/ROADMAP.md 末次改动分别为 2026-07-08/2026-07-01，内容仍是旧版『Trading Orchestrator』Gold-first MVP 策略评估平台叙事，与 REGISTRY.md（持续更新到 2026-07-29）描述的网格/DCA/Cloud Paper 系统完全脱节——新读者从 README 无法得知真实产品形态"}
+ ],
+ "tracking": {
+  "now": "Cloud Paper 24/7 运行中：当前周期（中性网格）38/38 委托、1 真实 entry fill，execution reconciliation=ok、canonical accounting=pass（REGISTRY.md origin/main 07-29）；Cloud soak 尚未终态通过，等 2026-07-30 01:10 后验收首个完整北京自然日报告——该时间点正是明天凌晨。本地 checkout 分支落后 origin/main 262 commits，不是 main。本机 AI 花费账本只记到 $18，与近 30 天 621 次提交（多身份 Wendy/park-ai-bot/parkzz/zinan92/trading-orchestrator，实为同一人不同环境，本人已确认）的活跃度明显不匹配——不能用账本花费判断这个项目的真实投入",
+  "working_on": "把周期决策从『plan active』改为强制 5 分钟内进入 executed/blocked/adopted_existing 终态，并把 blocked 机器码翻译为人类可读原因+下一步（decision-log.md origin/main 07-29 词条）；Cloud M6b 被动主机 provisioning 与首个完整自然日 soak 观测持续进行",
+  "next": "2026-07-30 01:10 后验收 report_date=2026-07-29 的终态日报+自复盘，连同 tick coverage/备份/dead-man/owner epoch 一并终态验收；Grid/DCA 继续积累真实生命周期与对账样本；Shadow 达到 ≥100 笔可比交易门槛后才进入人工推广评审；真钱路径仍需完成 naked-position mainnet attended canary，且任何真钱动作仍需 Park 本人 park-approved"
+ }
+}

@@ -1,0 +1,43 @@
+{
+ "project": "agent 自管理",
+ "assessed_at": "2026-07-29",
+ "assessor": "claude-sonnet-5（workbench 会话）",
+ "sources": [
+  "README.md（/Users/wendy/Documents/agent自管理）",
+  "AGENTS.md",
+  "CHANGELOG.md",
+  "decision-log.md（含 2026-07-22 起未提交的工作区改动）",
+  "git log --since='30 days ago' / git log -20（本地仓库）",
+  "git status / git branch -a / git branch -vv / git stash list / git worktree list",
+  "loop-engine/state.json",
+  "loop-engine/registry.json",
+  "loop-engine/pm-reviews、evening-scorecards、logs/board-claimer-state.json（mtime）",
+  "python3 -m pytest loop-engine/tests -q（119 passed，本会话复核仍为 119 passed）",
+  "git fetch origin && git log main..origin/main（本会话复核为 7 个提交，非 agent 报告的 6，取本会话复核值）",
+  "origin/main:REGISTRY.md（2026-07-22）",
+  "origin/main:decision-log.md（对比本地未提交内容）",
+  "gh issue list --state all（本会话复核 #13/#14/#15 均 OPEN）",
+  "launchctl list（查未见对应 launchd job）"
+ ],
+ "modules": [
+  {"name": "核心 loop 引擎（planner→worker→reviewer→auto-merge）", "pct": 60, "light": "yellow", "verdict": "机制通,实跑停",
+   "note": "loop-engine/tests 119 项本地跑通;但 loop-engine/state.json 显示唯一试点 tokenpulse status=paused,最后一轮 run 2026-06-15,waiting_for_human(untrusted_verification)至今未处理"},
+  {"name": "安全闸与沙箱（sandbox-exec/secret-scan/risk gates）", "pct": 75, "light": "green", "verdict": "文档完备",
+   "note": "loop-engine/tests/test_safety.py 随 119 项测试通过;AGENTS.md 详列 fail-closed 权限钳制、risk_model、blocked_categories,与 registry.json 的 auto_approval.blocked_categories 一致"},
+  {"name": "Portfolio 组合管理与晨/晚复盘", "pct": 30, "light": "red", "verdict": "建好后停摆",
+   "note": "loop-engine/pm-reviews 最新文件 latest.md mtime 2026-06-22;loop-engine/evening-scorecards 最新 mtime 2026-06-16;此后逾一个月无新的 morning/evening 产出"},
+  {"name": "双机自治流水线（Mini claimer + MBP merger,下一代架构）", "pct": 45, "light": "yellow", "verdict": "卡在 #15",
+   "note": "origin/main:REGISTRY.md(2026-07-22)记录 claimer v1 已上线、park-approved override 已合并(issue #6/#7/#8/#10 CLOSED);但后续 issue #15(新法适配)/#13(返工回路)/#14(红线CI门)均 OPEN,创建后无任何更新——8 天无推进"},
+  {"name": "Agent OS 日报/Daily Closeout（CEO-PM 摘要）", "pct": 45, "light": "yellow", "verdict": "迭代多,实跑未查证",
+   "note": "decision-log.md 在 2026-07-08~07-09 连续 5 次迭代(gate evaluator/LLM summary review/PM fallback);scripts/codex_daily_closeout.py 等脚本存在;但产出写向 Obsidian vault 且 launchctl list 未见对应定时任务,是否每日真实运行未查证"},
+  {"name": "多 coding-agent provider 支持（Codex + Claude Code）", "pct": 70, "light": "green", "verdict": "已实现且测试",
+   "note": "loop-engine/registry.json 的 agents.{planner|worker|reviewer}.provider 字段与 AGENTS.md 描述一致;loop-engine/tests 覆盖 Claude permission_mode 拒绝逻辑,随 119 项通过"},
+  {"name": "仓库自身卫生（工作树/分支/提交状态）", "pct": 15, "light": "red", "verdict": "自己失管",
+   "note": "git status 显示当前签出在已合并且远端已删除的 codex/operating-system-sync 分支上,本地 main 落后 origin/main 7 个提交;decision-log.md 有改动自 2026-07-22 起未提交且未出现在 origin/main 任何历史中;git stash list 有 3 个陈旧 stash(最早 2026-06-18);.tmp/ 为未纳管的孤立目录"}
+ ],
+ "tracking": {
+  "now": "本地工作树停在一个已合并、远端分支已删除的 commit 上(codex/operating-system-sync),本地 main 落后 origin/main 7 个提交;origin/main 侧最新为 2026-07-22 的『registry: init』;核心 loop-engine 单测 119/119 通过,但唯一真实试点项目 tokenpulse 仍是 paused 状态,停在 2026-06-15",
+  "working_on": "按 origin/main:REGISTRY.md(2026-07-22)『现在在哪里』:双侧执行框架——Mini 端 claimer(领活-干活-自合并)v1 已上线(60s 轮询 Dev Queue、fail-closed 闸门、park-approved 标签校验);但其后续任务 issue #15/#13/#14 均 OPEN 且创建后无任何评论或关联提交,看不出有人在实际推进",
+  "next": "按 origin/main:REGISTRY.md 顺序:loop#15 新法适配(机器段可选化)→ #13 打回返工回路 → #14 红线路径 CI 门 → launchd KeepAlive 落地;此外仓库卫生待处理:同步/切回 main、提交或丢弃 decision-log.md 的未提交改动、清理 3 个陈旧 stash 与 .tmp/ 目录、决定 tokenpulse 试点的 waiting_for_human 状态"
+ }
+}

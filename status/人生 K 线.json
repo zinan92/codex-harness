@@ -1,0 +1,41 @@
+{
+ "project": "人生 K 线",
+ "assessed_at": "2026-07-29",
+ "assessor": "claude-sonnet-5（workbench 会话）",
+ "sources": [
+  "本地仓库 /Users/wendy/Documents/人生k线（本地 main 停在 351de01=2026-07-20，本会话复核落后 origin/main 14 commit）",
+  "git show origin/main:README.md / REGISTRY.md / decision-log.md / PRD-next-five-milestones.md / PRD-life-kline-long-horizon.md / docs/three-milestone-plan.md",
+  "git show origin/main:research/m11/readiness-checklist.md / readiness.synthetic.json",
+  "git ls-tree -r origin/main --name-only（src/ tests/ research/ 目录结构）",
+  "git log --follow --diff-filter=A（确认 evidence-chat.ts / famous/matching.ts / famous/people.ts / narrative/deep-timeline-report.ts / quality/report-quality.ts 均于 351de01 一次性 import，非独立 M4-M8 提交）",
+  "gh api repos/zinan92/life-kline/actions/runs（本会话复核 total_count=3）",
+  "gh repo view zinan92/life-kline（本会话复核 pushedAt=2026-07-22T08:47:55Z）",
+  "gh issue list / gh pr list zinan92/life-kline",
+  "/Users/wendy/tokenrouter/ledger.json 中『人生 K 线』条目（本会话复核 cost_cents=30163，active_days=5，first_day=2026-07-16，last_day=2026-07-25，与 agent 报告一致）"
+ ],
+ "modules": [
+  {"name": "三体系排盘引擎 + K线生成", "pct": 85, "light": "green", "verdict": "核心已成熟",
+   "note": "README『当前能力』列出 tyme4ts 八字/iztro 紫微/astronomy-engine 西占独立计算、1201/401/101 根月季年K线；src/engines/{bazi,ziwei,western}.ts、src/kline/build.ts 存在；tests/kline-shape.test.ts、tests/western.test.ts 覆盖；M9 基线 CI（commit 38ed1189，2026-07-22T06:26:18Z）成功"},
+  {"name": "深度报告叙事引擎（M4/M5）", "pct": 60, "light": "yellow", "verdict": "建成未验收",
+   "note": "src/narrative/deep-timeline-report.ts、src/quality/report-quality.ts 随 351de01『import life-kline project』一次性引入，非独立提交；PRD-next-five-milestones.md 定义的验收标准（≥2500字、claims 带 evidence_ids、跨用户零泄漏）在 decision-log.md 中找不到对应的 M4/M5 完成小节，未查证是否真达标"},
+  {"name": "证据追问对话（M6）", "pct": 55, "light": "yellow", "verdict": "建成未验收",
+   "note": "src/conversation/evidence-chat.ts 存在（同批 import）；decision-log.md 无 M6 专项验收记录；未查证覆盖率与回答边界是否符合 PRD『只读取不可变 artifact』要求"},
+  {"name": "伟人K线相似度匹配（M7）", "pct": 50, "light": "yellow", "verdict": "存在未测试",
+   "note": "src/famous/matching.ts、src/famous/people.ts、data/generated/famous-kline-corpus.json 存在；tests/ 目录 15 个测试文件中无 famous 专项测试；decision-log 无 M7 验收小节"},
+  {"name": "邀请制 Preview 部署与安全（M8/M10/M10.1）", "pct": 80, "light": "green", "verdict": "真机已验收",
+   "note": "decision-log.md 2026-07-21/22 条目：Render Singapore Free Preview 上线（life-kline-preview.onrender.com，基线 commit c60ce63），owner 隔离 A/B 200/404、导出/删除通过、限流与 fail-closed 生效；2026-07-22 Park 本人确认『实体手机验收成功』"},
+  {"name": "研究协议与合规门禁（M11.1–M11.4）", "pct": 70, "light": "yellow", "verdict": "机制建全",
+   "note": "REGISTRY.md『现在在哪里』确认 M11.1-M11.4（知情同意、无诱导主持、去标识记分卡、招募配额+readiness gate）全部合并；但 research/m11/readiness-checklist.md 9 项验收框全部为空，readiness.synthetic.json 仅是 mode=synthetic 的模板值，机制已建但从未在真实条件下跑通"},
+  {"name": "真实用户核心价值验证（M12·12人研究）", "pct": 5, "light": "red", "verdict": "未动·瓶颈",
+   "note": "REGISTRY.md 明确写『合成就绪验证通过（protocolReady=true），但正式研究仍 formalReady=false：尚未填写真实冻结 commit/deployment、未完成两场真实 dry-run、未执行 12 人研究』；research/m11/readiness-checklist.md 全部未勾选。产品侧全部就绪但唯一能验证『它真的懂我』北极星指标（Meaningful Insight Rate）的真人研究至今零样本，是当前最大产品瓶颈"},
+  {"name": "CI 与持续验证覆盖", "pct": 45, "light": "yellow", "verdict": "证据滞后",
+   "note": "gh api 返回 total_count=3，最新一次成功于 2026-07-22T06:26:18Z（commit 38ed1189）；此后 main 又有 10 个 commit（M10.1、M11-M30 路线图、M11.1-M11.4）从未触发过 CI，decision-log 中『npm run verify 通过』均为自述文字，无对应 CI run 佐证最新代码状态"},
+  {"name": "隐私生辰数据 · Git 历史清理", "pct": 25, "light": "red", "verdict": "历史未清",
+   "note": "README.md『已知历史风险』段落自述：『早期私有提交包含个人原型资料』『不可逆操作,只准先盘点后经Park确认,严禁进自动队列』；REGISTRY.md『下一步』仍把 Issue #4（历史清理）列为待办第二项，尚未开始盘点，仓库依赖 isPrivate=true 兜底而非结构性清除"}
+ ],
+ "tracking": {
+  "now": "本地工作目录的 main 分支停在 2026-07-20 的 351de01，落后 origin/main 14 个 commit；origin/main 最新为 2026-07-22 16:47 的 1f91e07，内容是 M11.4 研究就绪门。GitHub 仓库自 2026-07-22T08:47:55Z 起无新 push，ledger.json 记录该项目最后活跃日为 2026-07-25——距今分别已停滞约 7 天与 4 天。核心引擎、深度报告、追问、伟人匹配、Preview 部署、研究协议基础设施均已『建成』，但唯一衡量产品价值的 M12 十二人真实研究尚未开始一例",
+  "working_on": "按 REGISTRY.md『下一步』字面表述，理应在 Git 忽略目录（research/m11/private/）填写真实 readiness/roster、冻结当前 Preview 版本、完成两场真实 dry-run（DRY-01/02）——但仓库无新 commit、ledger 无新 spend，未查证是否有人正在实际推进；也可能是项目处于人为暂停/等待 Park 排期状态",
+  "next": "研究就绪验证器（scripts/validate-m11-readiness.mjs）输出 formalReady=true 后才能启动 M12 正式 12 人研究；同时 Issue #4（隐私生辰数据 git 历史清除）需要先完成盘点、再经 Park 确认，属于不可逆操作，明确禁止自动化队列处理。两条线都卡在『需要人类（Park）介入』这一步，不是技术缺口"
+ }
+}

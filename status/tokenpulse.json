@@ -1,0 +1,45 @@
+{
+ "project": "tokenpulse",
+ "assessed_at": "2026-07-29",
+ "assessor": "claude-sonnet-5（workbench 会话）",
+ "sources": [
+  "/Users/wendy/work/tokenpulse/README.md",
+  "/Users/wendy/work/tokenpulse/REGISTRY.md",
+  "/Users/wendy/work/tokenpulse/decision-log.md",
+  "git log --since='90 days ago' / --since='30 days ago' / -20（132 次 / 59 次提交，最后一条 2ea71c6 @2026-07-29 00:01）",
+  "python3 -m pytest tests/ -q（185 passed，README 项目结构写的是 153，已滞后）",
+  "/Users/wendy/work/tokenpulse/config.json（furnace.enabled=false；ranking.enabled=true+url；providers.enabled=[claude,codex]）",
+  "/Users/wendy/work/tokenpulse/providers.py + providers_api.py（GLM/DeepSeek/MiniMax/Doubao/MiMo 多厂商注册表，06-23 落地）",
+  "/Users/wendy/work/tokenpulse/cf-worker/（worker.js, schema.sql, deploy.sh, wrangler.toml）",
+  "curl https://tokenpulse-rank.zinan92.workers.dev/（根路径 404，未验证具体 API 路由）",
+  "/Users/wendy/work/tokenpulse/nudge.err.log 尾部（连续 'missing telegram token/chat — cannot send'）",
+  "/Users/wendy/work/tokenpulse/snapshot.out.log 尾部（每日 12:00 快照连续写到 2026-07-29）",
+  "launchctl list | grep tokenpulse（widget 运行中 PID；nudge 上次退出码 1；card-snapshot 上次退出码 0）",
+  "/Users/wendy/work/tokenpulse/queue.txt（furnace 队列为空，仅注释）"
+ ],
+ "modules": [
+  {"name": "核心追踪引擎（token/cost/额度）", "pct": 85, "light": "green", "verdict": "最稳",
+   "note": "core.py/cost.py/limits.py；README 功能表 8 项标 ✅；185 条 pytest 全过；decision-log.md 记录 Codex 口径已用 CodexBar 本地扫描修正虚高（4.48B→825.6M 那类问题）"},
+  {"name": "桌面 goad Widget", "pct": 80, "light": "green", "verdict": "在跑",
+   "note": "webwidget.py + web/widget.html；launchctl list 显示 com.tokenpulse.widget 当前有活跃 PID；紧凑/菜单栏模式、popover 均已按 commit 记录（304da92 等）落地"},
+  {"name": "决策/复盘产品层（近期主战场）", "pct": 70, "light": "green", "verdict": "密集迭代中",
+   "note": "sessions.py/history.py/weekly.py；90 天内最新 6 个 feat（daily decision home→session 关联→timeline→weekly review→settings preview→motivation themes）全部合并，但 README『现在在哪里』仍停在 2026-07-22，比代码滞后约一周未同步"},
+  {"name": "成长系统 + 战绩卡（西游记档位）", "pct": 80, "light": "green", "verdict": "产品化完成",
+   "note": "badges.py/card.py/lifetime.py/peaks.py/continuity.py/daily_snapshot.py；snapshot.out.log 显示每天 12:00 自动落盘月度卡+单日纪录卡，连续跑到 2026-07-29"},
+  {"name": "多厂商 provider 扩展（GLM/DeepSeek/MiniMax…）", "pct": 35, "light": "yellow", "verdict": "建好未接入叙事",
+   "note": "providers.py+providers_api.py 06-23 落地，有 test_providers.py/test_providers_api.py，但 README 功能表/架构图/Capability Contract 全未提及；config.json 里 providers.enabled 仍只有 [claude, codex]——功能存在但游离于产品主叙事之外，是本次评估里最可疑的一处"},
+  {"name": "全球烧量榜（Cloudflare Worker+D1）", "pct": 55, "light": "yellow", "verdict": "上线但未验证",
+   "note": "cf-worker/worker.js+schema.sql+deploy.sh 齐全，README 称『已上线』，config.json ranking.enabled=true 且填了 worker url；但 curl 根路径只返回 404（Worker 无根路由是正常的，没法从外部确认实际参与人数/池子是否达到 200 人门槛），此项本机未查证到实际生产读数"},
+  {"name": "Telegram 鞭策通知", "pct": 30, "light": "red", "verdict": "本机未生效",
+   "note": "nudge.py 代码存在、launchd 已装（com.tokenpulse.nudge），但 nudge.err.log 连续多条 'missing telegram token/chat — cannot send'，上次 launchctl 退出码为 1——README 功能表标 ✅ 是代码能力，本机因未配凭证实际未推送"},
+  {"name": "furnace 自动烧额度", "pct": 15, "light": "red", "verdict": "默认关闭·未使用",
+   "note": "furnace.py/fuel.py 存在，config.json furnace.enabled=false，queue.txt 只有注释没有任务行——README 功能表本身标『⚙️ 默认关闭』，属于设计如此的低优先级分支，非缺陷"},
+  {"name": "工程质量（测试/打包）", "pct": 85, "light": "green", "verdict": "扎实",
+   "note": "pytest tests/ 185 passed（0 失败）；pyproject.toml 支持 pipx 全局安装；tests/ 目录 24 个测试文件覆盖 provider/card/history 等模块"}
+ ],
+ "tracking": {
+  "now": "最后一次提交 2ea71c6 @2026-07-29 00:01（『optional motivation themes』），90 天内 132 次提交、30 天内 59 次——密度远高于本机 ~/.claude/~/.codex 日志记的 $19/22 条记录，说明大部分真实开发发生在本机 CLI 记账口径之外（可能用了其他工具/身份），不能拿本机花费数字判断这个项目不活跃；widget 与每日快照 launchd 任务当前均在正常运行",
+  "working_on": "决策/复盘产品线（今日会话时间线、周复盘、动机主题、settings preview）连续合并 6 个 PR；同时 07-28 晚刚合并 #53『provider scope views』（按 provider 切换用量视图），是把 06-23 就建好但一直没接入主叙事的多厂商 provider 层往前推进的第一步",
+  "next": "REGISTRY.md 明确写『按晨会需求排;继续担任流水线演练沙盒』——路线图由外部体系（park-operating-system）驱动而非本仓库自定；产品侧看得出的下一步缺口是：把 provider 扩展补进 README/Capability Contract，以及本机 Telegram 凭证补齐让 nudge 真正跑起来"
+ }
+}
