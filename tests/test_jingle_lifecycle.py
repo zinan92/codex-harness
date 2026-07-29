@@ -54,9 +54,16 @@ class JingleLifecycleTests(unittest.TestCase):
         }
 
     def test_codex_main_task_flows_running_then_done_without_tokens(self) -> None:
-        started = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit"))
+        started = lifecycle.begin_work_unit(
+            "codex",
+            self.payload("UserPromptSubmit", terminal_app="Terminal", terminal_tty="/dev/ttys014", parent_pid=431),
+        )
         self.assertEqual(started["status"], lifecycle.STATE_RUNNING)
         self.assertNotIn("token", started["unit"])
+        self.assertEqual(
+            started["unit"]["session_locator"],
+            {"terminal_app": "Terminal", "terminal_tty": "/dev/ttys014", "parent_pid": 431},
+        )
         ended = lifecycle.finish_work_unit(
             "codex", self.payload("Stop", last_assistant_message="Completed."), classifier
         )
@@ -134,6 +141,19 @@ class JingleLifecycleTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(log_file.stat().st_mode), 0o600)
         self.assertNotIn(secret, state_file.read_text(encoding="utf-8"))
         self.assertNotIn(secret, log_file.read_text(encoding="utf-8"))
+
+    def test_locator_capture_keeps_only_identity_metadata(self) -> None:
+        locator = lifecycle.capture_session_locator(
+            {
+                "terminal_app": "Terminal",
+                "terminal_tty": "/dev/ttys999",
+                "terminal_session_id": "ABC",
+                "parent_pid": 99,
+                "prompt": "do not retain this",
+            }
+        )
+        self.assertEqual(locator["terminal_tty"], "/dev/ttys999")
+        self.assertNotIn("prompt", locator)
 
     def test_cli_emits_a_machine_readable_result_for_a_hook_fixture(self) -> None:
         payload = self.payload("UserPromptSubmit")

@@ -12,4 +12,4 @@ Codex Jingle 已有原生 macOS 菜单栏 app 和本地通知回调。方向 D �
 
 ## 下一步
 
-方向 D 已完成：真实 Codex/Claude hook 回合验证过两边的 `session_id` / `cwd` / `transcript_path` 与适配器一致（Codex 另有 `turn_id`、Claude 没有）；菜单栏主按钮现用这些字段回到会话。Codex 用当前 CLI 的指定 session resume，失败时打开 Codex 项目；Claude 先尝试聚焦匹配的终端，失败则复制 resume 命令，并把所有失败显示在卡片内。生命周期结束后两边都复用同一把本地 at-most-once 声音锁：做完只轻响，卡住才轻响并说话。Park 已批准 V2 项目级注意力路由：Story 1 已将呼叫/清算呈现改为屏幕内 clamp 的临时 panel，并以真实桌面 fixture 验收；接下来按 `docs/jingle-v2-stories.md` 的 Story 2–6 继续逐项替换 turn 级队列，每项独立验证、PR 与合并。
+方向 D 已完成：真实 Codex/Claude hook 回合验证过两边的 `session_id` / `cwd` / `transcript_path` 与适配器一致（Codex 另有 `turn_id`、Claude 没有）。Story 1 已将呼叫/清算呈现改为屏幕内 clamp 的临时 panel，并以真实桌面 fixture 验收。Story 2 将会话返回改为启动时记录的终端 TTY 精确匹配：Terminal 会话只能命中原 TTY；没有该定位器的桌面会话安全降级为「未定位原会话」，Codex 打开项目、Claude 复制 resume 命令，绝不再把新 Terminal 或同 cwd 窗口误称为原会话。生命周期结束后两边都复用同一把本地 at-most-once 声音锁：做完只轻响，卡住才轻响并说话。Park 已批准 V2 项目级注意力路由；接下来按 `docs/jingle-v2-stories.md` 的 Story 3–6 继续逐项替换 turn 级队列，每项独立验证、PR 与合并。

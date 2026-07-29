@@ -20,23 +20,38 @@ def completed(code: int = 0, output: str = "") -> subprocess.CompletedProcess[st
     return subprocess.CompletedProcess([], code, output, "")
 
 
+LOCATOR = {"terminal_app": "Terminal", "terminal_tty": "/dev/ttys014", "parent_pid": 431}
+
+
 class ResumeTests(unittest.TestCase):
-    def test_codex_uses_current_specified_session_entry(self) -> None:
-        with mock.patch.object(resume.shutil, "which", return_value="/usr/local/bin/codex"), mock.patch.object(resume, "run_osascript", return_value=True) as script:
-            result = resume.route("codex", "session-1", "/tmp/project one")
-        self.assertEqual(result["status"], "codex_resumed")
-        self.assertIn("codex resume session-1", script.call_args.args[0])
+    def test_exact_terminal_tty_is_the_only_focus_match(self) -> None:
+        with mock.patch.object(resume, "run_osascript_text", return_value="focused:/dev/ttys014") as script:
+            self.assertTrue(resume.focus_terminal_locator(LOCATOR))
+        source = script.call_args.args[0]
+        self.assertIn('tty of terminalTab is "/dev/ttys014"', source)
+        self.assertNotIn("project", source.casefold())
 
-    def test_codex_falls_back_to_project_app_when_terminal_launch_fails(self) -> None:
-        with mock.patch.object(resume.shutil, "which", return_value="/usr/local/bin/codex"), mock.patch.object(resume, "run_osascript", return_value=False):
-            result = resume.route("codex", "session-1", "/tmp/project", run=lambda *args, **kwargs: completed())
-        self.assertEqual(result["status"], "codex_app_opened")
+    def test_matching_osascript_exit_without_the_original_tty_is_not_success(self) -> None:
+        with mock.patch.object(resume, "run_osascript_text", return_value="focused:/dev/ttys015"):
+            self.assertFalse(resume.focus_claude_terminal("session-a", "/same/cwd", LOCATOR))
 
-    def test_claude_focus_failure_copies_exact_resume_command(self) -> None:
-        with mock.patch.object(resume, "focus_claude_terminal", return_value=False), mock.patch.object(resume, "copy_claude_resume", return_value=True):
-            result = resume.route("claude", "session-2", "/tmp/project")
+    def test_two_claude_sessions_with_one_cwd_cannot_fall_back_to_title_guessing(self) -> None:
+        with mock.patch.object(resume, "focus_terminal_locator", return_value=False) as focus, mock.patch.object(resume, "copy_claude_resume", return_value=True):
+            result = resume.route("claude", "session-a", "/same/cwd", LOCATOR)
+        focus.assert_called_once_with(LOCATOR, mock.ANY)
         self.assertEqual(result["status"], "claude_resume_copied")
-        self.assertIn("已复制", result["message"])
+        self.assertIn("未定位原 Claude 会话", result["message"])
+
+    def test_codex_focuses_exact_terminal_or_explicitly_opens_project(self) -> None:
+        with mock.patch.object(resume, "focus_terminal_locator", return_value=True):
+            focused = resume.route("codex", "session-1", "/tmp/project", LOCATOR)
+        self.assertEqual(focused["status"], "codex_focused")
+
+        with mock.patch.object(resume, "focus_terminal_locator", return_value=False), mock.patch.object(resume, "open_codex_project", return_value=True) as opened:
+            fallback = resume.route("codex", "session-1", "/tmp/project", LOCATOR)
+        opened.assert_called_once_with("/tmp/project", mock.ANY)
+        self.assertEqual(fallback["status"], "codex_project_opened")
+        self.assertIn("未定位原会话", fallback["message"])
 
     def test_claude_fallback_copies_only_the_documented_resume_command(self) -> None:
         captured: dict[str, object] = {}
@@ -50,8 +65,9 @@ class ResumeTests(unittest.TestCase):
         self.assertEqual(captured["args"], (["pbcopy"],))
         self.assertEqual(captured["input"], "claude --resume session-2")
 
-    def test_terminal_focus_requires_a_matching_window_not_merely_osascript_success(self) -> None:
-        self.assertFalse(resume.focus_claude_terminal("session-3", "/tmp/project", lambda *args, **kwargs: completed(output="not-found")))
+    def test_malformed_locator_degrades_to_an_empty_object(self) -> None:
+        self.assertEqual(resume.parse_locator("not-json"), {})
+        self.assertEqual(resume.parse_locator("[]"), {})
 
     def test_missing_identity_is_visible_failure(self) -> None:
         self.assertEqual(resume.route("claude", "", "/tmp/project")["status"], "failed")
