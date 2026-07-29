@@ -17,7 +17,10 @@
 
 - Task 0 baseline complete: `bash scripts/check.sh` exited 0 and `python3 -m unittest discover router/tests -v` passed 11/11 before this round.
 - B3 real run `run-20260729T030604Z-86ed3383`: Fable classified the intentionally multi-part task as `complex`; Spark executed all 4 stories serially and every story machine gate passed; Opus returned `failed_review`. The failure is real and retained: first commit `dbc36eb` bundled the summary module, CLI, README, and a test file instead of one scoped commit per story. It is not counted as a successful complex closure and is recorded in `BLOCKED.md`; no receipt or protected path was changed.
-- Remaining: run two further real non-dry-run tasks to bring the receipt count from 3 to 5, then use the new summary CLI plus direct receipt inspection to report success/failure and costs honestly.
+- B4 real run `run-20260729T031701Z-585e623f`: Fable triage=`medium` (65¢) → Spark (58¢) → machine gate=`ok` → Opus=`pass` (142¢) → `succeeded`, 265¢ total. It made `aggregate_runs` return the canonical zero summary for missing/non-directory inputs and added focused regression tests in scoped commit `957df62`.
+- B5 real run `run-20260729T032308Z-87008e8b`: Fable triage=`simple` (60¢) → Spark (15¢) → machine gate=`ok` → Opus=`pass` (102¢) → `succeeded`, 177¢ total. It added exactly the `_empty_summary` docstring in scoped commit `7fe5b7c`.
+- Task 6 acceptance complete: `python3 -m router --summary` reports 5 completed non-dry-run receipts: `simple=2`, `medium=2`, `complex=1`; statuses `succeeded=4`, `failed_review=1`; total recorded cost 1,497¢. The failed complex run is counted as a real record but never represented as success.
+- Final verification: router tests 19/19, `bash scripts/check.sh` all green, and the protected-path diff command is empty. Next: commit this final progress receipt only; do not alter the retained B3 blocker.
 
 ## 2026-07-29 · TokenRouter v0 执行
 
