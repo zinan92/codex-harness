@@ -4,9 +4,10 @@
 
 ## 北极星
 
-Jingle 的数字等于 **Park 现在需要回去处理的项目组数**，不等于模型完成过的
-turn 数、token 账本行数或 session 历史数。每一项都必须把 Park 带回一个正确的
-会话；不能做到，就不能把它显示成“已跳转”。
+Jingle 的数字等于 **Park 现在必须决定的项目组数**，不等于模型完成过的 turn 数、
+token 账本行数或 session 历史数。`done` 和 `running` 只保留在账本，不出现在菜单
+数字、清算卡或呼叫卡。每一项都必须把 Park 带回一个正确的会话；不能做到，就不能
+把它显示成“已跳转”。
 
 ## 术语与不变量
 
@@ -15,13 +16,13 @@ turn 数、token 账本行数或 session 历史数。每一项都必须把 Park 
 | 项目（Project） | 用户认知的工作对象，例如「网格交易」；由本地别名表映射，不从 provider 或 cwd basename 猜。 |
 | 会话（Thread） | 一个 provider + session_id；它是可跳转目标。 |
 | 任务边界（Task envelope） | 一个独立任务，或一个 `/go` 这类 workflow 的整体；不是每一个模型 turn。 |
-| 项目组（Attention group） | 同一 Project 的一个或多个 Thread 的当前摘要；它是菜单栏计数单位。 |
+| 项目组（Attention group） | 同一 Project 的一个或多个 Thread 的当前 blocked 摘要；它是菜单栏计数单位。 |
 
 不变量：
 
 1. 每个 Thread 同时至多有一个当前任务边界；新边界的终态覆盖它的旧终态。
 2. 每个 Project 同时至多显示一个项目组；provider 只作为该组里的 CX/CL 子会话标识。
-3. 账本保留所有 Work Unit，注意力队列只保留当前可行动状态；二者绝不能再混用。
+3. 账本保留所有 Work Unit，注意力队列只保留当前 blocked 状态；二者绝不能再混用。
 4. 未映射 cwd 不自动与其它项目合并；宁可单列「未映射项目」，不能错并。
 5. 任何降级跳转必须显式标为降级，不能显示“已跳转”。
 
@@ -121,13 +122,13 @@ cwd、启动它的 terminal process/window identity）。返回动作按下列�
 
 | 策略 | done | blocked | 适用 |
 |---|---|---|---|
-| `task_terminal` | 静默入项目组 | 呼叫 + 语音 | 普通独立任务（默认） |
-| `workflow_terminal` | 仅 workflow 终态入组 | workflow 中途 blocked 立即呼叫 | `/go` 等多步骤流程 |
+| `task_terminal` | 只写账本 | 呼叫 + 语音 | 普通独立任务（默认） |
+| `workflow_terminal` | 只写账本 | workflow 中途 blocked 立即呼叫 | `/go` 等多步骤流程 |
 | `blocked_only` | 不入组 | 呼叫 + 语音 | 只关心人工决策的后台项目 |
 
 成功标准：
 
-- `workflow_terminal` 的 N 个子完成不会改变菜单栏数字；最终完成只加一。
+- `workflow_terminal` 的 N 个子完成和最终完成都不会改变菜单栏数字。
 - `blocked_only` 的完成没有数字、没有声音、没有卡片；blocked 仍按既有两声音规则呼叫。
 - 默认策略、项目覆盖策略、未映射项目的 fail-closed 策略都有 fixture 测试。
 - 策略命中原因写入元数据事件日志，但不写 prompt、assistant 正文或 DeepSeek 输入。
@@ -146,8 +147,8 @@ cwd、启动它的 terminal process/window identity）。返回动作按下列�
 2. **Story 2**：会话定位元数据与真实窗口跳转证据；未通过前不把 fallback 文案称为跳转。
 3. **Story 3–4**：项目别名、项目组、会话最新状态覆盖；用当前 21 条历史状态回放，
    验证计数收敛到当前项目组数。
-4. **Story 5–6**：先录制 `/go`，再接显式 workflow marker 与策略表；真实 `/go` 只允许
-   一个最终通知。
+4. **Story 5–6**：先录制 `/go`，再接显式 workflow marker 与策略表；真实 `/go` 的完成
+   只入账，只有 blocked 才允许一次通知。
 
 每一项独立 issue / branch / PR / 合并。下一项必须以本项的真实验收证据为起点，不允许
 把多个故事打成一个大 PR。

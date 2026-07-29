@@ -35,6 +35,11 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertIn('"unmapped:\\(normalized)"', source)
         self.assertIn("currentBySession", source)
         self.assertIn("attentionGroups", source)
+        self.assertIn('$0.state == "blocked"', source)
+        self.assertNotIn('Text("做完了")', source)
+        self.assertNotIn('Text("还在跑")', source)
+        self.assertIn("panel.isOpaque = true", source)
+        self.assertIn("panel.backgroundColor = .windowBackgroundColor", source)
         lifecycle = (ROOT / "src/jingle_lifecycle.py").read_text(encoding="utf-8")
         self.assertIn('existing["superseded_at"]', lifecycle)
 
