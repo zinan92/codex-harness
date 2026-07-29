@@ -12,7 +12,8 @@ class Project:
     codex_prefixes: tuple[str, ...] = ()
     group: str = "其他"
     repo: str = ""          # 本地 git 仓库路径；空 = 无仓库或不在本机
-    archived: bool = False  # 长期无碰且花费可忽略；页面折叠显示，账本仍计入总额
+    archived: bool = False  # 页面折叠显示，账本仍计入总额；原因见 archive_reason
+    archive_reason: str = ""  # 人话原因，如"长期停摆"或"非产品·内部工作区/工具"
 
 
 # Prefixes are deliberately specific.  A source that is not confidently
@@ -41,7 +42,8 @@ PROJECTS = (
     Project("park-io", ("-Users-wendy-park-io",), ("/Users/wendy/park-io",), group="Agent OS"),
     Project("agent 自管理", ("-Users-wendy-Documents-agent---",), ("/Users/wendy/Documents/agent自管理",), group="Agent OS"),
     Project("人生 K 线", ("-Users-wendy-Documents---k-",), ("/Users/wendy/Documents/人生k线",), group="交易"),
-    Project("New project", ("-Users-wendy-Documents-New-project",), ("/Users/wendy/Documents/New project",), group="内容"),
+    Project("New project", ("-Users-wendy-Documents-New-project",), ("/Users/wendy/Documents/New project",), group="内容",
+            archived=True, archive_reason="非产品·跨项目调度台"),
     # Claude 把中文目录名转义成等长横杠：投研面板=5 字→5 杠，电商工作台=6 字→6 杠。
     # 二者互为前缀，靠 project_for 的最长匹配区分；键名来自各自 jsonl 里的 cwd 字段，非推测。
     Project(
@@ -53,19 +55,24 @@ PROJECTS = (
     Project("电商工作台", ("-Users-wendy-Documents------",), ("/Users/wendy/Documents/电商工作台",), group="内容"),
     # 以下为 Codex 侧独占项目（Claude 侧无会话，故不设 claude 前缀——
     # 中文目录的短横杠前缀会误吞同长度的其他项目，宁可不归也不错归）
-    Project("内容制作", (), ("/Users/wendy/Documents/内容制作", "/Users/wendy/Documents/内容生产"), group="内容"),
-    Project("知识库", (), ("/Users/wendy/Documents/知识库",), group="内容"),
+    Project("内容制作", (), ("/Users/wendy/Documents/内容制作", "/Users/wendy/Documents/内容生产"), group="内容",
+            archived=True, archive_reason="非产品·研究/决策工作区"),
+    Project("知识库", (), ("/Users/wendy/Documents/知识库",), group="内容",
+            archived=True, archive_reason="非产品·个人知识库"),
     Project("tokenpulse", (), ("/Users/wendy/work/tokenpulse", "/Users/wendy/Documents/tokenpulse"), group="交易", repo="/Users/wendy/work/tokenpulse"),
-    # 以下 archived=True：2026-07-29 复核——花费个位数（<$20）且账本/git 双信号均已停摆一个月以上。
-    # trading-system、tokenpulse 花费同样低但 git 近期高频提交（多为 bot/其他机器），不算停摆，未归档。
-    Project("a股情报", (), ("/Users/wendy/Documents/a股情报newsletter",), group="交易", archived=True),
-    Project("个人助理", (), ("/Users/wendy/Documents/个人助理",), group="Agent OS", archived=True),
-    Project("产品工厂", (), ("/Users/wendy/Documents/产品工厂",), group="内容"),
-    Project("关系管理", (), ("/Users/wendy/Documents/关系管理",), group="Agent OS", archived=True),
-    Project("repo-evals", ("-Users-wendy-work-repo-evals",), ("/Users/wendy/repo-evals",), group="Agent OS", archived=True),
-    Project("content-ops", ("-Users-wendy-work-content-ops",), ("/Users/wendy/work/content-ops",), group="内容", repo="/Users/wendy/work/content-ops", archived=True),
-    Project("content-toolkit", ("-Users-wendy-content-toolkit",), ("/Users/wendy/content-toolkit",), group="内容", archived=True),
-    Project("videocut", ("-Users-wendy-videocut",), ("/Users/wendy/videocut",), group="内容", archived=True),
+    # 以下 archived=True：2026-07-29 复核，两类原因——
+    # 「长期停摆」：花费个位数（<$20）且账本/git 双信号均已停摆一个月以上；
+    # 「非产品」：本人确认这是内部工作区/工具，不是要展示的产品，与花费高低无关。
+    # trading-system、tokenpulse 花费同样低但 git 近期高频提交（本人确认全是自己不同身份/机器），不算停摆，未归档。
+    # agent 自管理、电商工作台经本人确认按完整项目对待，未归档。
+    Project("a股情报", (), ("/Users/wendy/Documents/a股情报newsletter",), group="交易", archived=True, archive_reason="长期停摆"),
+    Project("个人助理", (), ("/Users/wendy/Documents/个人助理",), group="Agent OS", archived=True, archive_reason="长期停摆"),
+    Project("产品工厂", (), ("/Users/wendy/Documents/产品工厂",), group="内容", archived=True, archive_reason="非产品·内部工具"),
+    Project("关系管理", (), ("/Users/wendy/Documents/关系管理",), group="Agent OS", archived=True, archive_reason="长期停摆"),
+    Project("repo-evals", ("-Users-wendy-work-repo-evals",), ("/Users/wendy/repo-evals",), group="Agent OS", archived=True, archive_reason="长期停摆"),
+    Project("content-ops", ("-Users-wendy-work-content-ops",), ("/Users/wendy/work/content-ops",), group="内容", repo="/Users/wendy/work/content-ops", archived=True, archive_reason="长期停摆"),
+    Project("content-toolkit", ("-Users-wendy-content-toolkit",), ("/Users/wendy/content-toolkit",), group="内容", archived=True, archive_reason="长期停摆"),
+    Project("videocut", ("-Users-wendy-videocut",), ("/Users/wendy/videocut",), group="内容", archived=True, archive_reason="长期停摆"),
 )
 
 
@@ -90,13 +97,13 @@ def aggregate(records, projects=PROJECTS):
     """Aggregate every record exactly once, preserving the total in whole cents."""
     totals = {
         project.name: {"name": project.name, "group": project.group,
-                       "archived": project.archived,
+                       "archived": project.archived, "archive_reason": project.archive_reason,
                        "claude_cents": 0, "codex_cents": 0,
                        "cost_cents": 0, "records": 0}
         for project in projects
     }
     totals[UNCLASSIFIED] = {"name": UNCLASSIFIED, "group": "未归类",
-                            "archived": False,
+                            "archived": False, "archive_reason": "",
                             "claude_cents": 0, "codex_cents": 0,
                             "cost_cents": 0, "records": 0}
     for record in records:

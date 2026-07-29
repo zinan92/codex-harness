@@ -61,7 +61,7 @@ class RegistryTests(unittest.TestCase):
 
     def test_archived_flag_flows_through_but_still_counts_toward_total(self):
         projects = (
-            Project("quiet", codex_prefixes=("/quiet",), archived=True),
+            Project("quiet", codex_prefixes=("/quiet",), archived=True, archive_reason="长期停摆"),
             Project("active", codex_prefixes=("/active",), archived=False),
         )
         records = [
@@ -71,7 +71,21 @@ class RegistryTests(unittest.TestCase):
         rows, grand_total = aggregate(records, projects)
         by_name = {row["name"]: row for row in rows}
         self.assertTrue(by_name["quiet"]["archived"])
+        self.assertEqual(by_name["quiet"]["archive_reason"], "长期停摆")
         self.assertFalse(by_name["active"]["archived"])
+        self.assertEqual(by_name["active"]["archive_reason"], "")
         self.assertFalse(by_name[UNCLASSIFIED]["archived"])
         self.assertEqual(grand_total, 504)
         self.assertEqual(sum(row["cost_cents"] for row in rows), grand_total)
+
+    def test_archive_reason_distinguishes_idle_from_not_a_product(self):
+        """A high-spend project can still be archived for being 'not a product'."""
+        projects = (
+            Project("workspace", codex_prefixes=("/ws",), archived=True, archive_reason="非产品·内部工具"),
+        )
+        records = [{"channel": "codex", "source_key": "/ws/task", "cost_cents": 411200}]
+        rows, _ = aggregate(records, projects)
+        row = next(r for r in rows if r["name"] == "workspace")
+        self.assertTrue(row["archived"])
+        self.assertEqual(row["archive_reason"], "非产品·内部工具")
+        self.assertEqual(row["cost_cents"], 411200)
