@@ -935,13 +935,15 @@ def worker(
                 classification,
                 runtime_settings["speech_content"],
             )
+            # Direction D has exactly two audible semantics: completion is a
+            # quiet sound, while attention is the only state that speaks.
             speech_success = (
                 speak(
                     phrase,
                     settings=runtime_settings,
                     classification=classification,
                 )
-                if runtime_settings["speech_enabled"]
+                if classification == STATUS_ATTENTION and runtime_settings["speech_enabled"]
                 else None
             )
             append_event(
