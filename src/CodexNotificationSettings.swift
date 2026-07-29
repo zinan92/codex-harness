@@ -902,6 +902,7 @@ struct WorkUnit: Codable, Identifiable {
     let snoozedUntil: Double?
     let supersededAt: Double?
     let attentionSuppressed: Bool?
+    let needsAttentionFlag: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id, provider, cwd, state, summary
@@ -914,6 +915,7 @@ struct WorkUnit: Codable, Identifiable {
         case snoozedUntil = "snoozed_until"
         case supersededAt = "superseded_at"
         case attentionSuppressed = "attention_suppressed"
+        case needsAttentionFlag = "needs_attention"
     }
 
     var elapsed: String {
@@ -925,6 +927,18 @@ struct WorkUnit: Codable, Identifiable {
 
     var providerName: String { provider == "claude" ? "Claude" : "Codex" }
     var badge: String { provider == "claude" ? "CL" : "CX" }
+    var needsAttention: Bool {
+        // Old ledger rows predate unified attention. Do not wake historical
+        // completions merely because the app was upgraded.
+        guard let needsAttentionFlag else { return false }
+        return needsAttentionFlag
+    }
+    var attentionPrefix: String { state == "blocked" ? "需要决定：" : "已完成：" }
+    var startedLabel: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return "\(formatter.string(from: Date(timeIntervalSince1970: startedAt))) 开始"
+    }
     var tokenLabel: String {
         guard let amount = tokenAccounting?.totalTokens else { return "本轮 token 不可用" }
         return amount >= 1_000 ? String(format: "本轮 +%.1fk", Double(amount) / 1_000) : "本轮 +\(amount) token"
@@ -1052,11 +1066,11 @@ final class JingleModel: ObservableObject {
         return ProjectIdentity(id: "unmapped:\(normalized)", name: name.isEmpty ? "未命名项目" : name, color: lookColor)
     }
 
-    // Jingle is an interruption surface, not an activity feed. Completed and
-    // running Work Units remain in the local ledger but never enter this view.
+    // Park's queue contains either a blocked decision or the terminal result
+    // of an independent task. Workflow and blocked-only completion stay silent.
     private var visible: [WorkUnit] {
         units.filter {
-            $0.state == "blocked" && $0.seenAt == nil && $0.supersededAt == nil && $0.attentionSuppressed != true
+            $0.needsAttention && $0.seenAt == nil && $0.supersededAt == nil
         }
     }
     private var currentBySession: [WorkUnit] {
@@ -1143,11 +1157,11 @@ struct DecisionDetails: View {
                     .foregroundStyle(identity.color)
                 Spacer(minLength: 0)
             }
-            Text(unit.summary ?? "需要你的决定")
+            Text("\(unit.attentionPrefix)\(unit.summary ?? "等待你的处理")")
                 .font(.system(size: 13.5, weight: .regular))
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("\(unit.providerName) · 已停 \(unit.elapsed)")
+            Text("\(unit.providerName) · \(unit.startedLabel)\(unit.state == "blocked" ? " · 已停 \(unit.elapsed)" : "")")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
@@ -1193,7 +1207,10 @@ struct AttentionGroupItem: View {
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
-            ForEach(group.units) { QueueItem(unit: $0, model: model, open: open, acknowledge: acknowledge) }
+            ForEach(Array(group.units.enumerated()), id: \.element.id) { index, unit in
+                if index > 0 { Divider() }
+                QueueItem(unit: unit, model: model, open: open, acknowledge: acknowledge)
+            }
         }
         .padding(14)
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -1213,8 +1230,8 @@ struct SettlementView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 13) {
-                HStack { Text("JINGLE").font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(.secondary); Spacer(); Text("需要决定").font(.headline) }
-                if !blockedGroups.isEmpty { queue(title: "需要你处理", color: .orange, groups: blockedGroups) }
+                HStack { Text("JINGLE").font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(.secondary); Spacer(); Text("等你").font(.headline) }
+                if !model.attentionGroups.isEmpty { queue(title: "等你", color: .primary, groups: model.attentionGroups) }
                 if model.pendingCount == 0 {
                     Text("现在没有待处理任务").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 30).frame(maxWidth: .infinity)
                 }
@@ -1225,8 +1242,6 @@ struct SettlementView: View {
         .frame(width: 380, height: panelHeight)
         .background(Color(nsColor: .windowBackgroundColor))
     }
-
-    private var blockedGroups: [AttentionGroup] { model.attentionGroups.filter(\.hasBlocked) }
 
     @ViewBuilder private func queue(title: String, color: Color, groups: [AttentionGroup]) -> some View {
         VStack(alignment: .leading, spacing: 7) {

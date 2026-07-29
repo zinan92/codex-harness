@@ -73,6 +73,8 @@ class JingleLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(ended["status"], lifecycle.STATE_DONE)
         self.assertEqual(ended["unit"]["outcome_reason"], "fallback_normal")
+        self.assertTrue(ended["unit"]["needs_attention"])
+        self.assertTrue(ended["delivery_eligible"])
 
     def test_message_fallback_marks_waiting_for_input_blocked(self) -> None:
         lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit"))
@@ -180,6 +182,7 @@ class JingleLifecycleTests(unittest.TestCase):
         self.assertEqual(terminal["status"], lifecycle.STATE_DONE)
         self.assertEqual(terminal["unit"]["id"], second["unit"]["id"])
         self.assertFalse(terminal["unit"]["attention_suppressed"])
+        self.assertFalse(terminal["unit"]["needs_attention"])
         self.assertIn(first["unit"]["id"], lifecycle.load_state()["units"])
 
     def test_explicit_workflow_blocked_marker_delivers_once_without_prompt_text(self) -> None:
@@ -204,9 +207,12 @@ class JingleLifecycleTests(unittest.TestCase):
         done_start = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="done", notification_policy="blocked_only"))
         done = lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="done", last_assistant_message="Completed."), classifier)
         self.assertTrue(done["unit"]["attention_suppressed"])
+        self.assertFalse(done["unit"]["needs_attention"])
+        self.assertFalse(done["delivery_eligible"])
         blocked_start = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="blocked", notification_policy="blocked_only"))
         blocked = lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="blocked", last_assistant_message="I need input."), classifier)
         self.assertFalse(blocked["unit"]["attention_suppressed"])
+        self.assertTrue(blocked["unit"]["needs_attention"])
         self.assertTrue(blocked["delivery_eligible"])
         self.assertIn(done_start["unit"]["id"], lifecycle.load_state()["units"])
         self.assertIn(blocked_start["unit"]["id"], lifecycle.load_state()["units"])

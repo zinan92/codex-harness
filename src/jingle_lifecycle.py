@@ -149,6 +149,18 @@ def notification_policy(payload: dict[str, Any], provider: str = "", default: st
     return policy if policy in VALID_POLICIES else default
 
 
+def needs_attention(unit: dict[str, Any]) -> bool:
+    """Return whether this terminal Work Unit now belongs in Park's queue."""
+    if unit.get("attention_suppressed") is True:
+        return False
+    if unit.get("state") == STATE_BLOCKED:
+        return True
+    return (
+        unit.get("state") == STATE_DONE
+        and str(unit.get("notification_policy") or POLICY_TASK_TERMINAL) == POLICY_TASK_TERMINAL
+    )
+
+
 def start_workflow(provider: str, session_id: str, cwd: str, policy: str = POLICY_WORKFLOW_TERMINAL) -> dict[str, Any]:
     if not _valid_identity(provider, session_id):
         return {"status": "ignored_missing_session", "changed": False}
@@ -175,6 +187,7 @@ def finish_workflow(provider: str, session_id: str, outcome: str = STATE_DONE) -
         unit["workflow_terminal"] = True
         unit["state"] = terminal_state
         unit["ended_at"] = time.time()
+        unit["needs_attention"] = needs_attention(unit)
         return {"status": terminal_state, "unit": unit, "changed": True}
     result = _with_lock(operation)
     append_event({"status": result["status"], "provider": provider, "session_id": session_id, "workflow_terminal": True})
@@ -485,13 +498,21 @@ def finish_work_unit(
             unit["attention_suppressed"] = True
         else:
             unit["attention_suppressed"] = False
+        unit["needs_attention"] = needs_attention(unit)
         state["active_by_session"].pop(key, None)
-        return {"status": target_state, "unit": unit, "delivery_eligible": target_state == STATE_BLOCKED, "changed": True}
+        return {
+            "status": target_state,
+            "unit": unit,
+            "delivery_eligible": unit["needs_attention"],
+            "changed": True,
+        }
 
     result = _with_lock(operation)
     log = {"status": result["status"], "provider": provider, "session_id": session_id}
     if "unit" in result:
         log["unit_id"] = result["unit"]["id"]
+        log["notification_policy"] = result["unit"].get("notification_policy")
+        log["needs_attention"] = result["unit"].get("needs_attention")
     if result["status"] in VALID_STATES - {STATE_RUNNING}:
         log["reason"] = reason
     append_event(log)

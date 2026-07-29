@@ -40,14 +40,15 @@ def handle(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
             from jingle_lifecycle import attach_initial_summary
             card_title = first_line(source)
             result['summary'] = attach_initial_summary(result['unit']['id'], card_title)
-            # V2 only interrupts for a blocked decision. Done remains available
-            # in the project group, while workflow-internal done stays suppressed
-            # until its explicit workflow marker finishes.
+            # A terminal independent task is now a quiet queue item: it gets the
+            # success sound but never a call card. Blocked work keeps attention
+            # speech and is the only state that may call the panel.
             if result.get("delivery_eligible"):
-                from codex_spoken_notify import STATUS_ATTENTION, launch_worker
+                from codex_spoken_notify import STATUS_ATTENTION, STATUS_SUCCESS, launch_worker
                 notification_id = str(result['unit'].get('turn_id') or result['unit']['id'])
                 project = Path(str(result['unit'].get('cwd') or '')).name or provider
-                launch_worker(notification_id, str(result['unit'].get('session_id') or ''), f"{project}：{card_title}", "jingle_lifecycle", STATUS_ATTENTION)
+                classification = STATUS_ATTENTION if result["status"] == "blocked" else STATUS_SUCCESS
+                launch_worker(notification_id, str(result['unit'].get('session_id') or ''), f"{project}：{card_title}", "jingle_lifecycle", classification)
             accounting = collect_accounting(result["unit"])
             result["accounting"] = attach_accounting(result["unit"]["id"], accounting)
             launch(result['unit']['id'], provider, str(result['unit'].get('transcript_path') or ''))
