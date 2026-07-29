@@ -9,7 +9,8 @@ import sys
 from typing import Any
 
 from codex_spoken_notify import classify_outcome
-from jingle_lifecycle import begin_work_unit, finish_work_unit, ignore_subagent_event, is_subagent_event
+from jingle_accounting import collect_accounting
+from jingle_lifecycle import attach_accounting, begin_work_unit, finish_work_unit, ignore_subagent_event, is_subagent_event
 
 
 START_EVENTS = {"UserPromptSubmit"}
@@ -31,7 +32,11 @@ def handle(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
     if event_name in START_EVENTS:
         return begin_work_unit(provider, payload)
     if event_name in END_EVENTS:
-        return finish_work_unit(provider, payload, classify_outcome)
+        result = finish_work_unit(provider, payload, classify_outcome)
+        if result.get("changed") and result.get("status") in {"blocked", "done"}:
+            accounting = collect_accounting(result["unit"])
+            result["accounting"] = attach_accounting(result["unit"]["id"], accounting)
+        return result
     return {"status": "ignored_event", "changed": False}
 
 
