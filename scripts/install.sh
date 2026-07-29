@@ -33,6 +33,7 @@ accounting_path="$hook_dir/jingle_accounting.py"
 summary_path="$hook_dir/jingle_summary.py"
 control_path="$hook_dir/jingle_control.py"
 resume_path="$hook_dir/jingle_resume.py"
+projects_path="$codex_dir/jingle/projects.json"
 app_path="$HOME/Applications/Codex 通知设置.app"
 staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-jingle.XXXXXX")"
 
@@ -51,6 +52,10 @@ install -m 644 "$repo_dir/src/jingle_accounting.py" "$accounting_path"
 install -m 644 "$repo_dir/src/jingle_summary.py" "$summary_path"
 install -m 755 "$repo_dir/src/jingle_control.py" "$control_path"
 install -m 755 "$repo_dir/src/jingle_resume.py" "$resume_path"
+if [[ ! -f "$projects_path" ]]; then
+  mkdir -p "$codex_dir/jingle"
+  install -m 600 "$repo_dir/assets/jingle-projects.json" "$projects_path"
+fi
 install -m 644 "$repo_dir/assets/sounds/"* "$sound_dir/"
 
 new_app="$staging_dir/Codex 通知设置.app"

@@ -319,6 +319,18 @@ def begin_work_unit(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
             sequence = int(state["next_sequence_by_session"].get(key, 0)) + 1
             state["next_sequence_by_session"][key] = sequence
             unit_id = _unit_id(provider, session_id, turn_id, sequence)
+        superseded_ids: list[str] = []
+        for existing_id, existing in state["units"].items():
+            if (
+                isinstance(existing, dict)
+                and existing.get("provider") == provider
+                and existing.get("session_id") == session_id
+                and existing.get("state") in {STATE_BLOCKED, STATE_DONE}
+                and not existing.get("seen_at")
+                and not existing.get("superseded_at")
+            ):
+                existing["superseded_at"] = time.time()
+                superseded_ids.append(str(existing_id))
         unit = {
             "id": unit_id,
             "provider": provider,
@@ -332,7 +344,7 @@ def begin_work_unit(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
         }
         state["units"][unit_id] = unit
         state["active_by_session"][key] = unit_id
-        return {"status": STATE_RUNNING, "unit": unit, "changed": True}
+        return {"status": STATE_RUNNING, "unit": unit, "superseded_ids": superseded_ids, "changed": True}
 
     result = _with_lock(operation)
     if result["status"] == STATE_RUNNING:
@@ -342,6 +354,7 @@ def begin_work_unit(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
                 "provider": provider,
                 "session_id": session_id,
                 "unit_id": result["unit"]["id"],
+                "superseded_count": len(result.get("superseded_ids", [])),
             }
         )
     return result

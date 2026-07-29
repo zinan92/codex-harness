@@ -900,6 +900,7 @@ struct WorkUnit: Codable, Identifiable {
     let sessionLocator: SessionLocator?
     let seenAt: Double?
     let snoozedUntil: Double?
+    let supersededAt: Double?
 
     enum CodingKeys: String, CodingKey {
         case id, provider, cwd, state, summary
@@ -910,6 +911,7 @@ struct WorkUnit: Codable, Identifiable {
         case sessionLocator = "session_locator"
         case seenAt = "seen_at"
         case snoozedUntil = "snoozed_until"
+        case supersededAt = "superseded_at"
     }
 
     var elapsed: String {
@@ -954,17 +956,45 @@ struct ResumeResult: Codable {
 
 struct WorkUnitStore: Codable { let units: [String: WorkUnit] }
 
-struct ProjectRule: Codable {
+struct ProjectAlias: Decodable {
+    let provider: String?
     let prefix: String
-    let name: String
-    let color: String?
 }
 
-struct ProjectConfig: Codable { let projects: [ProjectRule] }
+struct ProjectRule: Decodable {
+    let projectID: String
+    let name: String
+    let color: String?
+    let aliases: [ProjectAlias]
+
+    enum CodingKeys: String, CodingKey { case projectID = "project_id"; case name, color, aliases, prefix }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let legacyPrefix = try values.decodeIfPresent(String.self, forKey: .prefix)
+        projectID = try values.decodeIfPresent(String.self, forKey: .projectID) ?? legacyPrefix ?? "unmapped"
+        name = try values.decode(String.self, forKey: .name)
+        color = try values.decodeIfPresent(String.self, forKey: .color)
+        aliases = try values.decodeIfPresent([ProjectAlias].self, forKey: .aliases) ?? legacyPrefix.map { [ProjectAlias(provider: nil, prefix: $0)] } ?? []
+    }
+}
+
+struct ProjectConfig: Decodable { let projects: [ProjectRule] }
 
 struct ProjectIdentity {
+    let id: String
     let name: String
     let color: Color
+}
+
+struct AttentionGroup: Identifiable {
+    let id: String
+    let identity: ProjectIdentity
+    let units: [WorkUnit]
+
+    var hasBlocked: Bool { units.contains { $0.state == "blocked" } }
+    var hasDone: Bool { units.contains { $0.state == "done" } }
+    var actionable: Bool { hasBlocked || hasDone }
 }
 
 private func projectColor(_ raw: String?) -> Color {
@@ -1005,20 +1035,44 @@ final class JingleModel: ObservableObject {
     func identity(for unit: WorkUnit) -> ProjectIdentity {
         let normalized = URL(fileURLWithPath: unit.cwd).standardized.path
         if let rule = projects
-            .filter({ normalized == $0.prefix || normalized.hasPrefix($0.prefix.hasSuffix("/") ? $0.prefix : $0.prefix + "/") })
-            .max(by: { $0.prefix.count < $1.prefix.count }) {
-            return ProjectIdentity(name: rule.name, color: projectColor(rule.color))
+            .filter({ rule in rule.aliases.contains { alias in
+                let prefix = URL(fileURLWithPath: alias.prefix).standardized.path
+                return (alias.provider == nil || alias.provider == unit.provider)
+                    && (normalized == prefix || normalized.hasPrefix(prefix.hasSuffix("/") ? prefix : prefix + "/"))
+            } })
+            .max(by: { left, right in
+                (left.aliases.map { $0.prefix.count }.max() ?? 0) < (right.aliases.map { $0.prefix.count }.max() ?? 0)
+            }) {
+            return ProjectIdentity(id: rule.projectID, name: rule.name, color: projectColor(rule.color))
         }
         let name = URL(fileURLWithPath: unit.cwd).lastPathComponent
-        return ProjectIdentity(name: name.isEmpty ? "未命名项目" : name, color: lookColor)
+        // An unmapped cwd deliberately keeps its full normalized path as the
+        // identity. Equal basenames must not silently merge across projects.
+        return ProjectIdentity(id: "unmapped:\(normalized)", name: name.isEmpty ? "未命名项目" : name, color: lookColor)
     }
 
-    private var visible: [WorkUnit] { units.filter { $0.seenAt == nil } }
-    var blocked: [WorkUnit] { visible.filter { $0.state == "blocked" }.sorted { ($0.endedAt ?? 0) < ($1.endedAt ?? 0) } }
+    private var visible: [WorkUnit] { units.filter { $0.seenAt == nil && $0.supersededAt == nil } }
+    private var currentBySession: [WorkUnit] {
+        Dictionary(grouping: visible, by: { "\($0.provider):\($0.sessionID)" })
+            .compactMap { $0.value.max { $0.startedAt < $1.startedAt } }
+    }
+    var attentionGroups: [AttentionGroup] {
+        Dictionary(grouping: currentBySession, by: { identity(for: $0).id })
+            .compactMap { groupID, items in
+                guard let unit = items.first else { return nil }
+                return AttentionGroup(id: groupID, identity: identity(for: unit), units: items.sorted { $0.startedAt > $1.startedAt })
+            }
+            .sorted { left, right in
+                let leftRank = left.hasBlocked ? 0 : (left.hasDone ? 1 : 2)
+                let rightRank = right.hasBlocked ? 0 : (right.hasDone ? 1 : 2)
+                return leftRank == rightRank ? left.id < right.id : leftRank < rightRank
+            }
+    }
+    var blocked: [WorkUnit] { currentBySession.filter { $0.state == "blocked" }.sorted { ($0.endedAt ?? 0) < ($1.endedAt ?? 0) } }
     var callableBlocked: [WorkUnit] { blocked.filter { ($0.snoozedUntil ?? 0) <= Date().timeIntervalSince1970 } }
-    var done: [WorkUnit] { visible.filter { $0.state == "done" }.sorted { ($0.endedAt ?? 0) < ($1.endedAt ?? 0) } }
-    var running: [WorkUnit] { visible.filter { $0.state == "running" }.sorted { $0.startedAt < $1.startedAt } }
-    var pendingCount: Int { blocked.count + done.count }
+    var done: [WorkUnit] { currentBySession.filter { $0.state == "done" }.sorted { ($0.endedAt ?? 0) < ($1.endedAt ?? 0) } }
+    var running: [WorkUnit] { currentBySession.filter { $0.state == "running" }.sorted { $0.startedAt < $1.startedAt } }
+    var pendingCount: Int { attentionGroups.filter(\.actionable).count }
 
     func acknowledge(_ unit: WorkUnit) { runControl(["--acknowledge", unit.id], success: "已看") }
     func snooze(_ unit: WorkUnit) { runControl(["--snooze", unit.id, "--seconds", "600"], success: "10 分钟后再喊你") }
@@ -1138,6 +1192,28 @@ struct QueueItem: View {
     }
 }
 
+struct AttentionGroupItem: View {
+    let group: AttentionGroup
+    @ObservedObject var model: JingleModel
+    let open: (WorkUnit) -> Void
+    let acknowledge: (WorkUnit) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 7) {
+                Text(group.identity.name).font(.system(size: 13, weight: .bold))
+                Spacer()
+                Text(group.units.map(\.badge).joined(separator: " · "))
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(group.units) { QueueItem(unit: $0, model: model, open: open, acknowledge: acknowledge) }
+        }
+        .padding(9)
+        .background(group.identity.color.opacity(0.08), in: RoundedRectangle(cornerRadius: 11))
+    }
+}
+
 struct SettlementView: View {
     @ObservedObject var model: JingleModel
     let open: (WorkUnit) -> Void
@@ -1148,9 +1224,9 @@ struct SettlementView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 13) {
                 HStack { Text("JINGLE").font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(.secondary); Spacer(); Text("清算").font(.headline) }
-                if !model.blocked.isEmpty { queue(title: "卡住了", color: .orange, units: model.blocked) }
-                if !model.done.isEmpty { queue(title: "做完了", color: .green, units: model.done) }
-                if !model.running.isEmpty { queue(title: "还在跑", color: .blue, units: model.running) }
+                if !blockedGroups.isEmpty { queue(title: "卡住了", color: .orange, groups: blockedGroups) }
+                if !doneGroups.isEmpty { queue(title: "做完了", color: .green, groups: doneGroups) }
+                if !runningGroups.isEmpty { queue(title: "还在跑", color: .blue, groups: runningGroups) }
                 if model.pendingCount == 0 && model.running.isEmpty {
                     Text("现在没有待处理任务").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 30).frame(maxWidth: .infinity)
                 }
@@ -1159,10 +1235,14 @@ struct SettlementView: View {
         }.frame(width: 380, height: panelHeight)
     }
 
-    @ViewBuilder private func queue(title: String, color: Color, units: [WorkUnit]) -> some View {
+    private var blockedGroups: [AttentionGroup] { model.attentionGroups.filter(\.hasBlocked) }
+    private var doneGroups: [AttentionGroup] { model.attentionGroups.filter { !$0.hasBlocked && $0.hasDone } }
+    private var runningGroups: [AttentionGroup] { model.attentionGroups.filter { !$0.hasBlocked && !$0.hasDone } }
+
+    @ViewBuilder private func queue(title: String, color: Color, groups: [AttentionGroup]) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(color)
-            ForEach(units) { QueueItem(unit: $0, model: model, open: open, acknowledge: acknowledge) }
+            ForEach(groups) { AttentionGroupItem(group: $0, model: model, open: open, acknowledge: acknowledge) }
         }
     }
 }
