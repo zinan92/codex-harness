@@ -64,6 +64,9 @@ body{margin:0;background:var(--paper);color:var(--ink);
 .grp>.h{display:flex;align-items:baseline;gap:6px;padding:0 13px 4px}
 .grp>.h .n{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:var(--acc);font-weight:700}
 .grp>.h .t{font-size:11px;font-weight:650}
+.grp.archived>.h .t{color:var(--mut);font-weight:500}
+.grp.archived>.h .n{color:var(--mut)}
+.grp.archived .it{opacity:.7}
 .it{display:grid;grid-template-columns:6px 1fr auto;gap:7px;align-items:center;
   padding:4px 13px;cursor:pointer;color:var(--mut);font-size:12px}
 .it:hover{background:var(--soft);color:var(--ink)}
@@ -362,35 +365,63 @@ iframe{flex:1;width:100%;border:0;display:block;background:var(--paper)}
       '<br>然后刷新本页。</div>';
   }
 
+  function makeItem(p){
+    var it = document.createElement('div');
+    it.className = 'it'; it.dataset.name = p.name;
+    it.setAttribute('role','button'); it.tabIndex = 0;
+    var label = p.cost_cents
+      ? money(p.cost_cents) + ' · ' + p.active_days + 'd'
+      : '无日志';
+    it.innerHTML = '<i class="d' + (p.cost_cents ? ' warm' : '') + '"></i>' +
+      '<span class="nm">' + esc(ALIAS[p.name] || p.name) + '</span>' +
+      '<span class="c">' + label + '</span>';
+    var pick = function(){ select(p.name); };
+    it.addEventListener('click', pick);
+    it.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pick(); }
+    });
+    return it;
+  }
+
   function renderNav(){
     var host = $('nav-groups'); host.innerHTML = '';
     GROUPS.forEach(function(g, gi){
       var rows = LEDGER.projects
-        .filter(function(p){ return p.group === g; })
+        .filter(function(p){ return p.group === g && !p.archived; })
         .sort(function(a,b){ return b.cost_cents - a.cost_cents; });
       if(!rows.length) return;
       var box = document.createElement('div'); box.className = 'grp';
       box.innerHTML = '<div class="h"><span class="n">' +
         String(gi+1).padStart(2,'0') + '</span><span class="t">' + esc(g) + '</span></div>';
-      rows.forEach(function(p){
-        var it = document.createElement('div');
-        it.className = 'it'; it.dataset.name = p.name;
-        it.setAttribute('role','button'); it.tabIndex = 0;
-        var label = p.cost_cents
-          ? money(p.cost_cents) + ' · ' + p.active_days + 'd'
-          : '无日志';
-        it.innerHTML = '<i class="d' + (p.cost_cents ? ' warm' : '') + '"></i>' +
-          '<span class="nm">' + esc(ALIAS[p.name] || p.name) + '</span>' +
-          '<span class="c">' + label + '</span>';
-        var pick = function(){ select(p.name); };
-        it.addEventListener('click', pick);
-        it.addEventListener('keydown', function(e){
-          if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pick(); }
-        });
-        box.appendChild(it);
-      });
+      rows.forEach(function(p){ box.appendChild(makeItem(p)); });
       host.appendChild(box);
     });
+
+    var archivedRows = LEDGER.projects
+      .filter(function(p){ return p.archived; })
+      .sort(function(a,b){ return b.cost_cents - a.cost_cents; });
+    if(archivedRows.length){
+      var box = document.createElement('div'); box.className = 'grp archived collapsed';
+      var head = document.createElement('div'); head.className = 'h';
+      head.style.cursor = 'pointer';
+      head.setAttribute('role','button'); head.tabIndex = 0;
+      head.innerHTML = '<span class="n">·</span><span class="t">已归档（' +
+        archivedRows.length + '）</span>';
+      var body = document.createElement('div');
+      archivedRows.forEach(function(p){ body.appendChild(makeItem(p)); });
+      body.style.display = 'none';
+      var toggle = function(){
+        var open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : '';
+        box.classList.toggle('collapsed', open);
+      };
+      head.addEventListener('click', toggle);
+      head.addEventListener('keydown', function(e){
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); }
+      });
+      box.appendChild(head); box.appendChild(body);
+      host.appendChild(box);
+    }
   }
 
   function renderSpark(name){

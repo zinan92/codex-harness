@@ -1,19 +1,19 @@
 {
  "date": "2026-07-29",
- "generated_at": "2026-07-29T03:16:03+08:00",
- "grand_total_cents": 2046842,
+ "generated_at": "2026-07-29T13:40:28+08:00",
+ "grand_total_cents": 2125565,
  "projects": {
   "tokenrouter": {
-   "cost_cents": 74791,
-   "claude_cents": 74736,
-   "codex_cents": 55,
-   "active_days": 3
+   "cost_cents": 88789,
+   "claude_cents": 88033,
+   "codex_cents": 756,
+   "active_days": 4
   },
   "trading-orchestrator": {
-   "cost_cents": 551604,
-   "claude_cents": 545968,
-   "codex_cents": 5636,
-   "active_days": 52
+   "cost_cents": 575908,
+   "claude_cents": 570199,
+   "codex_cents": 5709,
+   "active_days": 53
   },
   "trading-system": {
    "cost_cents": 1771,
@@ -22,21 +22,21 @@
    "active_days": 2
   },
   "trading-co": {
-   "cost_cents": 154200,
-   "claude_cents": 153849,
-   "codex_cents": 351,
-   "active_days": 32
+   "cost_cents": 153291,
+   "claude_cents": 152936,
+   "codex_cents": 355,
+   "active_days": 33
   },
   "input-to-park": {
-   "cost_cents": 149894,
-   "claude_cents": 149724,
-   "codex_cents": 170,
-   "active_days": 17
+   "cost_cents": 150128,
+   "claude_cents": 149947,
+   "codex_cents": 181,
+   "active_days": 18
   },
   "park-io": {
-   "cost_cents": 31113,
+   "cost_cents": 31146,
    "claude_cents": 29115,
-   "codex_cents": 1998,
+   "codex_cents": 2031,
    "active_days": 13
   },
   "content-ops": {
@@ -58,75 +58,75 @@
    "active_days": 0
   },
   "agent 自管理": {
-   "cost_cents": 37961,
-   "claude_cents": 2560,
-   "codex_cents": 35401,
+   "cost_cents": 38844,
+   "claude_cents": 2653,
+   "codex_cents": 36191,
    "active_days": 31
   },
   "人生 K 线": {
-   "cost_cents": 29301,
-   "claude_cents": 4075,
-   "codex_cents": 25226,
+   "cost_cents": 30163,
+   "claude_cents": 4305,
+   "codex_cents": 25858,
    "active_days": 5
   },
   "New project": {
-   "cost_cents": 327318,
-   "claude_cents": 267928,
-   "codex_cents": 59390,
-   "active_days": 48
+   "cost_cents": 341152,
+   "claude_cents": 280326,
+   "codex_cents": 60826,
+   "active_days": 49
   },
   "投研面板": {
-   "cost_cents": 202158,
-   "claude_cents": 31430,
-   "codex_cents": 170728,
-   "active_days": 8
+   "cost_cents": 212256,
+   "claude_cents": 35994,
+   "codex_cents": 176262,
+   "active_days": 9
   },
   "电商工作台": {
-   "cost_cents": 27393,
+   "cost_cents": 28009,
    "claude_cents": 3167,
-   "codex_cents": 24226,
+   "codex_cents": 24842,
    "active_days": 3
   },
   "内容制作": {
-   "cost_cents": 398346,
+   "cost_cents": 411166,
    "claude_cents": 0,
-   "codex_cents": 398346,
+   "codex_cents": 411166,
    "active_days": 24
   },
   "知识库": {
-   "cost_cents": 8245,
+   "cost_cents": 8427,
    "claude_cents": 0,
-   "codex_cents": 8245,
+   "codex_cents": 8427,
    "active_days": 8
   },
   "tokenpulse": {
-   "cost_cents": 1865,
+   "cost_cents": 1907,
    "claude_cents": 0,
-   "codex_cents": 1865,
+   "codex_cents": 1907,
    "active_days": 7
   },
   "a股情报": {
-   "cost_cents": 991,
+   "cost_cents": 1085,
    "claude_cents": 0,
-   "codex_cents": 991,
+   "codex_cents": 1085,
    "active_days": 1
   },
   "个人助理": {
-   "cost_cents": 806,
+   "cost_cents": 815,
    "claude_cents": 0,
-   "codex_cents": 806,
+   "codex_cents": 815,
    "active_days": 1
   },
   "产品工厂": {
-   "cost_cents": 409,
+   "cost_cents": 416,
    "claude_cents": 0,
-   "codex_cents": 409,
+   "codex_cents": 416,
    "active_days": 3
   },
   "关系管理": {
-   "cost_cents": 369,
+   "cost_cents": 376,
    "claude_cents": 0,
-   "codex_cents": 369,
+   "codex_cents": 376,
    "active_days": 1
   },
   "repo-evals": {
@@ -136,9 +136,9 @@
    "active_days": 0
   },
   "未归类": {
-   "cost_cents": 40457,
-   "claude_cents": 1678,
-   "codex_cents": 38779,
+   "cost_cents": 42066,
+   "claude_cents": 2062,
+   "codex_cents": 40004,
    "active_days": 71
   }
  }
