@@ -8,7 +8,7 @@
 - Fixture baseline: added four independent existing function/test pairs plus `router/fixtures/demo_project/.router-gate` containing its unchanged real acceptance command, `python3 -m unittest discover tests -v`; baseline and implementation shipped in `509e006`.
 - Real complex proof (non-dry-run `run-20260729T052338Z-c4cb166e`): Fable classified the four requested independent additions as `complex`; Spark implemented four serial stories; every story gate recorded `['python3', '-m', 'unittest', 'discover', 'tests', '-v']`; Opus verdict was `pass`; status `succeeded`. The four real story commits were `8e608a1` (only `calculator.py`, `tests/test_calculator.py`), `6caa6d0` (only `text_tools.py`, `tests/test_text_tools.py`), `0ec5edc` (only `number_tools.py`, `tests/test_number_tools.py`), and `2ca2f59` (only `labels.py`, `tests/test_labels.py`). Their `git show --stat` outputs each list exactly those two files.
 - Real workspace-gate proof (non-dry-run `run-20260729T053157Z-1840f451`, invoked with no `--gate`): Fable triage=`simple`; Spark changed only `greeting.py` / `tests/test_greeting.py` in commit `6c77d75`; its `machine_gate` event recorded `command=['python3', '-m', 'unittest', 'discover', 'tests', '-v']`, not the TokenRouter default `['bash', 'scripts/check.sh']`; Opus verdict=`pass`; status `succeeded`.
-- Final verification follows this delivery-record commit: full router suite, protected-path diff, and `bash scripts/check.sh`.
+- Final verification: `python3 -m unittest discover router/tests -v` passed 26/26; `bash scripts/check.sh` was fully green; protected-path diff and `git status --porcelain` both exited 0.
 
 ## 2026-07-29 · 可配置 workspace 机器闸 + fixture 实跑
 
