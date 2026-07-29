@@ -4,13 +4,7 @@
 
 ## 待决
 
-- **Task 0 质量闸无法全绿（2026-07-29）**：开始执行前，工作树已有
-  `snapshots/2026-07-29.json` 未提交改动，导致 `bash scripts/check.sh` 的「工作树干净」项失败。
-  `snapshots/` 是本任务明令禁止修改的路径；未清理、未提交、未改写该文件。需要拥有该改动的人处理后再重跑全闸。
-
-- **裸命令 `tr "..."` 的安装位置（2026-07-29）**：仓库写入边界只允许 `router/` 和三份根文档；将
-  `tr` 安装到 PATH（例如 `~/bin`）需要写仓外文件，且会与系统的文本转换命令 `tr` 同名。本轮只能交付
-  `./router/tr "..."` / `python3 -m router "..."`；如需裸命令，需你指定一个安全的 PATH 安装方案。
+- 无（本次 TokenRouter retry + real-run evidence 交付没有待决项）。
 
 ## 需要你动手的事（不是阻塞，是权限所在）
 
@@ -20,6 +14,11 @@
 桌面留有 `tokenrouter-old-repo-backup-20260729.tar.gz` 备份。）
 
 ## 已解决
+
+- ~~Task 0 质量闸无法全绿（2026-07-29）~~：本次动工前及最终均已实际运行
+  `bash scripts/check.sh`，退出码 0；`snapshots/` 未被此任务修改。
+
+- ~~裸命令 `tr "..."` 的安装位置（2026-07-29）~~：不安装；系统命令冲突已按任务决定处理完毕。
 
 - ~~受保护文件核验：仓库根不存在 `ARCHITECTURE.md` 与 `workbench.html`，
   `git diff --exit-code ARCHITECTURE.md workbench.html` 报 `fatal: ambiguous argument`。~~

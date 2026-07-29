@@ -7,6 +7,11 @@
 - Chain: implement constants/prompt/workflow retries → replace conflicting router tests and prove four retry cases → run B1/B2 with real Fable/Codex/Opus → record evidence and final protected-path check.
 - Maximum risk: a real model can make an out-of-scope edit or a real B2 can pass first try; use narrow router-only prompts, inspect each receipt, and report an untriggered retry honestly.
 - Task A complete: added `SIMPLE_MAX_ATTEMPTS = 2`, `MEDIUM_IMPL_MAX_ATTEMPTS = 2`, and `MEDIUM_REVIEW_MAX_ROUNDS = 2`; failures feed gate output or review summary/evidence into the next fixed-model developer prompt. Router tests are 9/9, including all four requested retry scenarios; commit `2276d60`.
+- Gate compatibility decision: the fixed `bash scripts/check.sh` rejects an edited working tree, while the original developer prompt prohibited commits. To permit genuine implement → gate → review runs without changing the gate, the prompt now permits a scoped **local** commit only when the assignment explicitly requires it; no push, deletion, or permission change is permitted. Commit `4e5133f`.
+- B1 real run `run-20260729T024629Z-d05dc3a4` (non-dry-run): Fable triage=`simple` (96 cents) → Spark developer attempt 1=`ok` (28 cents) → machine gate=`ok` → Opus review round 1=`pass` (120 cents) → `succeeded`; total recorded cost 244 cents. The real task added the `Review.from_response` docstring and committed only `router/schema.py` as `cac9930`.
+- B2 real run `run-20260729T025001Z-5db91080` (non-dry-run): Fable triage=`medium` with contract (63 cents) → Spark developer round 1/attempt 1=`ok` (40 cents) → machine gate=`ok` → Opus review round 1=`pass` (137 cents) → `succeeded`; total recorded cost 240 cents. The real task added normalized-duplicate rejection for all four Contract list fields and regressions, committed only `router/schema.py` and `router/tests/test_router.py` as `fc8efe8`.
+- B2 first passed, so its real receipt contains one developer call and no retry event. This is not presented as retry evidence; the retry path remains covered by the deterministic unit tests. No artificial gate failure was introduced.
+- Post-B2 direct verification: `python3 -m unittest discover router/tests -v` passed 11/11. Final protected-path and full quality-gate verification are next.
 
 ## 2026-07-29 · TokenRouter v0 执行
 
