@@ -3,4 +3,4 @@
 
 def greeting(name: str) -> str:
     """Return a short greeting for ``name``."""
-    return "Welcome, {}!".format(name)
+    return "Hello, {}!".format(name)
