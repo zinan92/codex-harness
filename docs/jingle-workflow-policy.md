@@ -14,12 +14,13 @@ Use `--blocked` rather than `--finish` when the workflow itself ends waiting for
 attention group until the explicit finish marker releases the final terminal result. An internal
 `blocked` remains immediately actionable.
 
-`~/.codex/jingle/projects.json` can set `notification_policy` on a project:
+`~/.codex/jingle/projects.json` can set `notification_policy` on a project. Every `done`
+result stays in the ledger only; Jingle interrupts and renders only a blocked decision:
 
 | Policy | done | blocked |
 |---|---|---|
-| `task_terminal` (default) | silent project-group item | call + voice |
-| `workflow_terminal` | only explicit workflow terminal item | call + voice |
+| `task_terminal` (default) | ledger only | call + voice |
+| `workflow_terminal` | ledger only | call + voice |
 | `blocked_only` | suppressed from attention | call + voice |
 
 Unmapped paths and invalid policies fail closed to `task_terminal`. The three Work Unit states
