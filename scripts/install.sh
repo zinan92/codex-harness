@@ -36,6 +36,11 @@ resume_path="$hook_dir/jingle_resume.py"
 workflow_path="$hook_dir/jingle_workflow.py"
 projects_path="$codex_dir/jingle/projects.json"
 app_path="$HOME/Applications/Codex 通知设置.app"
+launch_agent_label="io.github.zinan92.codex-jingle"
+launch_agent_path="$HOME/Library/LaunchAgents/$launch_agent_label.plist"
+launch_agent_template="$repo_dir/assets/$launch_agent_label.plist.template"
+launch_agent_executable="$app_path/Contents/MacOS/CodexNotificationSettings"
+user_id="$(id -u)"
 staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-jingle.XXXXXX")"
 
 cleanup() {
@@ -128,9 +133,24 @@ PY
 /usr/bin/python3 "$notifier_path" --show-settings >/dev/null
 codesign --verify --deep --strict "$app_path"
 
+mkdir -p "$HOME/Library/LaunchAgents"
+launch_agent_temp="$staging_dir/$launch_agent_label.plist"
+/usr/bin/python3 - "$launch_agent_template" "$launch_agent_temp" "$launch_agent_executable" <<'PY'
+from pathlib import Path
+import sys
+template, destination, executable = map(Path, sys.argv[1:])
+destination.write_text(template.read_text(encoding="utf-8").replace("__JINGLE_EXECUTABLE_PATH__", str(executable)), encoding="utf-8")
+PY
+plutil -lint "$launch_agent_temp" >/dev/null
+launchctl bootout "gui/$user_id/$launch_agent_label" >/dev/null 2>&1 || true
+mv "$launch_agent_temp" "$launch_agent_path"
+launchctl bootstrap "gui/$user_id" "$launch_agent_path"
+launchctl kickstart -k "gui/$user_id/$launch_agent_label"
+
 echo
 echo "Codex Jingle installed."
 echo "Settings app: $app_path"
 echo "Lifecycle hook helpers: $lifecycle_hook_path"
+echo "Menu-bar runtime: $launch_agent_label"
 echo "See docs/jingle-hook-configuration.md to opt into Codex/Claude hooks."
 echo "Restart Codex once so it reloads the notify callback."

@@ -13,7 +13,13 @@ control_path="$hook_dir/jingle_control.py"
 resume_path="$hook_dir/jingle_resume.py"
 workflow_path="$hook_dir/jingle_workflow.py"
 app_path="$HOME/Applications/Codex 通知设置.app"
+launch_agent_label="io.github.zinan92.codex-jingle"
+launch_agent_path="$HOME/Library/LaunchAgents/$launch_agent_label.plist"
+user_id="$(id -u)"
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+launchctl bootout "gui/$user_id/$launch_agent_label" >/dev/null 2>&1 || true
+rm -f "$launch_agent_path"
 
 /usr/bin/python3 - "$config_path" "$notifier_path" <<'PY'
 from pathlib import Path
