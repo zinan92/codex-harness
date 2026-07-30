@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 import sqlite3
 import sys
@@ -59,6 +60,20 @@ class CodexActivityTests(unittest.TestCase):
         self.assertEqual(activity.safe_session_name("短名称"), "短名称")
         self.assertEqual(activity.safe_session_name("one\ntwo"), "")
         self.assertEqual(activity.safe_session_name("x" * 49), "")
+
+    def test_terminal_event_is_metadata_only_and_distinguishes_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            transcript = Path(temporary) / "session.jsonl"
+            transcript.write_text(
+                "\n".join((
+                    json.dumps({"timestamp": "2026-07-30T07:00:00Z", "type": "event_msg", "payload": {"type": "task_complete"}}),
+                    json.dumps({"timestamp": "2026-07-30T07:01:00Z", "type": "response_item", "payload": {"text": "do not expose"}}),
+                )),
+                encoding="utf-8",
+            )
+            terminal_at = activity.latest_task_complete_at(transcript)
+        self.assertGreater(terminal_at, 0)
+        self.assertLess(terminal_at, datetime.fromisoformat("2026-07-30T07:30:00+00:00").timestamp())
 
 
 if __name__ == "__main__":
