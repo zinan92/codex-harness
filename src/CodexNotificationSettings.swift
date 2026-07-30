@@ -1009,7 +1009,8 @@ struct AttentionGroup: Identifiable {
     let units: [WorkUnit]
 
     var hasBlocked: Bool { units.contains { $0.state == "blocked" } }
-    var actionable: Bool { hasBlocked }
+    // A smaller terminal timestamp means Park has been waiting longer.
+    var oldestWaitingAt: Double { units.compactMap(\.endedAt).min() ?? .greatestFiniteMagnitude }
 }
 
 private func projectColor(_ raw: String?) -> Color {
@@ -1081,9 +1082,21 @@ final class JingleModel: ObservableObject {
         Dictionary(grouping: currentBySession, by: { identity(for: $0).id })
             .compactMap { groupID, items in
                 guard let unit = items.first else { return nil }
-                return AttentionGroup(id: groupID, identity: identity(for: unit), units: items.sorted { $0.startedAt > $1.startedAt })
+                return AttentionGroup(
+                    id: groupID,
+                    identity: identity(for: unit),
+                    units: items.sorted {
+                        let leftWaitingAt = $0.endedAt ?? $0.startedAt
+                        let rightWaitingAt = $1.endedAt ?? $1.startedAt
+                        return leftWaitingAt == rightWaitingAt ? $0.id < $1.id : leftWaitingAt < rightWaitingAt
+                    }
+                )
             }
-            .sorted { $0.id < $1.id }
+            .sorted { left, right in
+                if left.hasBlocked != right.hasBlocked { return left.hasBlocked }
+                if left.oldestWaitingAt != right.oldestWaitingAt { return left.oldestWaitingAt < right.oldestWaitingAt }
+                return left.id < right.id
+            }
     }
     var blocked: [WorkUnit] { currentBySession.filter { $0.state == "blocked" }.sorted { ($0.endedAt ?? 0) < ($1.endedAt ?? 0) } }
     var callableBlocked: [WorkUnit] { blocked.filter { ($0.snoozedUntil ?? 0) <= Date().timeIntervalSince1970 } }

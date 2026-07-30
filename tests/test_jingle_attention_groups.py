@@ -55,8 +55,47 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertNotIn("struct WorkRow", source)
         self.assertIn('Button("已处理")', source)
         self.assertIn("var callableBlocked", source)
+        self.assertIn("var oldestWaitingAt", source)
+        self.assertIn("if left.hasBlocked != right.hasBlocked { return left.hasBlocked }", source)
+        self.assertIn("left.oldestWaitingAt < right.oldestWaitingAt", source)
+        self.assertNotIn('.sorted { $0.id < $1.id }', source)
         lifecycle = (ROOT / "src/jingle_lifecycle.py").read_text(encoding="utf-8")
         self.assertIn('existing["superseded_at"]', lifecycle)
+
+    def test_replay_orders_blocked_groups_before_oldest_done_groups(self) -> None:
+        data = json.loads((ROOT / "tests/fixtures/jingle-attention-work-units.json").read_text(encoding="utf-8"))
+        projects = json.loads((ROOT / "tests/fixtures/jingle-attention-projects.json").read_text(encoding="utf-8"))["projects"]
+
+        def project_id(unit: dict[str, object]) -> str:
+            for project in projects:
+                for alias in project["aliases"]:
+                    if alias.get("provider") in {None, unit["provider"]} and str(unit["cwd"]).startswith(alias["prefix"]):
+                        return project["project_id"]
+            return f"unmapped:{unit['cwd']}"
+
+        latest: dict[tuple[str, str], dict[str, object]] = {}
+        for unit in data["units"].values():
+            key = (unit["provider"], unit["session_id"])
+            if unit["started_at"] > latest.get(key, {}).get("started_at", -1):
+                latest[key] = unit
+        groups: dict[str, list[dict[str, object]]] = {}
+        for unit in latest.values():
+            if unit.get("needs_attention") is True:
+                groups.setdefault(project_id(unit), []).append(unit)
+
+        ordered = sorted(
+            groups.items(),
+            key=lambda entry: (
+                not any(unit["state"] == "blocked" for unit in entry[1]),
+                min(unit["ended_at"] for unit in entry[1]),
+                entry[0],
+            ),
+        )
+        self.assertEqual([project for project, _ in ordered], ["token-router", "unmapped:/workspace/a/shared", "unmapped:/workspace/b/shared"])
+        self.assertEqual(
+            [unit["id"] for unit in sorted(ordered[0][1], key=lambda unit: (unit["ended_at"], unit["id"]))],
+            ["cl-current", "cx-current", "cl-blocked"],
+        )
 
 
 if __name__ == "__main__":
