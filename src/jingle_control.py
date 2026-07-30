@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from jingle_lifecycle import acknowledge_unit, snooze_unit
+from jingle_lifecycle import acknowledge_unit, quarantine_historical_completion_noise, snooze_unit
 
 
 def main() -> int:
@@ -18,12 +18,15 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--acknowledge")
     group.add_argument("--snooze")
+    group.add_argument("--quarantine-historical-completions", action="store_true")
     parser.add_argument("--seconds", type=int, default=600)
     arguments = parser.parse_args()
     if arguments.acknowledge:
         result = acknowledge_unit(arguments.acknowledge)
-    else:
+    elif arguments.snooze:
         result = snooze_unit(arguments.snooze, arguments.seconds)
+    else:
+        result = quarantine_historical_completion_noise()
     print(json.dumps(result, ensure_ascii=False, separators=(",", ":")))
     return 0
 

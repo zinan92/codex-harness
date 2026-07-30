@@ -168,6 +168,30 @@ def notification_policy(payload: dict[str, Any], provider: str = "", default: st
     return policy if policy in VALID_POLICIES else POLICY_TASK_TERMINAL
 
 
+def is_currently_mapped_project(cwd: object, provider: str) -> bool:
+    """Return whether a cwd still belongs to today's explicit project list."""
+    projects_path = runtime_path("JINGLE_PROJECTS_PATH", JINGLE_RUNTIME_DIR / "projects.json")
+    try:
+        projects = json.loads(projects_path.read_text(encoding="utf-8")).get("projects", [])
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return False
+    normalized_cwd = _trackable_cwd(cwd)
+    if not normalized_cwd:
+        return False
+    for project in projects if isinstance(projects, list) else []:
+        if not isinstance(project, dict):
+            continue
+        for alias in project.get("aliases", []):
+            if not isinstance(alias, dict):
+                continue
+            prefix = _trackable_cwd(alias.get("prefix"))
+            if prefix and alias.get("provider") in {None, provider} and (
+                normalized_cwd == prefix or normalized_cwd.startswith(prefix + "/")
+            ):
+                return True
+    return False
+
+
 def needs_attention(unit: dict[str, Any]) -> bool:
     """Return whether this terminal Work Unit now belongs in Park's queue."""
     if unit.get("attention_suppressed") is True:
@@ -348,6 +372,32 @@ def acknowledge_unit(unit_id: str) -> dict[str, Any]:
 
     result = _with_lock(operation)
     append_event({"status": result["status"], "unit_id": unit_id})
+    return result
+
+
+def quarantine_historical_completion_noise() -> dict[str, Any]:
+    """Hide legacy unmapped completions without deleting their Work Unit ledger."""
+    def operation(state: dict[str, Any]) -> dict[str, Any]:
+        quarantined_ids: list[str] = []
+        for unit_id, unit in state["units"].items():
+            if not isinstance(unit, dict) or unit.get("state") != STATE_DONE:
+                continue
+            if unit.get("needs_attention") is not True:
+                continue
+            if is_currently_mapped_project(unit.get("cwd"), str(unit.get("provider") or "")):
+                continue
+            unit["attention_suppressed"] = True
+            unit["needs_attention"] = False
+            unit["attention_suppressed_reason"] = "unmapped_completion_quarantine"
+            quarantined_ids.append(str(unit_id))
+        return {
+            "status": "quarantined_historical_completions",
+            "count": len(quarantined_ids),
+            "changed": bool(quarantined_ids),
+        }
+
+    result = _with_lock(operation)
+    append_event({"status": result["status"], "count": result["count"]})
     return result
 
 
