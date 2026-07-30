@@ -9,7 +9,7 @@ ROOT = Path(__file__).parents[1]
 
 
 class AttentionGroupContractTests(unittest.TestCase):
-    def test_replay_fixture_has_one_current_unit_per_session_and_three_project_groups(self) -> None:
+    def test_replay_fixture_projects_to_one_actionable_card_per_project(self) -> None:
         data = json.loads((ROOT / "tests/fixtures/jingle-attention-work-units.json").read_text(encoding="utf-8"))
         latest: dict[tuple[str, str], dict[str, object]] = {}
         for unit in data["units"].values():
@@ -27,16 +27,26 @@ class AttentionGroupContractTests(unittest.TestCase):
                         return project["project_id"]
             return f"unmapped:{unit['cwd']}"
 
-        def needs_attention(unit: dict[str, object]) -> bool:
-            return unit.get("needs_attention") is True
+        def visible(unit: dict[str, object]) -> bool:
+            identity = project_id(unit)
+            return unit.get("needs_attention") is True and (
+                identity == "token-router" or unit.get("state") == "blocked"
+            )
 
-        queued = [unit for unit in latest.values() if needs_attention(unit)]
-        self.assertEqual(len(queued), 5)
-        self.assertEqual({project_id(unit) for unit in queued}, {"token-router", "unmapped:/workspace/a/shared", "unmapped:/workspace/b/shared"})
-        self.assertEqual(len({project_id(unit) for unit in queued}), 3)
-        self.assertFalse(needs_attention({"state": "done", "notification_policy": "workflow_terminal", "needs_attention": False}))
-        self.assertFalse(needs_attention({"state": "done", "notification_policy": "blocked_only", "needs_attention": False}))
-        self.assertFalse(needs_attention({"state": "done", "notification_policy": "task_terminal"}))
+        groups: dict[str, list[dict[str, object]]] = {}
+        for unit in latest.values():
+            if visible(unit):
+                groups.setdefault(project_id(unit), []).append(unit)
+        cards = {
+            identity: max(items, key=lambda item: (item["state"] == "blocked", item["started_at"], item["id"]))
+            for identity, items in groups.items()
+        }
+        self.assertEqual(set(cards), {"token-router"})
+        self.assertEqual(cards["token-router"]["id"], "cl-blocked")
+        self.assertEqual(len(cards), 1)
+
+        unmapped_blocked = {"id": "unmapped-blocked", "state": "blocked", "needs_attention": True, "cwd": "/workspace/a/shared", "provider": "codex"}
+        self.assertTrue(visible(unmapped_blocked))
 
     def test_native_model_uses_explicit_group_identity_and_supersession(self) -> None:
         source = (ROOT / "src/CodexNotificationSettings.swift").read_text(encoding="utf-8")
@@ -61,9 +71,12 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertIn("var settlementLabel", source)
         self.assertIn("var waitingLabel", source)
         self.assertIn('Text(unit.settlementLabel)', source)
-        self.assertIn('@State private var expanded = false', source)
-        self.assertIn('Array(group.units.prefix(3))', source)
-        self.assertIn('Button(expanded ? "收起" : "点开展开")', source)
+        self.assertIn('identity(for: $0).isMapped || $0.state == "blocked"', source)
+        self.assertIn('private func preferredUnit(in items: [WorkUnit])', source)
+        self.assertIn('units: [preferred]', source)
+        self.assertNotIn('@State private var expanded = false', source)
+        self.assertNotIn('Array(group.units.prefix(3))', source)
+        self.assertNotIn('Button(expanded ? "收起" : "点开展开")', source)
         self.assertIn("var runningUnits", source)
         self.assertIn('$0.state == "running" && identity(for: $0).isMapped', source)
         self.assertIn("private struct RunningItem", source)
@@ -101,7 +114,9 @@ class AttentionGroupContractTests(unittest.TestCase):
                 latest[key] = unit
         groups: dict[str, list[dict[str, object]]] = {}
         for unit in latest.values():
-            if unit.get("needs_attention") is True:
+            if unit.get("needs_attention") is True and (
+                project_id(unit) == "token-router" or unit.get("state") == "blocked"
+            ):
                 groups.setdefault(project_id(unit), []).append(unit)
 
         ordered = sorted(
@@ -112,7 +127,7 @@ class AttentionGroupContractTests(unittest.TestCase):
                 entry[0],
             ),
         )
-        self.assertEqual([project for project, _ in ordered], ["token-router", "unmapped:/workspace/a/shared", "unmapped:/workspace/b/shared"])
+        self.assertEqual([project for project, _ in ordered], ["token-router"])
         self.assertEqual(
             [unit["id"] for unit in sorted(ordered[0][1], key=lambda unit: (unit["ended_at"], unit["id"]))],
             ["cl-current", "cx-current", "cl-blocked"],
