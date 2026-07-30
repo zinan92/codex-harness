@@ -15,7 +15,10 @@ from jingle_lifecycle import attach_accounting, begin_work_unit, finish_work_uni
 
 
 START_EVENTS = {"UserPromptSubmit"}
-END_EVENTS = {"Stop", "StopFailure"}
+# Claude Code can end a process before it emits Stop/StopFailure (for example,
+# a budget failure). SessionEnd is a terminal-only safety net: lifecycle.py
+# ignores it after a normal Stop has already completed the active Work Unit.
+END_EVENTS = {"Stop", "StopFailure", "SessionEnd"}
 
 
 def read_payload() -> dict[str, Any] | None:

@@ -491,6 +491,12 @@ def finish_work_unit(
 
     if event_name == "StopFailure":
         target_state, reason = STATE_BLOCKED, "claude_stop_failure"
+    elif provider == "claude" and event_name == "SessionEnd":
+        # SessionEnd is deliberately only a fallback for a still-active Claude
+        # Work Unit. A normal Stop wins first and causes this later event to be
+        # a duplicate/no-op, while an abrupt CLI exit becomes actionable rather
+        # than looking like it is still running forever.
+        target_state, reason = STATE_BLOCKED, "claude_session_end"
     elif explicit_reason := _explicit_block_reason(payload):
         target_state, reason = STATE_BLOCKED, explicit_reason
     else:
