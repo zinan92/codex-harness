@@ -15,10 +15,8 @@ from jingle_lifecycle import attach_accounting, begin_work_unit, finish_work_uni
 
 
 START_EVENTS = {"UserPromptSubmit"}
-# Claude Code can end a process before it emits Stop/StopFailure (for example,
-# a budget failure). SessionEnd is a terminal-only safety net: lifecycle.py
-# ignores it after a normal Stop has already completed the active Work Unit.
 END_EVENTS = {"Stop", "StopFailure", "SessionEnd"}
+SUPPORTED_PROVIDERS = {"codex"}
 
 
 def read_payload() -> dict[str, Any] | None:
@@ -30,6 +28,11 @@ def read_payload() -> dict[str, Any] | None:
 
 
 def handle(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
+    # Jingle is deliberately Codex-only. Keep the CLI spelling accepted so a
+    # stale Claude configuration fails closed without touching its ledger,
+    # accounting, summary, or notification paths.
+    if provider not in SUPPORTED_PROVIDERS:
+        return {"status": "ignored_provider", "changed": False}
     if is_subagent_event(payload):
         return ignore_subagent_event(provider, payload)
     event_name = str(payload.get("hook_event_name") or "").strip()

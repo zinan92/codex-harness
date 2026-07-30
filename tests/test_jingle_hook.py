@@ -77,36 +77,21 @@ class JingleHookTests(unittest.TestCase):
             collect.assert_called_once()
             notify.assert_called_once()
 
-    def test_claude_blocked_turn_uses_attention_delivery_with_work_unit_id(self) -> None:
+    def test_claude_events_are_ignored_before_any_side_effect(self) -> None:
         start = {"hook_event_name": "UserPromptSubmit", "session_id": "claude-session", "cwd": "/tmp/brief"}
         stop = {**start, "hook_event_name": "StopFailure", "error": "rate_limit"}
         with (
-            mock.patch.object(jingle_hook, "collect_accounting", return_value={"provider": "claude", "status": "unavailable"}),
-            mock.patch.object(jingle_summary, "launch"),
+            mock.patch.object(jingle_hook, "collect_accounting", return_value={"provider": "claude", "status": "unavailable"}) as collect,
+            mock.patch.object(jingle_summary, "launch") as launch,
             mock.patch.object(codex_spoken_notify, "launch_worker") as notify,
         ):
             running = jingle_hook.handle("claude", start)
             ended = jingle_hook.handle("claude", stop)
-        self.assertEqual(ended["status"], "blocked")
-        notify.assert_called_once_with(
-            running["unit"]["id"], "claude-session", "brief：处理中…", "jingle_lifecycle", codex_spoken_notify.STATUS_ATTENTION
-        )
-
-    def test_claude_session_end_is_a_blocked_terminal_fallback(self) -> None:
-        start = {"hook_event_name": "UserPromptSubmit", "session_id": "claude-session", "cwd": "/tmp/brief"}
-        end = {**start, "hook_event_name": "SessionEnd", "reason": "other"}
-        with (
-            mock.patch.object(jingle_hook, "collect_accounting", return_value={"provider": "claude", "status": "unavailable"}),
-            mock.patch.object(jingle_summary, "launch"),
-            mock.patch.object(codex_spoken_notify, "launch_worker") as notify,
-        ):
-            running = jingle_hook.handle("claude", start)
-            ended = jingle_hook.handle("claude", end)
-        self.assertEqual(ended["status"], "blocked")
-        self.assertEqual(ended["unit"]["outcome_reason"], "claude_session_end")
-        notify.assert_called_once_with(
-            running["unit"]["id"], "claude-session", "brief：处理中…", "jingle_lifecycle", codex_spoken_notify.STATUS_ATTENTION
-        )
+        self.assertEqual(running, {"status": "ignored_provider", "changed": False})
+        self.assertEqual(ended, {"status": "ignored_provider", "changed": False})
+        collect.assert_not_called()
+        launch.assert_not_called()
+        notify.assert_not_called()
 
     def test_workflow_and_blocked_only_done_turns_never_launch_a_sound(self) -> None:
         workflow_start = {"hook_event_name": "UserPromptSubmit", "session_id": "workflow", "turn_id": "one", "cwd": "/tmp/flow"}

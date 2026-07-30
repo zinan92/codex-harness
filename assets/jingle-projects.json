@@ -6,7 +6,6 @@
       "color": "orange",
       "aliases": [
         {"provider": "codex", "prefix": "/Users/wendy/tokenrouter"},
-        {"provider": "claude", "prefix": "/Users/wendy/tokenrouter"},
         {"prefix": "/Users/wendy/token router"}
       ]
     },
