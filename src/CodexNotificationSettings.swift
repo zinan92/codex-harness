@@ -1062,6 +1062,7 @@ struct ProjectIdentity {
     let id: String
     let name: String
     let color: Color
+    let isMapped: Bool
 }
 
 struct AttentionGroup: Identifiable {
@@ -1120,12 +1121,12 @@ final class JingleModel: ObservableObject {
             .max(by: { left, right in
                 (left.aliases.map { $0.prefix.count }.max() ?? 0) < (right.aliases.map { $0.prefix.count }.max() ?? 0)
             }) {
-            return ProjectIdentity(id: rule.projectID, name: rule.name, color: projectColor(rule.color))
+            return ProjectIdentity(id: rule.projectID, name: rule.name, color: projectColor(rule.color), isMapped: true)
         }
         let name = URL(fileURLWithPath: unit.cwd).lastPathComponent
         // An unmapped cwd deliberately keeps its full normalized path as the
         // identity. Equal basenames must not silently merge across projects.
-        return ProjectIdentity(id: "unmapped:\(normalized)", name: name.isEmpty ? "未命名项目" : name, color: lookColor)
+        return ProjectIdentity(id: "unmapped:\(normalized)", name: name.isEmpty ? "未命名项目" : name, color: lookColor, isMapped: false)
     }
 
     // Park's queue contains either a blocked decision or the terminal result
@@ -1159,9 +1160,15 @@ final class JingleModel: ObservableObject {
                 return left.id < right.id
             }
     }
+    var runningUnits: [WorkUnit] {
+        units
+            .filter { $0.state == "running" && identity(for: $0).isMapped }
+            .sorted { $0.startedAt < $1.startedAt }
+    }
     var blocked: [WorkUnit] { currentBySession.filter { $0.state == "blocked" }.sorted { ($0.endedAt ?? 0) < ($1.endedAt ?? 0) } }
     var callableBlocked: [WorkUnit] { blocked.filter { ($0.snoozedUntil ?? 0) <= Date().timeIntervalSince1970 } }
     var pendingCount: Int { attentionGroups.count }
+    var hasSettlementContent: Bool { pendingCount > 0 || !runningUnits.isEmpty }
 
     func acknowledge(_ unit: WorkUnit) { runControl(["--acknowledge", unit.id], success: "已看") }
     func snooze(_ unit: WorkUnit) { runControl(["--snooze", unit.id, "--seconds", "600"], success: "10 分钟后再喊你") }
@@ -1371,6 +1378,30 @@ struct AttentionGroupItem: View {
     }
 }
 
+private struct RunningItem: View {
+    let unit: WorkUnit
+    let identity: ProjectIdentity
+
+    var body: some View {
+        HStack(spacing: 11) {
+            ProjectPersona(identity: identity, provider: unit.badge, compact: true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(identity.name).font(.system(size: 13, weight: .semibold))
+                Text("\(unit.providerName) 工作中")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text("已跑 \(unit.elapsed)")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(.secondary)
+        }
+        .opacity(0.72)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 8)
+    }
+}
+
 struct SettlementView: View {
     @ObservedObject var model: JingleModel
     let open: (WorkUnit) -> Void
@@ -1382,7 +1413,8 @@ struct SettlementView: View {
             VStack(alignment: .leading, spacing: 13) {
                 HStack { Text("JINGLE").font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(.secondary); Spacer(); Text("等你").font(.headline) }
                 if !model.attentionGroups.isEmpty { queue(title: "等你", color: .primary, groups: model.attentionGroups) }
-                if model.pendingCount == 0 {
+                if !model.runningUnits.isEmpty { running(title: "还在跑", units: model.runningUnits) }
+                if model.pendingCount == 0 && model.runningUnits.isEmpty {
                     Text("现在没有待处理任务").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 30).frame(maxWidth: .infinity)
                 }
                 if let message = model.actionMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
@@ -1397,6 +1429,15 @@ struct SettlementView: View {
         VStack(alignment: .leading, spacing: 7) {
             Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(color)
             ForEach(groups) { AttentionGroupItem(group: $0, model: model, open: open, acknowledge: acknowledge) }
+        }
+    }
+
+    @ViewBuilder private func running(title: String, units: [WorkUnit]) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(JingleVisual.accentDeep)
+            ForEach(units) { unit in
+                RunningItem(unit: unit, identity: model.identity(for: unit))
+            }
         }
     }
 }
@@ -1500,7 +1541,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @discardableResult
     private func present(_ mode: PanelMode) -> Bool {
-        guard model.pendingCount > 0, let button = item.button, let anchor = statusItemFrame(on: button) else {
+        guard model.hasSettlementContent, let button = item.button, let anchor = statusItemFrame(on: button) else {
             return false
         }
         let anchorCenter = CGPoint(x: anchor.midX, y: anchor.midY)
@@ -1535,14 +1576,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let count = model.pendingCount
         item.button?.title = count == 0 ? "•" : "\(count)"
         item.button?.contentTintColor = count == 0 ? .secondaryLabelColor : (model.blocked.isEmpty ? .labelColor : .systemOrange)
-        if count == 0 { dismissPanel() }
+        if !model.hasSettlementContent { dismissPanel() }
         if let first = model.callableBlocked.first(where: { !calledUnitIDs.contains($0.id) }), !(panel?.isVisible ?? false) {
             if present(.call(first)) { calledUnitIDs.insert(first.id) }
         }
     }
 
     @objc func toggle() {
-        guard model.pendingCount > 0 else { dismissPanel(); return }
+        guard model.hasSettlementContent else { dismissPanel(); return }
         if panel?.isVisible ?? false { dismissPanel() }
         else { present(.settlement) }
     }
