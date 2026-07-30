@@ -993,8 +993,16 @@ struct WorkUnit: Codable, Identifiable {
         return "\(formatter.string(from: Date(timeIntervalSince1970: startedAt))) 开始"
     }
     var tokenLabel: String {
-        guard let amount = tokenAccounting?.totalTokens else { return "本轮 token 不可用" }
-        return amount >= 1_000 ? String(format: "本轮 +%.1fk", Double(amount) / 1_000) : "本轮 +\(amount) token"
+        guard let amount = tokenAccounting?.totalTokens else { return "token 不可用" }
+        return amount >= 1_000 ? String(format: "+%.1fk", Double(amount) / 1_000) : "+\(amount) token"
+    }
+    var settlementLabel: String { "本轮 \(elapsed) · \(tokenLabel)" }
+    var waitingLabel: String {
+        guard let endedAt else { return "" }
+        let seconds = max(0, Int(Date().timeIntervalSince1970 - endedAt))
+        if seconds < 60 { return "等了 \(seconds) 秒" }
+        if seconds < 3_600 { return "等了 \(seconds / 60) 分钟" }
+        return "等了 \(seconds / 3_600) 小时"
     }
 }
 
@@ -1295,6 +1303,15 @@ struct QueueItem: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             DecisionDetails(unit: unit, identity: model.identity(for: unit))
+            HStack(alignment: .firstTextBaseline) {
+                Text(unit.waitingLabel)
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(unit.state == "blocked" ? JingleVisual.dangerDeep : .secondary)
+                Spacer()
+                Text(unit.settlementLabel)
+                    .font(.system(size: 10.5, weight: .regular, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
             HStack(spacing: 8) {
                 Button("已处理") { acknowledge(unit) }
                     .buttonStyle(.bordered)
@@ -1315,6 +1332,9 @@ struct AttentionGroupItem: View {
     @ObservedObject var model: JingleModel
     let open: (WorkUnit) -> Void
     let acknowledge: (WorkUnit) -> Void
+    @State private var expanded = false
+
+    private var displayedUnits: [WorkUnit] { expanded ? group.units : Array(group.units.prefix(3)) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -1325,9 +1345,21 @@ struct AttentionGroupItem: View {
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
-            ForEach(Array(group.units.enumerated()), id: \.element.id) { index, unit in
+            ForEach(Array(displayedUnits.enumerated()), id: \.element.id) { index, unit in
                 if index > 0 { Divider() }
                 QueueItem(unit: unit, model: model, open: open, acknowledge: acknowledge)
+            }
+            if group.units.count > 3 {
+                HStack {
+                    Text(expanded ? "已显示全部 \(group.units.count) 条" : "还有 \(group.units.count - 3) 条")
+                    Spacer()
+                    Button(expanded ? "收起" : "点开展开") { expanded.toggle() }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(JingleVisual.accentDeep)
+                }
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(.secondary)
+                .padding(.top, 2)
             }
         }
         .padding(14)
