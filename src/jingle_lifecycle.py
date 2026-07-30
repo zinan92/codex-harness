@@ -127,26 +127,45 @@ def session_key(provider: str, session_id: str) -> str:
     return f"{provider}:{session_id}"
 
 
-def notification_policy(payload: dict[str, Any], provider: str = "", default: str = POLICY_TASK_TERMINAL) -> str:
+def _trackable_cwd(value: object) -> str | None:
+    """Return a normalized project cwd, or None for an unsafe/empty identity."""
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    expanded = os.path.expanduser(raw)
+    if not os.path.isabs(expanded):
+        return None
+    normalized = os.path.normpath(expanded)
+    return normalized if normalized != os.path.sep else None
+
+
+def notification_policy(payload: dict[str, Any], provider: str = "", default: str = POLICY_BLOCKED_ONLY) -> str:
+    """Resolve the explicit project whitelist before admitting terminal results."""
     policy = str(payload.get("notification_policy") or "").strip()
-    if not policy:
-        projects_path = runtime_path("JINGLE_PROJECTS_PATH", JINGLE_RUNTIME_DIR / "projects.json")
-        try:
-            projects = json.loads(projects_path.read_text(encoding="utf-8")).get("projects", [])
-        except (OSError, json.JSONDecodeError, AttributeError):
-            projects = []
-        cwd = str(payload.get("cwd") or "").rstrip("/")
-        matches: list[tuple[int, str]] = []
-        for project in projects if isinstance(projects, list) else []:
-            if not isinstance(project, dict): continue
-            candidate = str(project.get("notification_policy") or "")
-            for alias in project.get("aliases", []):
-                if not isinstance(alias, dict): continue
-                prefix = str(alias.get("prefix") or "").rstrip("/")
-                if prefix and alias.get("provider") in {None, provider} and (cwd == prefix or cwd.startswith(prefix + "/")):
-                    matches.append((len(prefix), candidate))
-        policy = max(matches, default=(0, default))[1]
-    return policy if policy in VALID_POLICIES else default
+    if policy:
+        return policy if policy in VALID_POLICIES else default
+
+    projects_path = runtime_path("JINGLE_PROJECTS_PATH", JINGLE_RUNTIME_DIR / "projects.json")
+    try:
+        projects = json.loads(projects_path.read_text(encoding="utf-8")).get("projects", [])
+    except (OSError, json.JSONDecodeError, AttributeError):
+        projects = []
+    cwd = _trackable_cwd(payload.get("cwd"))
+    matches: list[tuple[int, str]] = []
+    for project in projects if isinstance(projects, list) else []:
+        if not isinstance(project, dict):
+            continue
+        candidate = str(project.get("notification_policy") or "")
+        for alias in project.get("aliases", []):
+            if not isinstance(alias, dict):
+                continue
+            prefix = _trackable_cwd(alias.get("prefix"))
+            if cwd and prefix and alias.get("provider") in {None, provider} and (cwd == prefix or cwd.startswith(prefix + "/")):
+                matches.append((len(prefix), candidate))
+    if not matches:
+        return default
+    policy = max(matches)[1]
+    return policy if policy in VALID_POLICIES else POLICY_TASK_TERMINAL
 
 
 def needs_attention(unit: dict[str, Any]) -> bool:
@@ -372,18 +391,21 @@ def begin_work_unit(provider: str, payload: dict[str, Any]) -> dict[str, Any]:
     """Move one main-task Work Unit into running without retaining its prompt."""
     session_id = str(payload.get("session_id") or payload.get("thread_id") or "").strip()
     turn_id = str(payload.get("turn_id") or "").strip()
-    cwd = str(payload.get("cwd") or "").strip()
+    cwd = _trackable_cwd(payload.get("cwd"))
     if not _valid_identity(provider, session_id):
         append_event({"status": "ignored_missing_session", "provider": provider})
         return {"status": "ignored_missing_session", "changed": False}
     if is_subagent_event(payload):
         append_event({"status": "ignored_subagent", "provider": provider, "session_id": session_id})
         return {"status": "ignored_subagent", "changed": False}
+    if cwd is None:
+        append_event({"status": "ignored_invalid_cwd", "provider": provider, "session_id": session_id})
+        return {"status": "ignored_invalid_cwd", "changed": False}
 
     def operation(state: dict[str, Any]) -> dict[str, Any]:
         key = session_key(provider, session_id)
         workflow = state["workflows"].get(key)
-        policy = str(workflow.get("policy") if isinstance(workflow, dict) else notification_policy(payload, provider))
+        policy = str(workflow.get("policy") if isinstance(workflow, dict) else notification_policy({**payload, "cwd": cwd}, provider))
         if provider == "codex" and turn_id:
             unit_id = _unit_id(provider, session_id, turn_id, 0)
             existing = state["units"].get(unit_id)
@@ -494,7 +516,8 @@ def finish_work_unit(
         unit["ended_at"] = time.time()
         unit["outcome_reason"] = reason
         policy = str(unit.get("notification_policy") or POLICY_TASK_TERMINAL)
-        if target_state == STATE_DONE and (policy == POLICY_BLOCKED_ONLY or unit.get("workflow_id")):
+        invalid_cwd = _trackable_cwd(unit.get("cwd")) is None
+        if invalid_cwd or (target_state == STATE_DONE and (policy == POLICY_BLOCKED_ONLY or unit.get("workflow_id"))):
             unit["attention_suppressed"] = True
         else:
             unit["attention_suppressed"] = False

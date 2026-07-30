@@ -36,8 +36,13 @@ class JingleLifecycleTests(unittest.TestCase):
             "JINGLE_STATE_PATH": str(root / "work-units.json"),
             "JINGLE_LOCK_PATH": str(root / "work-units.lock"),
             "JINGLE_EVENT_LOG_PATH": str(root / "events.jsonl"),
+            "JINGLE_PROJECTS_PATH": str(root / "projects.json"),
         }
         self.previous = {key: os.environ.get(key) for key in self.environ}
+        Path(self.environ["JINGLE_PROJECTS_PATH"]).write_text(
+            json.dumps({"projects": [{"project_id": "interactive", "aliases": [{"prefix": "/tmp/project-a"}]}]}),
+            encoding="utf-8",
+        )
         os.environ.update(self.environ)
 
     def tearDown(self) -> None:
@@ -217,17 +222,49 @@ class JingleLifecycleTests(unittest.TestCase):
         self.assertIn(done_start["unit"]["id"], lifecycle.load_state()["units"])
         self.assertIn(blocked_start["unit"]["id"], lifecycle.load_state()["units"])
 
-    def test_project_policy_is_explicit_and_unmapped_falls_back_to_task_terminal(self) -> None:
+    def test_project_policy_whitelist_defaults_mapped_to_task_terminal_and_unmapped_to_blocked_only(self) -> None:
         projects = Path(self.temporary.name) / "projects.json"
-        projects.write_text(json.dumps({"projects": [{"project_id": "quiet", "notification_policy": "blocked_only", "aliases": [{"provider": "claude", "prefix": "/tmp/project-a"}]}]}), encoding="utf-8")
+        projects.write_text(json.dumps({"projects": [
+            {"project_id": "interactive", "aliases": [{"provider": "claude", "prefix": "/tmp/project-a"}]},
+            {"project_id": "quiet", "notification_policy": "blocked_only", "aliases": [{"provider": "codex", "prefix": "/tmp/quiet"}]},
+        ]}), encoding="utf-8")
         previous = os.environ.get("JINGLE_PROJECTS_PATH")
         os.environ["JINGLE_PROJECTS_PATH"] = str(projects)
         try:
-            self.assertEqual(lifecycle.notification_policy({"cwd": "/tmp/project-a"}, "claude"), "blocked_only")
-            self.assertEqual(lifecycle.notification_policy({"cwd": "/tmp/project-a"}, "codex"), "task_terminal")
+            self.assertEqual(lifecycle.notification_policy({"cwd": "/tmp/project-a"}, "claude"), "task_terminal")
+            self.assertEqual(lifecycle.notification_policy({"cwd": "/tmp/quiet"}, "codex"), "blocked_only")
+            self.assertEqual(lifecycle.notification_policy({"cwd": "/tmp/unmapped"}, "codex"), "blocked_only")
         finally:
             if previous is None: os.environ.pop("JINGLE_PROJECTS_PATH", None)
             else: os.environ["JINGLE_PROJECTS_PATH"] = previous
+
+    def test_unmapped_done_is_ledger_only_but_unmapped_blocked_still_delivers(self) -> None:
+        done_start = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="unmapped-done", cwd="/tmp/park-intel"))
+        done = lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="unmapped-done", cwd="/tmp/park-intel", last_assistant_message="Completed."), classifier)
+        blocked_start = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="unmapped-blocked", cwd="/tmp/park-intel"))
+        blocked = lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="unmapped-blocked", cwd="/tmp/park-intel", last_assistant_message="I need input."), classifier)
+        self.assertEqual(done_start["unit"]["notification_policy"], lifecycle.POLICY_BLOCKED_ONLY)
+        self.assertTrue(done["unit"]["attention_suppressed"])
+        self.assertFalse(done["delivery_eligible"])
+        self.assertTrue(blocked_start["unit"]["notification_policy"] == lifecycle.POLICY_BLOCKED_ONLY)
+        self.assertFalse(blocked["unit"]["attention_suppressed"])
+        self.assertTrue(blocked["delivery_eligible"])
+
+    def test_empty_and_root_cwds_never_create_visible_work_units(self) -> None:
+        for index, cwd in enumerate(("", "/")):
+            result = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id=f"invalid-{index}", cwd=cwd))
+            self.assertEqual(result["status"], "ignored_invalid_cwd")
+        self.assertEqual(lifecycle.load_state()["units"], {})
+
+    def test_legacy_invalid_cwd_is_forced_ledger_only_when_finished(self) -> None:
+        started = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", cwd="/tmp/project-a"))
+        state = lifecycle.load_state()
+        state["units"][started["unit"]["id"]]["cwd"] = "/"
+        lifecycle.save_state(state)
+        ended = lifecycle.finish_work_unit("codex", self.payload("Stop", cwd="/", last_assistant_message="I need input."), classifier)
+        self.assertTrue(ended["unit"]["attention_suppressed"])
+        self.assertFalse(ended["unit"]["needs_attention"])
+        self.assertFalse(ended["delivery_eligible"])
 
     def test_cli_emits_a_machine_readable_result_for_a_hook_fixture(self) -> None:
         payload = self.payload("UserPromptSubmit")
