@@ -1033,6 +1033,21 @@ struct ResumeResult: Codable {
 
 struct WorkUnitStore: Codable { let units: [String: WorkUnit] }
 
+struct CodexThreadActivity: Decodable {
+    let updatedAt: Double
+    let archived: Bool
+    let cwd: String
+    let displayName: String?
+
+    enum CodingKeys: String, CodingKey {
+        case updatedAt = "updated_at"
+        case archived, cwd
+        case displayName = "display_name"
+    }
+}
+
+struct CodexThreadActivityStore: Decodable { let sessions: [String: CodexThreadActivity] }
+
 struct ProjectAlias: Decodable {
     let provider: String?
     let prefix: String
@@ -1091,12 +1106,17 @@ final class JingleModel: ObservableObject {
 
     private let statePath: URL
     private let projectsPath: URL
+    private let activityPath: String
     private var projects: [ProjectRule] = []
+    private var threadActivity: [String: CodexThreadActivity] = [:]
+    private var activityRefreshInFlight = false
+    private let liveThreadWindow: TimeInterval = 120
 
     init() {
         let environment = ProcessInfo.processInfo.environment
         statePath = URL(fileURLWithPath: environment["JINGLE_STATE_PATH"] ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/jingle/work-units.json").path)
         projectsPath = URL(fileURLWithPath: environment["JINGLE_PROJECTS_PATH"] ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/jingle/projects.json").path)
+        activityPath = environment["JINGLE_ACTIVITY_HELPER_PATH"] ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks/jingle_codex_activity.py").path
         reload()
         Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.reload() }
     }
@@ -1107,7 +1127,40 @@ final class JingleModel: ObservableObject {
         DispatchQueue.main.async {
             self.units = loadedUnits.map { Array($0.units.values) } ?? []
             self.projects = loadedProjects?.projects ?? []
+            self.refreshCodexActivity()
         }
+    }
+
+    private func refreshCodexActivity() {
+        guard !activityRefreshInFlight else { return }
+        let sessionIDs = Array(Set(codexUnits.map(\.sessionID).filter { !$0.isEmpty })).sorted()
+        guard !sessionIDs.isEmpty else {
+            threadActivity = [:]
+            return
+        }
+        activityRefreshInFlight = true
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self else { return }
+            defer { DispatchQueue.main.async { self.activityRefreshInFlight = false } }
+            do {
+                let arguments = sessionIDs.flatMap { ["--session-id", $0] }
+                let data = try runLocalPython(script: self.activityPath, arguments: arguments)
+                let store = try JSONDecoder().decode(CodexThreadActivityStore.self, from: data)
+                DispatchQueue.main.async { self.threadActivity = store.sessions }
+            } catch {
+                // A missing or busy local Codex database is not evidence that a
+                // task is active. Keep the prior snapshot until the next probe.
+            }
+        }
+    }
+
+    private func activity(for unit: WorkUnit) -> CodexThreadActivity? {
+        threadActivity[unit.sessionID]
+    }
+
+    private func hasLiveCodexThread(_ unit: WorkUnit) -> Bool {
+        guard let activity = activity(for: unit), !activity.archived else { return false }
+        return activity.updatedAt >= Date().timeIntervalSince1970 - liveThreadWindow
     }
 
     func identity(for unit: WorkUnit) -> ProjectIdentity {
@@ -1122,6 +1175,11 @@ final class JingleModel: ObservableObject {
                 (left.aliases.map { $0.prefix.count }.max() ?? 0) < (right.aliases.map { $0.prefix.count }.max() ?? 0)
             }) {
             return ProjectIdentity(id: rule.projectID, name: rule.name, color: projectColor(rule.color), isMapped: true)
+        }
+        if let label = activity(for: unit)?.displayName, !label.isEmpty {
+            // Session-index names are intentionally read-only and short. They
+            // disambiguate shared directories without exposing raw DB titles.
+            return ProjectIdentity(id: "thread:\(unit.sessionID)", name: label, color: lookColor, isMapped: false)
         }
         let name = URL(fileURLWithPath: unit.cwd).lastPathComponent
         // An unmapped cwd deliberately keeps its full normalized path as the
@@ -1175,9 +1233,13 @@ final class JingleModel: ObservableObject {
             }
     }
     var runningUnits: [WorkUnit] {
-        codexUnits
-            .filter { $0.state == "running" && identity(for: $0).isMapped }
-            .sorted { $0.startedAt < $1.startedAt }
+        Dictionary(grouping: codexUnits.filter { $0.state == "running" && hasLiveCodexThread($0) }, by: \.sessionID)
+            .compactMap { $0.value.max { $0.startedAt < $1.startedAt } }
+            .sorted { left, right in
+                let leftUpdated = activity(for: left)?.updatedAt ?? 0
+                let rightUpdated = activity(for: right)?.updatedAt ?? 0
+                return leftUpdated == rightUpdated ? left.id < right.id : leftUpdated > rightUpdated
+            }
     }
     var blocked: [WorkUnit] {
         attentionGroups.flatMap(\.units)
