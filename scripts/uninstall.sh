@@ -13,7 +13,13 @@ control_path="$hook_dir/jingle_control.py"
 resume_path="$hook_dir/jingle_resume.py"
 workflow_path="$hook_dir/jingle_workflow.py"
 app_path="$HOME/Applications/Codex 通知设置.app"
+launch_agent_label="io.github.zinan92.codex-jingle"
+launch_agent_path="$HOME/Library/LaunchAgents/$launch_agent_label.plist"
+user_id="$(id -u)"
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+launchctl bootout "gui/$user_id/$launch_agent_label" >/dev/null 2>&1 || true
+rm -f "$launch_agent_path"
 
 /usr/bin/python3 - "$config_path" "$notifier_path" <<'PY'
 from pathlib import Path
@@ -40,9 +46,9 @@ rm -rf "$app_path"
 
 if [[ "${1:-}" == "--purge-settings" ]]; then
   rm -rf "$codex_dir/spoken-notify"
-  echo "Removed app, callback, bundled sounds, and local settings/cache."
+  echo "Removed app, LaunchAgent, callback, bundled sounds, and local settings/cache."
 else
-  echo "Removed app, callback, and bundled sounds. Local settings/cache were preserved."
+  echo "Removed app, LaunchAgent, callback, and bundled sounds. Local settings/cache were preserved."
 fi
 
 echo "Restart Codex once so it reloads config.toml."
