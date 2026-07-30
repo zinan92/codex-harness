@@ -528,7 +528,40 @@
 
     .item + .item { border-top: 1px solid var(--line); }
 
+    /* 同一项目下多条同 provider 会话：分隔线 + 开始时间，别再看着像重复 */
+    .item + .sub-divider { margin-top: 2px; border-top: 1px dashed var(--line); }
+    .sub-divider + .item { padding-top: 12px; }
+
     .item-main { min-width: 0; }
+
+    .item-prefix { color: var(--quiet); font-weight: 600; }
+    .item-prefix.decide { color: var(--red-deep); }
+
+    .started-label { color: var(--quiet); font-size: 10px; }
+
+    /* 一个项目组条目太多时折叠，防止像之前那样刷屏 */
+    .group-more {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 2px;
+      padding: 8px 6px 2px;
+      color: var(--quiet);
+      font-size: 10.5px;
+    }
+
+    .group-more button {
+      border: 0;
+      background: none;
+      color: var(--blue-deep);
+      cursor: pointer;
+      font-size: 10.5px;
+      font-weight: 650;
+    }
+
+    /* 还在跑：纯信息，不驱动数字，视觉上明显更安静 */
+    .run-item { opacity: 0.72; }
+    .run-item .elapsed { font-weight: 500; }
 
     .item-said {
       overflow: hidden;
@@ -689,7 +722,7 @@
           Jingle · 方向 D
         </div>
         <h1>它不是一个面板，是一个中断路由器</h1>
-        <p class="intro">A / B / C 都假设你会去看它。这一版假设你不会。产品自己决定什么时候闭嘴、什么时候出声，以及把你送回哪个会话。</p>
+        <p class="intro">A / B / C 都假设你会去看它。这一版假设你不会。产品自己决定什么时候闭嘴、什么时候出声，以及把你送回哪个会话。这一版已经过两次真实修正：「卡住了」和「做完了」现在合并成一个「该我了」队列（因为对你来说两者都是要接手，区别只在接手时做什么）；未映射项目默认不再刷屏（自动化项目的日常产出不会挤满队列）。</p>
       </div>
       <button class="theme-button" type="button" data-theme-button aria-label="切换明暗主题">◐</button>
     </header>
@@ -706,7 +739,7 @@
         <div class="rung">
           <div class="rung-when">只有做完的</div>
           <strong>提示</strong>
-          <p>菜单栏出数字。不弹窗、不出声——攒着没有损失。</p>
+          <p>菜单栏数字 +1，轻响一声，但不弹窗——攒着不吃亏，声音只是让你知道有更新。</p>
           <span class="menubar has"><i></i> 3</span>
         </div>
         <div class="rung loud">
@@ -776,7 +809,7 @@
       <article class="slot">
         <div class="slot-label">
           <strong>清算态</strong>
-          <span>两条通道硬分开 · 按等了你多久排序</span>
+          <span>「该我了」统一一个队列 · 卡住优先 · 同类按等了多久排序</span>
         </div>
         <div class="widget">
           <div class="bar">
@@ -784,19 +817,19 @@
               <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
               Jingle
             </div>
-            <div class="bar-right">等你 <span class="count">4</span></div>
+            <div class="bar-right">等你 <span class="count">3</span></div>
           </div>
 
           <div class="lane-head lane-stuck">
-            <div class="lane-name"><i aria-hidden="true"></i> 卡住了</div>
-            <div class="lane-why">时间在走，越早处理越省</div>
+            <div class="lane-name"><i aria-hidden="true"></i> 该我了</div>
+            <div class="lane-why">卡住的排最前；做完的按等了多久排</div>
           </div>
           <div class="lane">
             <div class="item" data-row>
               <span class="persona sm" data-p="research" aria-hidden="true">投<b>CL</b></span>
               <div class="item-main">
-                <div class="item-said">数据源要我换成 akshare 还是继续用 tushare？</div>
-                <div class="item-who">投研面板 <em>· Claude 需要决定</em></div>
+                <div class="item-said"><span class="item-prefix decide">需要决定：</span>数据源要我换成 akshare 还是继续用 tushare？</div>
+                <div class="item-who">投研面板 <em>· Claude</em></div>
               </div>
               <div class="item-right">
                 <div class="figures">
@@ -806,48 +839,13 @@
                 <button class="button alarm sm" type="button" data-jump>回到会话</button>
               </div>
             </div>
-          </div>
 
-          <div class="lane-head lane-done">
-            <div class="lane-name"><i aria-hidden="true"></i> 做完了</div>
-            <div class="lane-why">攒着不吃亏，但别忘了</div>
-          </div>
-          <div class="lane">
+            <!-- 同一项目下两条同 provider 会话：一个卡片，分隔线区分，不是两个位置 -->
             <div class="item" data-row>
-              <span class="persona sm" data-p="shop" aria-hidden="true">电<b>CX</b></span>
+              <span class="persona sm" data-p="router" aria-hidden="true">T<b>CL</b></span>
               <div class="item-main">
-                <div class="item-said">完成事件现在只会播报一次了</div>
-                <div class="item-who">电商工作台 <em>· Codex 已完成</em></div>
-              </div>
-              <div class="item-right">
-                <div class="figures">
-                  <span class="waited stale">等了 2 天</span>
-                  <span class="unit">本轮 12m · +23.6k</span>
-                </div>
-                <button class="button jump sm" type="button" data-jump>回到会话</button>
-                <button class="button sm" type="button" data-settle>已看</button>
-              </div>
-            </div>
-            <div class="item" data-row>
-              <span class="persona sm" data-p="content" aria-hidden="true">内<b>CL</b></span>
-              <div class="item-main">
-                <div class="item-said">日报结构改成了倒金字塔，示例已重写</div>
-                <div class="item-who">内容制作 <em>· Claude 已完成</em></div>
-              </div>
-              <div class="item-right">
-                <div class="figures">
-                  <span class="waited">等了 4h</span>
-                  <span class="unit">本轮 8m · +14.1k</span>
-                </div>
-                <button class="button jump sm" type="button" data-jump>回到会话</button>
-                <button class="button sm" type="button" data-settle>已看</button>
-              </div>
-            </div>
-            <div class="item" data-row>
-              <span class="persona sm" data-p="router" aria-hidden="true">T<b>CX</b></span>
-              <div class="item-main">
-                <div class="item-said">账本不变量测试补齐，check.sh 全绿</div>
-                <div class="item-who">tokenrouter <em>· Codex 已完成</em></div>
+                <div class="item-said"><span class="item-prefix">已完成：</span>账本不变量测试补齐，check.sh 全绿</div>
+                <div class="item-who">tokenrouter <em>· Claude</em> · <span class="started-label">14:32 开始</span></div>
               </div>
               <div class="item-right">
                 <div class="figures">
@@ -858,11 +856,47 @@
                 <button class="button sm" type="button" data-settle>已看</button>
               </div>
             </div>
+            <div class="sub-divider"></div>
+            <div class="item" data-row>
+              <span class="persona sm" data-p="router" aria-hidden="true">T<b>CL</b></span>
+              <div class="item-main">
+                <div class="item-said"><span class="item-prefix">已完成：</span>清算态改成单一队列，加了分组折叠</div>
+                <div class="item-who">tokenrouter <em>· Claude</em> · <span class="started-label">15:10 开始</span></div>
+              </div>
+              <div class="item-right">
+                <div class="figures">
+                  <span class="waited">等了 3m</span>
+                  <span class="unit">本轮 6m · +9.8k</span>
+                </div>
+                <button class="button jump sm" type="button" data-jump>回到会话</button>
+                <button class="button sm" type="button" data-settle>已看</button>
+              </div>
+            </div>
+
+            <div class="item" data-row>
+              <span class="persona sm" data-p="content" aria-hidden="true">投<b>CX</b></span>
+              <div class="item-main">
+                <div class="item-said"><span class="item-prefix">已完成：</span>今日盘前情报摘要已生成</div>
+                <div class="item-who">投研快讯 <em>· Codex</em></div>
+              </div>
+              <div class="item-right">
+                <div class="figures">
+                  <span class="waited">等了 1h</span>
+                  <span class="unit">本轮 2m · +4.1k</span>
+                </div>
+                <button class="button jump sm" type="button" data-jump>回到会话</button>
+                <button class="button sm" type="button" data-settle>已看</button>
+              </div>
+            </div>
+            <div class="group-more">
+              <span>投研快讯是定时自动化任务，默认只关心它卡住，不逐条入队</span>
+              <button type="button">仍想看历史的话，点开展开</button>
+            </div>
           </div>
 
           <div class="lane-head lane-run">
             <div class="lane-name"><i aria-hidden="true"></i> 还在跑</div>
-            <div class="lane-why">不用管 · 本轮账要等它跑完才结</div>
+            <div class="lane-why">不用管 · 不计入上面的数字 · 本轮账要等跑完才结</div>
           </div>
           <div class="lane">
             <div class="run-item">
@@ -872,14 +906,6 @@
                 <span>Codex 工作中</span>
               </div>
               <div class="elapsed">已跑 18m</div>
-            </div>
-            <div class="run-item">
-              <span class="persona sm" data-p="research" aria-hidden="true">投<b>CX</b></span>
-              <div class="run-main">
-                <strong>投研面板 · 回测批跑</strong>
-                <span>Codex 工作中</span>
-              </div>
-              <div class="elapsed">已跑 1h52m</div>
             </div>
           </div>
 
@@ -892,14 +918,18 @@
     </section>
 
     <section class="notes">
-      <h2>这一版和 A / B / C 的五处实质分歧</h2>
+      <h2>这一版和 A / B / C 的实质分歧（含两轮真实修正）</h2>
       <ol>
         <li><b>体积随需求变，没有手动折叠。</b>0 待办时它在桌面上不存在。A 的信息密度被保留了，但作为菜单栏那一行，而不是一个常驻面板。</li>
-        <li><b>「卡住」和「做完」走两条通道。</b>A/B/C 把它们放在同一个列表里、只换圆点颜色。但卡住的任务墙钟在走，做完的攒着没损失——它们的紧急度差一个量级，不该同列。</li>
+        <li><b>「卡住」和「做完」共用一个队列，但只有卡住会主动弹到你面前。</b>第一版做法是两条通道完全分开、连视觉分区都不一样；用了之后发现对你来说两者其实是同一件事——都是要接手，区别只在接手时做什么（解决问题 vs 布置下一步）。所以现在合成一个「该我了」列表，用文字前缀区分「需要决定：」/「已完成：」，只有卡住保留主动弹窗——因为只有它的等待才真的在烧时间。</li>
         <li><b>卡片上最大的字是「它说它干了什么」，本轮账退到第二行。</b>被打断的那一刻，<span class="unit">12m · +23.6k</span> 不影响你「现在看还是待会看」的决定，那句话影响。所以账不删，但不许抢主位。</li>
-        <li><b>本轮账在 Work Unit 结束时结一次，不轮询。</b>做完了和卡住了都算结束，都显示<span class="unit">本轮 12m · +23.6k</span>；还在跑的只显示已跑时长。分界线卡在成本上——时长是时钟相减，免费；token 要读日志，所以只在收尾那一刻算一次（末值 − 起始快照）。</li>
+        <li><b>本轮账在 Work Unit 结束时结一次，不轮询。</b>做完了和卡住了都算结束，都显示<span class="unit">本轮 12m · +23.6k</span>；还在跑的只显示已跑时长，也不计入上面「等你」的数字。分界线卡在成本上——时长是时钟相减，免费；token 要读日志，所以只在收尾那一刻算一次（末值 − 起始快照）。</li>
         <li><b>人格绑项目，不绑 provider。</b>你想的是「投研面板好了没」，不是「Codex 好了没」。而且 3 个 Codex 会话并行时，一张「Codex 员工」卡根本表达不了——B 在结构上装不下并行，而并行是这个产品的前提。provider 退成工牌角上那个小标记。</li>
+        <li><b>未映射项目默认只关心「卡住」，不逐条入队。</b>第一次真实部署后发现：一个后台自动化项目（无人值守、一天跑几十次）产生的每条「做完了」都被当成需要你处理，队列直接刷屏、数字虚高。根因是把「done 也算该我了」这条规则套到了自动化项目上——现实是只有你显式在 <code>projects.json</code> 里认领过的项目，才默认「做完了也想让你知道」；没被认领的路径，默认只有真卡住才打扰你。</li>
+        <li><b>队列排序按紧急度，不按项目名字母序。</b>同样是部署后发现的问题：排序曾经是按项目 id 字符串排的，跟"该先看哪个"完全无关。现在改成卡住的排最前，同类之间按等了你多久降序——这也是「怎么 focus」这个问题的直接答案。</li>
       </ol>
+
+      <p class="caveat"><b>这份 mockup 曾经和实现脱节过一次，现在补上了教训。</b>最早那版方向 D 只画在一个独立分支上、从没并进 main，后续所有真正写代码的分支都是从没有这份文件的 main 拉出来的——实现的人压根打不开它，只能凭文字描述的规格重新发明视觉细节，这也是当时"做出来的东西和 mockup 完全不像"的直接原因。现在这份文件已经在 main 上，且内容同步了两轮真实修正（该我了合并、自动化项目默认策略、排序）。<b>它能不能继续管用，取决于以后每次改动是不是先改这份文件、再让实现照着做——而不是先写代码、之后才想起来补图。</b></p>
 
       <p class="caveat"><b>卡片上那句话的数据源已经验证过了，能拿到。</b>不是数据库里那个 title（<code>codex_spoken_notify.py:582</code> 说得对，它经常是用户的第一句 prompt），而是会话 JSONL 里最后一条 assistant message 的正文——Codex 在 <code>payload.type=="message"</code>，Claude 在 <code>message.role=="assistant"</code>，两边都完整。首行裸取不够用（6 条实测里 3 条开头是「难度上，比较直观的排序是：」这种废话），过一次 DeepSeek 后 6 条里 5 条可直接上卡片，端到端 1.6–1.9s。<b>剩下的风险是延迟</b>：贴着 2 秒线没有余量，所以通知先出、摘要异步补写，别让播报等它。</p>
     </section>
