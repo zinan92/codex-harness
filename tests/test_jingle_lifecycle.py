@@ -154,6 +154,32 @@ class JingleLifecycleTests(unittest.TestCase):
         self.assertIn("seen_at", unit)
         self.assertEqual(unit["state"], lifecycle.STATE_DONE)
 
+    def test_quarantine_historical_unmapped_done_preserves_mapped_and_blocked_ledger_rows(self) -> None:
+        mapped = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="mapped"))["unit"]
+        lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="mapped", last_assistant_message="Completed."), classifier)
+        legacy = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="legacy", cwd="/tmp/old-noise"))["unit"]
+        lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="legacy", cwd="/tmp/old-noise", last_assistant_message="Completed."), classifier)
+        blocked = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit", turn_id="blocked", cwd="/tmp/old-noise"))["unit"]
+        lifecycle.finish_work_unit("codex", self.payload("Stop", turn_id="blocked", cwd="/tmp/old-noise", last_assistant_message="I need input."), classifier)
+
+        state = lifecycle.load_state()
+        state["units"][legacy["id"]].update({"notification_policy": "task_terminal", "attention_suppressed": False, "needs_attention": True})
+        state["units"][legacy["id"]]["cwd"] = "/"
+        mapped_before = dict(state["units"][mapped["id"]])
+        blocked_before = dict(state["units"][blocked["id"]])
+        lifecycle.save_state(state)
+
+        result = lifecycle.quarantine_historical_completion_noise()
+        self.assertEqual(result["status"], "quarantined_historical_completions")
+        self.assertEqual(result["count"], 1)
+        updated = lifecycle.load_state()["units"]
+        self.assertTrue(updated[legacy["id"]]["attention_suppressed"])
+        self.assertFalse(updated[legacy["id"]]["needs_attention"])
+        self.assertEqual(updated[legacy["id"]]["attention_suppressed_reason"], "unmapped_completion_quarantine")
+        self.assertEqual(updated[mapped["id"]], mapped_before)
+        self.assertEqual(updated[blocked["id"]], blocked_before)
+        self.assertEqual(lifecycle.quarantine_historical_completion_noise()["count"], 0)
+
     def test_snooze_only_applies_to_blocked_units_and_uses_bounded_duration(self) -> None:
         started = lifecycle.begin_work_unit("codex", self.payload("UserPromptSubmit"))
         lifecycle.finish_work_unit(
