@@ -16,6 +16,6 @@ Codex Jingle 已有原生 macOS 菜单栏 app 和本地通知回调。Codex 的 
 
 ## 下一步
 
-注意力队列已按「含 blocked 优先，其余按等待最久优先」排序。呼叫卡与清算面板已共享 mockup 测量出的材质、圆角、颜色和项目人格；终态条目显示等待时间和本轮账，清算面板还会安静显示经 Codex thread 元数据确认的运行时长，既不计数也不主动弹出。同一 thread 的遗留 running 只显示一次；无最近 Codex 活动、已归档或元数据不可读的记录不显示，避免旧 `UserPromptSubmit` 永远冒充 running。共享 cwd 的未映射 thread 使用 session-index 的短名称（不读取 SQLite 原始 prompt title）。未映射的完成项在 UI 与账本迁移中均 fail-closed；历史记录未删除，只被标记为不参与 attention。菜单栏 App 现由用户 LaunchAgent 在登录与异常退出后恢复。
+注意力队列已按「含 blocked 优先，其余按等待最久优先」排序，但展示单位是 Codex session：只要本机 thread 元数据确认 session 正在活动，该 session 的旧 `done` / `blocked` 回合一律退出队列、呼叫和菜单栏数字，且运行区只保留一条。终态条目只会在 session 已不活动时显示等待时间和本轮账，因此不会把“本轮耗时”和“已等待”误呈为同一个正在跑的任务。无最近 Codex 活动、已归档或元数据不可读的记录不显示，避免旧 `UserPromptSubmit` 永远冒充 running。共享 cwd 的未映射 thread 使用 session-index 的短名称（不读取 SQLite 原始 prompt title）；`ignored_prefixes` 显式排除 Jingle 自身等不应监控的 cwd。未映射的完成项在 UI 与账本迁移中均 fail-closed；历史记录未删除，只被标记为不参与 attention。菜单栏 App 现由用户 LaunchAgent 在登录与异常退出后恢复。
 
 继续用真实 Codex hook 回合观察项目别名覆盖率、thread 活动窗口和 workflow marker 使用率；若需要让未映射项目的完成可见，先由用户显式加入别名表。只有在用户明确反馈需要时，才重新调整「完成轻响 / 卡住语音」的双声音默认。

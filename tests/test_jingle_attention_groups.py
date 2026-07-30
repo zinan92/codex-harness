@@ -82,6 +82,10 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertIn('codexUnits.filter {', source)
         self.assertIn('private let liveThreadWindow: TimeInterval = 120', source)
         self.assertIn('private func hasLiveCodexThread(_ unit: WorkUnit)', source)
+        self.assertIn('private func activityIsResolved(for unit: WorkUnit)', source)
+        self.assertIn('activityIsResolved(for: $0) && !hasLiveCodexThread($0)', source)
+        self.assertIn('private func isIgnored(_ unit: WorkUnit)', source)
+        self.assertIn('activityResolvedSessionIDs = Set(sessionIDs)', source)
         self.assertIn('$0.state == "running" && hasLiveCodexThread($0)', source)
         self.assertIn('Dictionary(grouping: codexUnits.filter', source)
         self.assertIn('"thread:\\(unit.sessionID)"', source)
@@ -92,6 +96,12 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertIn("var hasSettlementContent: Bool", source)
         self.assertIn("guard model.hasSettlementContent", source)
         self.assertIn("struct DecisionDetails", source)
+        self.assertIn('Text("工作中")', source)
+        self.assertIn('Text("\\(unit.startedLabel) · 本轮 \\(unit.elapsed)")', source)
+        self.assertNotIn("providerName", source)
+        self.assertNotIn(".badge", source)
+        self.assertIn('private var callUnitID: String?', source)
+        self.assertIn('!model.callableBlocked.contains(where: { $0.id == callUnitID })', source)
         self.assertNotIn("struct WorkRow", source)
         self.assertIn('Button("已处理")', source)
         self.assertIn("var callableBlocked", source)
@@ -101,6 +111,28 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertNotIn('.sorted { $0.id < $1.id }', source)
         lifecycle = (ROOT / "src/jingle_lifecycle.py").read_text(encoding="utf-8")
         self.assertIn('existing["superseded_at"]', lifecycle)
+
+    def test_live_session_wins_over_its_historic_terminal_work_units(self) -> None:
+        units = [
+            {"id": "trade-old-blocked", "session_id": "trade", "state": "blocked", "needs_attention": True, "started_at": 1},
+            {"id": "trade-running", "session_id": "trade", "state": "running", "needs_attention": None, "started_at": 2},
+            {"id": "research-old-done", "session_id": "research", "state": "done", "needs_attention": True, "started_at": 3},
+            {"id": "research-running", "session_id": "research", "state": "running", "needs_attention": None, "started_at": 4},
+            {"id": "inactive-blocked", "session_id": "inactive", "state": "blocked", "needs_attention": True, "started_at": 5},
+        ]
+        live_sessions = {"trade", "research"}
+        attention = [
+            unit for unit in units
+            if unit["needs_attention"] is True and unit["session_id"] not in live_sessions
+        ]
+        running = {}
+        for unit in units:
+            if unit["state"] == "running" and unit["session_id"] in live_sessions:
+                running[unit["session_id"]] = unit
+
+        self.assertEqual([unit["id"] for unit in attention], ["inactive-blocked"])
+        self.assertEqual(set(running), {"trade", "research"})
+        self.assertEqual(running["trade"]["id"], "trade-running")
 
     def test_replay_orders_blocked_groups_before_oldest_done_groups(self) -> None:
         data = json.loads((ROOT / "tests/fixtures/jingle-attention-work-units.json").read_text(encoding="utf-8"))
