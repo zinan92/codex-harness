@@ -25,8 +25,15 @@ class JingleHookTests(unittest.TestCase):
             "JINGLE_STATE_PATH": str(root / "work-units.json"),
             "JINGLE_LOCK_PATH": str(root / "work-units.lock"),
             "JINGLE_EVENT_LOG_PATH": str(root / "events.jsonl"),
+            "JINGLE_PROJECTS_PATH": str(root / "projects.json"),
         }
         self.previous = {key: os.environ.get(key) for key in self.environ}
+        Path(self.environ["JINGLE_PROJECTS_PATH"]).write_text(
+            json.dumps({"projects": [{"project_id": "interactive", "aliases": [
+                {"prefix": "/tmp/project"}, {"prefix": "/tmp/brief"}, {"prefix": "/tmp/flow"},
+            ]}]}),
+            encoding="utf-8",
+        )
         os.environ.update(self.environ)
 
     def tearDown(self) -> None:

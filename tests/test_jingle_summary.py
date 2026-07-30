@@ -14,8 +14,17 @@ from jingle_lifecycle import load_state
 class SummaryTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); root = Path(self.temp.name)
-        self.env = {'JINGLE_STATE_PATH':str(root/'state.json'),'JINGLE_LOCK_PATH':str(root/'state.lock'),'JINGLE_EVENT_LOG_PATH':str(root/'events.jsonl')}
+        self.env = {
+            'JINGLE_STATE_PATH': str(root/'state.json'),
+            'JINGLE_LOCK_PATH': str(root/'state.lock'),
+            'JINGLE_EVENT_LOG_PATH': str(root/'events.jsonl'),
+            'JINGLE_PROJECTS_PATH': str(root/'projects.json'),
+        }
         self.old = {k:os.environ.get(k) for k in self.env}; os.environ.update(self.env)
+        Path(self.env['JINGLE_PROJECTS_PATH']).write_text(
+            '{"projects":[{"project_id":"interactive","aliases":[{"prefix":"/tmp"}]}]}',
+            encoding='utf-8',
+        )
     def tearDown(self):
         for key, value in self.old.items():
             if value is None: os.environ.pop(key, None)
