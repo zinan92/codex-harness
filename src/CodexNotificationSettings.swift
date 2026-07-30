@@ -293,6 +293,59 @@ private let doneColor = Color(red: 240 / 255, green: 162 / 255, blue: 75 / 255)
 private let lookColor = Color(red: 89 / 255, green: 166 / 255, blue: 240 / 255)
 private let savedColor = Color(red: 73 / 255, green: 210 / 255, blue: 159 / 255)
 
+private enum JingleVisual {
+    // Measured from docs/jingle-direction-d.html: --radius, --radius-sm,
+    // --panel and the 28px/140% frosted material treatment.
+    static let panelRadius: CGFloat = 18
+    static let itemRadius: CGFloat = 11
+    static let accent = Color(red: 228 / 255, green: 163 / 255, blue: 59 / 255)
+    static let accentDeep = Color(red: 141 / 255, green: 92 / 255, blue: 13 / 255)
+    static let danger = Color(red: 185 / 255, green: 101 / 255, blue: 88 / 255)
+    static let dangerDeep = Color(red: 142 / 255, green: 68 / 255, blue: 54 / 255)
+    static let panelFill = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(red: 24 / 255, green: 31 / 255, blue: 40 / 255, alpha: 0.90)
+            : NSColor(red: 249 / 255, green: 250 / 255, blue: 251 / 255, alpha: 0.88)
+    })
+    static let panelLine = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(calibratedWhite: 1, alpha: 0.18)
+            : NSColor(red: 43 / 255, green: 54 / 255, blue: 66 / 255, alpha: 0.20)
+    })
+    static let itemFill = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(red: 35 / 255, green: 44 / 255, blue: 55 / 255, alpha: 0.90)
+            : NSColor(red: 237 / 255, green: 240 / 255, blue: 243 / 255, alpha: 0.92)
+    })
+}
+
+private struct JinglePanelSurface: ViewModifier {
+    let calling: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .background(.ultraThinMaterial)
+            .background(JingleVisual.panelFill)
+            .clipShape(RoundedRectangle(cornerRadius: JingleVisual.panelRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: JingleVisual.panelRadius, style: .continuous)
+                    .stroke(calling ? JingleVisual.danger.opacity(0.48) : JingleVisual.panelLine, lineWidth: 1)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: JingleVisual.panelRadius, style: .continuous)
+                            .stroke(.white.opacity(0.08), lineWidth: 1)
+                            .padding(1)
+                    }
+            }
+            .shadow(color: .black.opacity(calling ? 0.26 : 0.18), radius: calling ? 28 : 20, y: 8)
+    }
+}
+
+private extension View {
+    func jinglePanelSurface(calling: Bool = false) -> some View {
+        modifier(JinglePanelSurface(calling: calling))
+    }
+}
+
 struct BrandMark: View {
     private let heights: [CGFloat] = [5, 12, 8, 15]
 
@@ -1162,12 +1215,15 @@ struct DecisionDetails: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 7) {
-                Text(identity.name)
-                    .font(.system(size: 16, weight: .semibold))
-                Text(unit.badge)
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(identity.color)
+            HStack(alignment: .center, spacing: 11) {
+                ProjectPersona(identity: identity, provider: unit.badge, compact: false)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(identity.name)
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(unit.providerName)
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundStyle(.secondary)
+                }
                 Spacer(minLength: 0)
             }
             Text("\(unit.attentionPrefix)\(unit.summary ?? "等待你的处理")")
@@ -1178,6 +1234,55 @@ struct DecisionDetails: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+private struct ProjectPersona: View {
+    let identity: ProjectIdentity
+    let provider: String
+    let compact: Bool
+
+    // Mockup persona measurements: 38px normally, 30px in compact rows.
+    private var size: CGFloat { compact ? 30 : 38 }
+    private var radius: CGFloat { compact ? 10 : 12 }
+    private var initial: String {
+        let trimmed = identity.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.first.map(String.init) ?? "J"
+    }
+
+    var body: some View {
+        Text(initial)
+            .font(.system(size: compact ? 12 : 15, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(
+                // SwiftUI's diagonal endpoints are the native equivalent of
+                // the mockup's measured 150-degree highlight-to-dark fill.
+                LinearGradient(
+                    colors: [identity.color.opacity(0.78), identity.color.opacity(0.98), .black.opacity(0.40)],
+                    startPoint: UnitPoint(x: 0.15, y: 0),
+                    endPoint: UnitPoint(x: 0.85, y: 1)
+                ),
+                in: RoundedRectangle(cornerRadius: radius, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(JingleVisual.panelLine, lineWidth: 1)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                Text(provider)
+                    .font(.system(size: 8, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 1)
+                    .background(JingleVisual.panelFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .stroke(JingleVisual.panelLine, lineWidth: 1)
+                    }
+                    .offset(x: 4, y: 4)
+            }
+            .accessibilityLabel("\(identity.name)，\(provider)")
     }
 }
 
@@ -1226,10 +1331,10 @@ struct AttentionGroupItem: View {
             }
         }
         .padding(14)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(JingleVisual.itemFill, in: RoundedRectangle(cornerRadius: JingleVisual.itemRadius, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+            RoundedRectangle(cornerRadius: JingleVisual.itemRadius, style: .continuous)
+                .stroke(JingleVisual.panelLine, lineWidth: 1)
         }
     }
 }
@@ -1253,7 +1358,7 @@ struct SettlementView: View {
             .padding(14)
         }
         .frame(width: 380, height: panelHeight)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .jinglePanelSurface()
     }
 
     @ViewBuilder private func queue(title: String, color: Color, groups: [AttentionGroup]) -> some View {
@@ -1276,7 +1381,7 @@ struct CallView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("需要你决定")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(JingleVisual.danger)
                 DecisionDetails(unit: unit, identity: model.identity(for: unit))
                 HStack(spacing: 8) {
                     Button(model.routingUnitID == unit.id ? "正在打开" : "回到这个会话") { open(unit) }
@@ -1288,7 +1393,7 @@ struct CallView: View {
             }.padding(16)
         }
         .frame(width: 380, height: panelHeight)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .jinglePanelSurface(calling: true)
     }
 }
 
@@ -1342,8 +1447,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // workspace activation observer above when the user changes apps.
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        panel.backgroundColor = .windowBackgroundColor
-        panel.isOpaque = true
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
         panel.hasShadow = true
         return panel
     }
