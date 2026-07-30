@@ -15,6 +15,11 @@ class InstallManifestTests(unittest.TestCase):
             self.assertIn(f"from {module} import", hook_source)
             self.assertIn(f'"$repo_dir/src/{module}.py"', installer)
 
+    def test_installer_copies_the_codex_activity_bridge(self) -> None:
+        installer = (ROOT / "scripts" / "install.sh").read_text(encoding="utf-8")
+        self.assertIn('activity_path="$hook_dir/jingle_codex_activity.py"', installer)
+        self.assertIn('"$repo_dir/src/jingle_codex_activity.py"', installer)
+
     def test_uninstaller_removes_the_installed_accounting_dependency(self) -> None:
         uninstaller = (ROOT / "scripts" / "uninstall.sh").read_text(encoding="utf-8")
         self.assertIn('accounting_path="$hook_dir/jingle_accounting.py"', uninstaller)
