@@ -9,11 +9,12 @@ session-index name is used only as a short, non-persisted display label.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import json
 from pathlib import Path
 import sqlite3
 import sys
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 
 CODEX_DIR = Path.home() / ".codex"
@@ -52,10 +53,42 @@ def load_session_names(path: Path, session_ids: set[str]) -> dict[str, str]:
     return names
 
 
+def latest_task_complete_at(path: Path) -> float:
+    """Read only the newest terminal event timestamp; never return message text."""
+    if not path.is_file():
+        return 0.0
+    try:
+        # Completion is appended near EOF. Bound the read so a large transcript
+        # cannot make the menu bar scan prompts or consume unbounded memory.
+        with path.open("rb") as stream:
+            stream.seek(0, 2)
+            size = stream.tell()
+            stream.seek(max(0, size - 262_144))
+            lines = stream.read().decode("utf-8", errors="replace").splitlines()
+    except OSError:
+        return 0.0
+    for line in reversed(lines):
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        payload = event.get("payload")
+        if event.get("type") != "event_msg" or not isinstance(payload, dict) or payload.get("type") != "task_complete":
+            continue
+        try:
+            return datetime.fromisoformat(str(event.get("timestamp") or "").replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            return 0.0
+    return 0.0
+
+
 def read_activity(
     session_ids: Iterable[str],
     databases: Iterable[Path] = STATE_DATABASES,
     session_index_path: Path = SESSION_INDEX_PATH,
+    transcripts: Mapping[str, Path] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Return Codex's current non-sensitive thread metadata for requested IDs."""
     requested = {str(session_id).strip() for session_id in session_ids if str(session_id).strip()}
@@ -89,14 +122,27 @@ def read_activity(
     for session_id, row in rows.items():
         if name := names.get(session_id):
             row["display_name"] = name
+        if terminal_at := latest_task_complete_at((transcripts or {}).get(session_id, Path())):
+            row["last_terminal_at"] = terminal_at
     return rows
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--session-id", action="append", default=[])
+    parser.add_argument("--transcripts-json", default="{}")
     arguments = parser.parse_args()
-    print(json.dumps({"sessions": read_activity(arguments.session_id)}, ensure_ascii=False, separators=(",", ":")))
+    try:
+        raw_transcripts = json.loads(arguments.transcripts_json)
+    except json.JSONDecodeError:
+        raw_transcripts = {}
+    transcript_values = raw_transcripts if isinstance(raw_transcripts, dict) else {}
+    transcripts = {
+        str(session_id): Path(str(path))
+        for session_id, path in transcript_values.items()
+        if isinstance(path, str)
+    }
+    print(json.dumps({"sessions": read_activity(arguments.session_id, transcripts=transcripts)}, ensure_ascii=False, separators=(",", ":")))
     return 0
 
 

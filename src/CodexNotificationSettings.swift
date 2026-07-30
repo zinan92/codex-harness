@@ -948,6 +948,7 @@ struct WorkUnit: Codable, Identifiable {
     let state: String
     let startedAt: Double
     let endedAt: Double?
+    let transcriptPath: String?
     let summary: String?
     let tokenAccounting: TokenAccounting?
     let sessionLocator: SessionLocator?
@@ -969,6 +970,7 @@ struct WorkUnit: Codable, Identifiable {
         case supersededAt = "superseded_at"
         case attentionSuppressed = "attention_suppressed"
         case needsAttentionFlag = "needs_attention"
+        case transcriptPath = "transcript_path"
     }
 
     var elapsed: String {
@@ -1036,11 +1038,13 @@ struct CodexThreadActivity: Decodable {
     let archived: Bool
     let cwd: String
     let displayName: String?
+    let lastTerminalAt: Double?
 
     enum CodingKeys: String, CodingKey {
         case updatedAt = "updated_at"
         case archived, cwd
         case displayName = "display_name"
+        case lastTerminalAt = "last_terminal_at"
     }
 }
 
@@ -1121,7 +1125,6 @@ final class JingleModel: ObservableObject {
     private var threadActivity: [String: CodexThreadActivity] = [:]
     private var activityResolvedSessionIDs: Set<String> = []
     private var activityRefreshInFlight = false
-    private let liveThreadWindow: TimeInterval = 120
 
     init() {
         let environment = ProcessInfo.processInfo.environment
@@ -1155,7 +1158,13 @@ final class JingleModel: ObservableObject {
             guard let self else { return }
             defer { DispatchQueue.main.async { self.activityRefreshInFlight = false } }
             do {
-                let arguments = sessionIDs.flatMap { ["--session-id", $0] }
+                var transcripts: [String: String] = [:]
+                for unit in self.codexUnits {
+                    guard !unit.sessionID.isEmpty, let transcriptPath = unit.transcriptPath, !transcriptPath.isEmpty else { continue }
+                    transcripts[unit.sessionID] = transcriptPath
+                }
+                let transcriptJSON = try String(data: JSONEncoder().encode(transcripts), encoding: .utf8) ?? "{}"
+                let arguments = sessionIDs.flatMap { ["--session-id", $0] } + ["--transcripts-json", transcriptJSON]
                 let data = try runLocalPython(script: self.activityPath, arguments: arguments)
                 let store = try JSONDecoder().decode(CodexThreadActivityStore.self, from: data)
                 DispatchQueue.main.async {
@@ -1175,7 +1184,16 @@ final class JingleModel: ObservableObject {
 
     private func hasLiveCodexThread(_ unit: WorkUnit) -> Bool {
         guard let activity = activity(for: unit), !activity.archived else { return false }
-        return activity.updatedAt >= Date().timeIntervalSince1970 - liveThreadWindow
+        return (activity.lastTerminalAt ?? 0) < unit.startedAt
+    }
+
+    private func sessionHasLiveCodexThread(_ sessionID: String) -> Bool {
+        codexUnits.contains { $0.sessionID == sessionID && $0.state == "running" && hasLiveCodexThread($0) }
+    }
+
+    private func terminalWasSupersededBySessionCompletion(_ unit: WorkUnit) -> Bool {
+        guard let terminalAt = activity(for: unit)?.lastTerminalAt else { return false }
+        return terminalAt >= (unit.endedAt ?? unit.startedAt)
     }
 
     private func activityIsResolved(for unit: WorkUnit) -> Bool {
@@ -1226,7 +1244,8 @@ final class JingleModel: ObservableObject {
     private var visible: [WorkUnit] {
         codexUnits.filter {
             $0.needsAttention && $0.seenAt == nil && $0.supersededAt == nil
-                && activityIsResolved(for: $0) && !hasLiveCodexThread($0)
+                && activityIsResolved(for: $0) && !sessionHasLiveCodexThread($0.sessionID)
+                && !terminalWasSupersededBySessionCompletion($0)
                 && (identity(for: $0).isMapped || $0.state == "blocked")
         }
     }
