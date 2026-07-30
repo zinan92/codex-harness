@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jingle 方向 D · 中断路由器</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --canvas: #e9edf1;
+      --canvas-grid: rgba(35, 42, 51, 0.045);
+      --ink: #18202a;
+      --muted: #687481;
+      --quiet: #8b96a2;
+      --panel: rgba(249, 250, 251, 0.88);
+      --panel-solid: #f7f8f9;
+      --panel-2: rgba(237, 240, 243, 0.92);
+      --line: rgba(43, 54, 66, 0.12);
+      --line-strong: rgba(43, 54, 66, 0.2);
+      --shadow: 0 28px 80px rgba(27, 34, 42, 0.16), 0 2px 8px rgba(27, 34, 42, 0.08);
+      --accent: #e4a33b;
+      --accent-deep: #8d5c0d;
+      --accent-soft: rgba(228, 163, 59, 0.16);
+      --blue: #4f8fbd;
+      --blue-deep: #246486;
+      --blue-soft: rgba(79, 143, 189, 0.15);
+      --green: #3f8b67;
+      --green-deep: #2c6b4d;
+      --green-soft: rgba(63, 139, 103, 0.13);
+      --red: #b96558;
+      --red-deep: #8e4436;
+      --red-soft: rgba(185, 101, 88, 0.13);
+      --radius: 18px;
+      --radius-sm: 11px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", "SF Mono", ui-monospace, Menlo, Monaco, monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --canvas: #11161d;
+        --canvas-grid: rgba(255, 255, 255, 0.025);
+        --ink: #edf1f5;
+        --muted: #9ba6b2;
+        --quiet: #727e8a;
+        --panel: rgba(24, 31, 40, 0.9);
+        --panel-solid: #18202a;
+        --panel-2: rgba(35, 44, 55, 0.9);
+        --line: rgba(222, 231, 240, 0.1);
+        --line-strong: rgba(222, 231, 240, 0.18);
+        --shadow: 0 32px 90px rgba(0, 0, 0, 0.46), 0 2px 8px rgba(0, 0, 0, 0.32);
+        --accent: #e0a346;
+        --accent-deep: #ffd48b;
+        --accent-soft: rgba(224, 163, 70, 0.14);
+        --blue: #62a4cf;
+        --blue-deep: #9dd8f5;
+        --blue-soft: rgba(98, 164, 207, 0.14);
+        --green: #69b58b;
+        --green-deep: #9fdcbb;
+        --green-soft: rgba(105, 181, 139, 0.13);
+        --red: #df8a7d;
+        --red-deep: #ffb3a6;
+        --red-soft: rgba(223, 138, 125, 0.13);
+      }
+    }
+
+    html[data-theme="light"] {
+      color-scheme: light;
+      --canvas: #e9edf1;
+      --canvas-grid: rgba(35, 42, 51, 0.045);
+      --ink: #18202a;
+      --muted: #687481;
+      --quiet: #8b96a2;
+      --panel: rgba(249, 250, 251, 0.9);
+      --panel-solid: #f7f8f9;
+      --panel-2: rgba(237, 240, 243, 0.93);
+      --line: rgba(43, 54, 66, 0.12);
+      --line-strong: rgba(43, 54, 66, 0.2);
+      --shadow: 0 28px 80px rgba(27, 34, 42, 0.16), 0 2px 8px rgba(27, 34, 42, 0.08);
+      --accent-deep: #8d5c0d;
+      --blue-deep: #246486;
+      --green-deep: #2c6b4d;
+      --red-deep: #8e4436;
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --canvas: #11161d;
+      --canvas-grid: rgba(255, 255, 255, 0.025);
+      --ink: #edf1f5;
+      --muted: #9ba6b2;
+      --quiet: #727e8a;
+      --panel: rgba(24, 31, 40, 0.92);
+      --panel-solid: #18202a;
+      --panel-2: rgba(35, 44, 55, 0.92);
+      --line: rgba(222, 231, 240, 0.1);
+      --line-strong: rgba(222, 231, 240, 0.18);
+      --shadow: 0 32px 90px rgba(0, 0, 0, 0.46), 0 2px 8px rgba(0, 0, 0, 0.32);
+      --accent-deep: #ffd48b;
+      --blue-deep: #9dd8f5;
+      --green-deep: #9fdcbb;
+      --red-deep: #ffb3a6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100dvh;
+      color: var(--ink);
+      background-color: var(--canvas);
+      background-image:
+        linear-gradient(var(--canvas-grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--canvas-grid) 1px, transparent 1px);
+      background-size: 28px 28px;
+      font-family: var(--font);
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button { color: inherit; font: inherit; }
+
+    button:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--accent), transparent 58%);
+      outline-offset: 2px;
+    }
+
+    .page {
+      width: min(1320px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 32px 0 60px;
+    }
+
+    .page-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 28px;
+      padding: 0 6px 30px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+      display: grid;
+      grid-template-columns: repeat(3, 3px);
+      align-items: end;
+      gap: 3px;
+      width: 15px;
+      height: 17px;
+    }
+
+    .brand-mark i { display: block; border-radius: 3px; background: var(--accent); }
+    .brand-mark i:nth-child(1) { height: 7px; }
+    .brand-mark i:nth-child(2) { height: 15px; }
+    .brand-mark i:nth-child(3) { height: 11px; background: var(--blue); }
+
+    h1 {
+      max-width: 800px;
+      margin: 0;
+      font-size: clamp(26px, 3vw, 40px);
+      font-weight: 680;
+      letter-spacing: -0.035em;
+      line-height: 1.08;
+    }
+
+    .intro {
+      max-width: 740px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .theme-button {
+      width: 38px;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .theme-button:hover { color: var(--ink); background: var(--panel-2); }
+
+    /* ---------- 状态阶梯 ---------- */
+    .ladder {
+      margin: 0 0 34px;
+      padding: 18px 20px 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .ladder-title {
+      color: var(--quiet);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .ladder-title b { color: var(--ink); font-weight: 680; }
+
+    .ladder-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .rung {
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--panel-2);
+    }
+
+    .rung.loud {
+      border-color: color-mix(in srgb, var(--red), transparent 58%);
+      background: var(--red-soft);
+    }
+
+    .rung-when {
+      color: var(--quiet);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .rung strong { display: block; margin-top: 7px; font-size: 13px; }
+
+    .rung p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+    .menubar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 11px;
+      padding: 4px 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: var(--panel-solid);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .menubar i {
+      display: block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--quiet);
+    }
+
+    .menubar.has i { background: var(--accent); }
+    .menubar.stuck i { background: var(--red); }
+
+    /* ---------- 布局 ---------- */
+    .stage {
+      display: grid;
+      grid-template-columns: minmax(330px, 0.82fr) minmax(430px, 1.18fr);
+      align-items: start;
+      gap: 26px;
+    }
+
+    .slot { min-width: 0; }
+
+    .slot-label {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 4px 10px;
+    }
+
+    .slot-label strong { font-size: 15px; font-weight: 680; letter-spacing: -0.01em; }
+    .slot-label span { color: var(--quiet); font-size: 12px; }
+
+    .widget {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(28px) saturate(140%);
+      -webkit-backdrop-filter: blur(28px) saturate(140%);
+    }
+
+    .widget::before {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      content: "";
+      pointer-events: none;
+    }
+
+    .widget.calling { border-color: color-mix(in srgb, var(--red), transparent 52%); }
+
+    .bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 43px;
+      padding: 0 15px;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel-solid), transparent 14%);
+    }
+
+    .bar-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .bar-right { display: flex; align-items: center; gap: 9px; color: var(--quiet); font-size: 11px; }
+
+    .count {
+      display: inline-grid;
+      min-width: 20px;
+      height: 20px;
+      place-items: center;
+      border-radius: 7px;
+      background: var(--accent-soft);
+      color: var(--accent-deep);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 750;
+    }
+
+    .count.alarm { background: var(--red-soft); color: var(--red-deep); }
+
+    /* ---------- 项目人格 ---------- */
+    .persona {
+      position: relative;
+      display: grid;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      background: linear-gradient(150deg, var(--p-hi), var(--p-lo));
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .persona.sm { width: 30px; height: 30px; border-radius: 10px; font-size: 12px; }
+
+    .persona[data-p="research"] { --p-hi: #7ba7c9; --p-lo: #3d6d92; }
+    .persona[data-p="shop"] { --p-hi: #d9a05f; --p-lo: #a5661f; }
+    .persona[data-p="content"] { --p-hi: #a48cc4; --p-lo: #6c5195; }
+    .persona[data-p="trade"] { --p-hi: #7cb69a; --p-lo: #3f7a5f; }
+    .persona[data-p="router"] { --p-hi: #c99191; --p-lo: #8d5050; }
+
+    .persona b {
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      padding: 1px 3px;
+      border: 1px solid var(--panel-solid);
+      border-radius: 5px;
+      background: var(--panel-solid);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-shadow: none;
+    }
+
+    /* ---------- 呼叫态 ---------- */
+    .call-body { padding: 17px 17px 15px; }
+
+    .call-who { display: flex; align-items: center; gap: 11px; }
+
+    .call-who-text { min-width: 0; }
+
+    .call-who-text strong { display: block; font-size: 14px; letter-spacing: -0.01em; }
+
+    .call-who-text span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+
+    .call-ask {
+      margin: 16px 0 0;
+      font-size: 16px;
+      font-weight: 660;
+      letter-spacing: -0.02em;
+      line-height: 1.4;
+    }
+
+    .call-cost {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-top: 15px;
+      padding: 11px 13px;
+      border: 1px solid color-mix(in srgb, var(--red), transparent 66%);
+      border-radius: var(--radius-sm);
+      background: var(--red-soft);
+    }
+
+    .call-cost strong {
+      color: var(--red-deep);
+      font-family: var(--mono);
+      font-size: 19px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+    }
+
+    .call-cost span { color: var(--muted); font-size: 11px; line-height: 1.4; }
+
+    .call-unit {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 11px;
+      padding: 0 2px;
+      color: var(--quiet);
+      font-size: 10.5px;
+    }
+
+    .call-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+    /* ---------- 通用按钮 ---------- */
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 31px;
+      padding: 0 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: var(--panel-2);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+      transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+    }
+
+    .button:hover { border-color: color-mix(in srgb, var(--accent), var(--line-strong) 52%); background: var(--accent-soft); }
+    .button:active { transform: scale(0.97); }
+
+    .button.jump {
+      border-color: color-mix(in srgb, var(--accent), transparent 46%);
+      background: var(--accent);
+      color: #231909;
+    }
+
+    .button.jump:hover { background: color-mix(in srgb, var(--accent), #fff 12%); }
+
+    .button.alarm {
+      border-color: color-mix(in srgb, var(--red), transparent 40%);
+      background: var(--red);
+      color: #fff;
+    }
+
+    .button.alarm:hover { background: color-mix(in srgb, var(--red), #fff 12%); }
+
+    .button.sm { min-height: 27px; padding: 0 10px; font-size: 11px; }
+
+    .button.settled {
+      border-color: color-mix(in srgb, var(--green), transparent 54%);
+      background: var(--green-soft);
+      color: var(--green-deep);
+    }
+
+    /* ---------- 清算态 ---------- */
+    .lane-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 15px 9px;
+    }
+
+    .lane-name { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 680; }
+
+    .lane-name i { display: block; width: 7px; height: 7px; border-radius: 50%; }
+
+    .lane-stuck .lane-name i { background: var(--red); }
+    .lane-done .lane-name i { background: var(--accent); }
+    .lane-run .lane-name i { background: var(--green); }
+
+    .lane-why { color: var(--quiet); font-size: 10.5px; }
+
+    .lane { padding: 0 10px 10px; }
+
+    .lane + .lane-head { border-top: 1px solid var(--line); }
+
+    .item {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 11px;
+      padding: 10px 6px;
+      border-radius: var(--radius-sm);
+      transition: background 160ms ease, opacity 200ms ease;
+    }
+
+    .item:hover { background: var(--panel-2); }
+
+    .item + .item { border-top: 1px solid var(--line); }
+
+    .item-main { min-width: 0; }
+
+    .item-said {
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .item-who {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .item-who em { color: var(--quiet); font-style: normal; }
+
+    .item-right { display: flex; align-items: center; gap: 9px; }
+
+    /* 右侧数字栈：上=催你的（等了多久），下=本轮账（时长·token） */
+    .figures {
+      display: grid;
+      justify-items: end;
+      gap: 3px;
+      white-space: nowrap;
+    }
+
+    .waited {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .waited.stale { color: var(--red-deep); font-weight: 700; }
+
+    .waited.burning { color: var(--red-deep); font-weight: 700; }
+
+    /* 本轮账：只在 Work Unit 结束后才有值,跑的过程中不显示 */
+    .unit {
+      color: var(--quiet);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .item.settled-row { opacity: 0.5; }
+
+    .run-item {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 11px;
+      padding: 8px 6px;
+    }
+
+    .run-item + .run-item { border-top: 1px solid var(--line); }
+
+    .run-main { min-width: 0; }
+
+    .run-main strong {
+      display: block;
+      overflow: hidden;
+      font-size: 12px;
+      font-weight: 620;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .run-main span { display: block; margin-top: 3px; color: var(--quiet); font-size: 10.5px; }
+
+    .elapsed {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 40px;
+      padding: 0 15px;
+      border-top: 1px solid var(--line);
+      color: var(--quiet);
+      font-size: 10.5px;
+    }
+
+    .notes {
+      margin: 30px 0 0;
+      padding: 20px 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .notes h2 { margin: 0 0 12px; font-size: 13px; font-weight: 680; }
+
+    .notes ol { margin: 0; padding-left: 19px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+
+    .notes li + li { margin-top: 7px; }
+
+    .notes b { color: var(--ink); font-weight: 660; }
+
+    .caveat {
+      margin: 14px 0 0;
+      padding: 11px 13px;
+      border: 1px solid color-mix(in srgb, var(--red), transparent 66%);
+      border-radius: var(--radius-sm);
+      background: var(--red-soft);
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+
+    .caveat b { color: var(--red-deep); }
+
+    .mock-note { margin: 18px 6px 0; color: var(--quiet); font-size: 11px; line-height: 1.5; }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .widget { background: var(--panel-solid); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .widget.calling { animation: nudge 2.6s ease-in-out infinite; }
+
+      @keyframes nudge {
+        0%, 92%, 100% { box-shadow: var(--shadow); }
+        96% { box-shadow: var(--shadow), 0 0 0 5px color-mix(in srgb, var(--red), transparent 82%); }
+      }
+    }
+
+    @media (max-width: 1080px) {
+      .stage { grid-template-columns: 1fr; }
+      .ladder-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 720px) {
+      .page { width: min(100% - 28px, 470px); }
+      .page-header { grid-template-columns: 1fr; align-items: start; gap: 16px; }
+      .ladder-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="page-header">
+      <div>
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          Jingle · 方向 D
+        </div>
+        <h1>它不是一个面板，是一个中断路由器</h1>
+        <p class="intro">A / B / C 都假设你会去看它。这一版假设你不会。产品自己决定什么时候闭嘴、什么时候出声，以及把你送回哪个会话。</p>
+      </div>
+      <button class="theme-button" type="button" data-theme-button aria-label="切换明暗主题">◐</button>
+    </header>
+
+    <section class="ladder" aria-label="存在感阶梯">
+      <div class="ladder-title">主张一 · <b>widget 的体积是「它有多需要你」的函数，不是一个你手动切换的模式</b></div>
+      <div class="ladder-row">
+        <div class="rung">
+          <div class="rung-when">没人等你</div>
+          <strong>静默</strong>
+          <p>桌面上什么都没有。不需要你去折叠它。</p>
+          <span class="menubar"><i></i> JINGLE</span>
+        </div>
+        <div class="rung">
+          <div class="rung-when">只有做完的</div>
+          <strong>提示</strong>
+          <p>菜单栏出数字。不弹窗、不出声——攒着没有损失。</p>
+          <span class="menubar has"><i></i> 3</span>
+        </div>
+        <div class="rung loud">
+          <div class="rung-when">有人卡住了</div>
+          <strong>呼叫</strong>
+          <p>主动展开 + 出声。因为墙钟在走，等待有代价。</p>
+          <span class="menubar stuck"><i></i> 1 卡住</span>
+        </div>
+        <div class="rung">
+          <div class="rung-when">你主动点开</div>
+          <strong>清算</strong>
+          <p>完整队列，按「等了你多久」排序。</p>
+          <span class="menubar has"><i></i> 4 等你</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="stage" aria-label="方向 D 的两个状态">
+      <article class="slot">
+        <div class="slot-label">
+          <strong>呼叫态</strong>
+          <span>不请自来 · 只显示一件事</span>
+        </div>
+        <div class="widget calling">
+          <div class="bar">
+            <div class="bar-title">
+              <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+              有人卡住了
+            </div>
+            <div class="bar-right"><span class="count alarm">1</span></div>
+          </div>
+
+          <div class="call-body">
+            <div class="call-who">
+              <span class="persona" data-p="research" aria-hidden="true">投<b>CL</b></span>
+              <div class="call-who-text">
+                <strong>投研面板</strong>
+                <span>Claude · 需要你做决定</span>
+              </div>
+            </div>
+
+            <p class="call-ask">数据源要我换成 akshare 还是继续用 tushare？</p>
+
+            <div class="call-cost">
+              <strong>6:12</strong>
+              <span>已经停在这里没动<br>这段时间什么也没产出</span>
+            </div>
+
+            <div class="call-unit">
+              <span>本轮到此为止</span>
+              <span class="unit">14m · +31.2k</span>
+            </div>
+
+            <div class="call-actions">
+              <button class="button alarm" type="button" data-jump>回到这个会话</button>
+              <button class="button" type="button">10 分钟后再喊我</button>
+            </div>
+          </div>
+
+          <div class="foot">
+            <span>只有「卡住」会主动打断你</span>
+            <span>做完的会安静排队</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="slot">
+        <div class="slot-label">
+          <strong>清算态</strong>
+          <span>两条通道硬分开 · 按等了你多久排序</span>
+        </div>
+        <div class="widget">
+          <div class="bar">
+            <div class="bar-title">
+              <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+              Jingle
+            </div>
+            <div class="bar-right">等你 <span class="count">4</span></div>
+          </div>
+
+          <div class="lane-head lane-stuck">
+            <div class="lane-name"><i aria-hidden="true"></i> 卡住了</div>
+            <div class="lane-why">时间在走，越早处理越省</div>
+          </div>
+          <div class="lane">
+            <div class="item" data-row>
+              <span class="persona sm" data-p="research" aria-hidden="true">投<b>CL</b></span>
+              <div class="item-main">
+                <div class="item-said">数据源要我换成 akshare 还是继续用 tushare？</div>
+                <div class="item-who">投研面板 <em>· Claude 需要决定</em></div>
+              </div>
+              <div class="item-right">
+                <div class="figures">
+                  <span class="waited burning">停了 6m</span>
+                  <span class="unit">本轮 14m · +31.2k</span>
+                </div>
+                <button class="button alarm sm" type="button" data-jump>回到会话</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="lane-head lane-done">
+            <div class="lane-name"><i aria-hidden="true"></i> 做完了</div>
+            <div class="lane-why">攒着不吃亏，但别忘了</div>
+          </div>
+          <div class="lane">
+            <div class="item" data-row>
+              <span class="persona sm" data-p="shop" aria-hidden="true">电<b>CX</b></span>
+              <div class="item-main">
+                <div class="item-said">完成事件现在只会播报一次了</div>
+                <div class="item-who">电商工作台 <em>· Codex 已完成</em></div>
+              </div>
+              <div class="item-right">
+                <div class="figures">
+                  <span class="waited stale">等了 2 天</span>
+                  <span class="unit">本轮 12m · +23.6k</span>
+                </div>
+                <button class="button jump sm" type="button" data-jump>回到会话</button>
+                <button class="button sm" type="button" data-settle>已看</button>
+              </div>
+            </div>
+            <div class="item" data-row>
+              <span class="persona sm" data-p="content" aria-hidden="true">内<b>CL</b></span>
+              <div class="item-main">
+                <div class="item-said">日报结构改成了倒金字塔，示例已重写</div>
+                <div class="item-who">内容制作 <em>· Claude 已完成</em></div>
+              </div>
+              <div class="item-right">
+                <div class="figures">
+                  <span class="waited">等了 4h</span>
+                  <span class="unit">本轮 8m · +14.1k</span>
+                </div>
+                <button class="button jump sm" type="button" data-jump>回到会话</button>
+                <button class="button sm" type="button" data-settle>已看</button>
+              </div>
+            </div>
+            <div class="item" data-row>
+              <span class="persona sm" data-p="router" aria-hidden="true">T<b>CX</b></span>
+              <div class="item-main">
+                <div class="item-said">账本不变量测试补齐，check.sh 全绿</div>
+                <div class="item-who">tokenrouter <em>· Codex 已完成</em></div>
+              </div>
+              <div class="item-right">
+                <div class="figures">
+                  <span class="waited">等了 25m</span>
+                  <span class="unit">本轮 41m · +88.5k</span>
+                </div>
+                <button class="button jump sm" type="button" data-jump>回到会话</button>
+                <button class="button sm" type="button" data-settle>已看</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="lane-head lane-run">
+            <div class="lane-name"><i aria-hidden="true"></i> 还在跑</div>
+            <div class="lane-why">不用管 · 本轮账要等它跑完才结</div>
+          </div>
+          <div class="lane">
+            <div class="run-item">
+              <span class="persona sm" data-p="trade" aria-hidden="true">交<b>CX</b></span>
+              <div class="run-main">
+                <strong>交易系统</strong>
+                <span>Codex 工作中</span>
+              </div>
+              <div class="elapsed">已跑 18m</div>
+            </div>
+            <div class="run-item">
+              <span class="persona sm" data-p="research" aria-hidden="true">投<b>CX</b></span>
+              <div class="run-main">
+                <strong>投研面板 · 回测批跑</strong>
+                <span>Codex 工作中</span>
+              </div>
+              <div class="elapsed">已跑 1h52m</div>
+            </div>
+          </div>
+
+          <div class="foot">
+            <span>做完的会一直留在这里，直到你真的打开过它</span>
+            <span>播报过 ≠ 已检查</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="notes">
+      <h2>这一版和 A / B / C 的五处实质分歧</h2>
+      <ol>
+        <li><b>体积随需求变，没有手动折叠。</b>0 待办时它在桌面上不存在。A 的信息密度被保留了，但作为菜单栏那一行，而不是一个常驻面板。</li>
+        <li><b>「卡住」和「做完」走两条通道。</b>A/B/C 把它们放在同一个列表里、只换圆点颜色。但卡住的任务墙钟在走，做完的攒着没损失——它们的紧急度差一个量级，不该同列。</li>
+        <li><b>卡片上最大的字是「它说它干了什么」，本轮账退到第二行。</b>被打断的那一刻，<span class="unit">12m · +23.6k</span> 不影响你「现在看还是待会看」的决定，那句话影响。所以账不删，但不许抢主位。</li>
+        <li><b>本轮账在 Work Unit 结束时结一次，不轮询。</b>做完了和卡住了都算结束，都显示<span class="unit">本轮 12m · +23.6k</span>；还在跑的只显示已跑时长。分界线卡在成本上——时长是时钟相减，免费；token 要读日志，所以只在收尾那一刻算一次（末值 − 起始快照）。</li>
+        <li><b>人格绑项目，不绑 provider。</b>你想的是「投研面板好了没」，不是「Codex 好了没」。而且 3 个 Codex 会话并行时，一张「Codex 员工」卡根本表达不了——B 在结构上装不下并行，而并行是这个产品的前提。provider 退成工牌角上那个小标记。</li>
+      </ol>
+
+      <p class="caveat"><b>卡片上那句话的数据源已经验证过了，能拿到。</b>不是数据库里那个 title（<code>codex_spoken_notify.py:582</code> 说得对，它经常是用户的第一句 prompt），而是会话 JSONL 里最后一条 assistant message 的正文——Codex 在 <code>payload.type=="message"</code>，Claude 在 <code>message.role=="assistant"</code>，两边都完整。首行裸取不够用（6 条实测里 3 条开头是「难度上，比较直观的排序是：」这种废话），过一次 DeepSeek 后 6 条里 5 条可直接上卡片，端到端 1.6–1.9s。<b>剩下的风险是延迟</b>：贴着 2 秒线没有余量，所以通知先出、摘要异步补写，别让播报等它。</p>
+    </section>
+
+    <p class="mock-note">全部为示例数据。「回到会话」和「已看」可以点，用来预览离队反馈——注意两者不同：「回到会话」才是真正的验收动作，「已看」是手动兜底。</p>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const requestedTheme = params.get("theme");
+
+    if (requestedTheme === "light" || requestedTheme === "dark") {
+      document.documentElement.dataset.theme = requestedTheme;
+    }
+
+    document.querySelector("[data-theme-button]")?.addEventListener("click", () => {
+      const current = document.documentElement.dataset.theme;
+      if (!current) {
+        document.documentElement.dataset.theme =
+          window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark";
+      } else {
+        document.documentElement.dataset.theme = current === "dark" ? "light" : "dark";
+      }
+    });
+
+    const settle = (button, label) => {
+      const row = button.closest("[data-row]");
+      if (row) row.classList.add("settled-row");
+      button.textContent = label;
+      button.classList.remove("jump", "alarm");
+      button.classList.add("settled");
+      button.blur();
+    };
+
+    document.querySelectorAll("[data-jump]").forEach((button) => {
+      button.addEventListener("click", () => settle(button, "已跳转"));
+    });
+
+    document.querySelectorAll("[data-settle]").forEach((button) => {
+      button.addEventListener("click", () => settle(button, "已看"));
+    });
+  </script>
+</body>
+</html>
