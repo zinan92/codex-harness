@@ -1,4 +1,5 @@
 {
+  "ignored_prefixes": ["/Users/wendy/Documents/jingle"],
   "projects": [
     {
       "project_id": "token-router",

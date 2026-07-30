@@ -978,8 +978,6 @@ struct WorkUnit: Codable, Identifiable {
         return "\(seconds / 3_600) 小时 \((seconds % 3_600) / 60) 分"
     }
 
-    var providerName: String { provider == "claude" ? "Claude" : "Codex" }
-    var badge: String { provider == "claude" ? "CL" : "CX" }
     var needsAttention: Bool {
         // Old ledger rows predate unified attention. Do not wake historical
         // completions merely because the app was upgraded.
@@ -1071,7 +1069,18 @@ struct ProjectRule: Decodable {
     }
 }
 
-struct ProjectConfig: Decodable { let projects: [ProjectRule] }
+struct ProjectConfig: Decodable {
+    let projects: [ProjectRule]
+    let ignoredPrefixes: [String]
+
+    enum CodingKeys: String, CodingKey { case projects; case ignoredPrefixes = "ignored_prefixes" }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        projects = try values.decodeIfPresent([ProjectRule].self, forKey: .projects) ?? []
+        ignoredPrefixes = try values.decodeIfPresent([String].self, forKey: .ignoredPrefixes) ?? []
+    }
+}
 
 struct ProjectIdentity {
     let id: String
@@ -1108,7 +1117,9 @@ final class JingleModel: ObservableObject {
     private let projectsPath: URL
     private let activityPath: String
     private var projects: [ProjectRule] = []
+    private var ignoredPrefixes: [String] = []
     private var threadActivity: [String: CodexThreadActivity] = [:]
+    private var activityResolvedSessionIDs: Set<String> = []
     private var activityRefreshInFlight = false
     private let liveThreadWindow: TimeInterval = 120
 
@@ -1127,6 +1138,7 @@ final class JingleModel: ObservableObject {
         DispatchQueue.main.async {
             self.units = loadedUnits.map { Array($0.units.values) } ?? []
             self.projects = loadedProjects?.projects ?? []
+            self.ignoredPrefixes = loadedProjects?.ignoredPrefixes ?? []
             self.refreshCodexActivity()
         }
     }
@@ -1146,7 +1158,10 @@ final class JingleModel: ObservableObject {
                 let arguments = sessionIDs.flatMap { ["--session-id", $0] }
                 let data = try runLocalPython(script: self.activityPath, arguments: arguments)
                 let store = try JSONDecoder().decode(CodexThreadActivityStore.self, from: data)
-                DispatchQueue.main.async { self.threadActivity = store.sessions }
+                DispatchQueue.main.async {
+                    self.threadActivity = store.sessions
+                    self.activityResolvedSessionIDs = Set(sessionIDs)
+                }
             } catch {
                 // A missing or busy local Codex database is not evidence that a
                 // task is active. Keep the prior snapshot until the next probe.
@@ -1161,6 +1176,18 @@ final class JingleModel: ObservableObject {
     private func hasLiveCodexThread(_ unit: WorkUnit) -> Bool {
         guard let activity = activity(for: unit), !activity.archived else { return false }
         return activity.updatedAt >= Date().timeIntervalSince1970 - liveThreadWindow
+    }
+
+    private func activityIsResolved(for unit: WorkUnit) -> Bool {
+        activityResolvedSessionIDs.contains(unit.sessionID)
+    }
+
+    private func isIgnored(_ unit: WorkUnit) -> Bool {
+        let cwd = URL(fileURLWithPath: unit.cwd).standardized.path
+        return ignoredPrefixes.contains { rawPrefix in
+            let prefix = URL(fileURLWithPath: rawPrefix).standardized.path
+            return cwd == prefix || cwd.hasPrefix(prefix.hasSuffix("/") ? prefix : prefix + "/")
+        }
     }
 
     func identity(for unit: WorkUnit) -> ProjectIdentity {
@@ -1190,7 +1217,7 @@ final class JingleModel: ObservableObject {
     // The ledger is append-only and may contain history from providers Jingle
     // no longer observes. Projection is Codex-only rather than deleting that
     // history, so an old Claude row can never affect the menu bar.
-    private var codexUnits: [WorkUnit] { units.filter { $0.provider == "codex" } }
+    private var codexUnits: [WorkUnit] { units.filter { $0.provider == "codex" && !isIgnored($0) } }
 
     // Park's queue contains either a blocked decision or the terminal result
     // of an independent mapped task. A blocked result remains actionable even
@@ -1199,6 +1226,7 @@ final class JingleModel: ObservableObject {
     private var visible: [WorkUnit] {
         codexUnits.filter {
             $0.needsAttention && $0.seenAt == nil && $0.supersededAt == nil
+                && activityIsResolved(for: $0) && !hasLiveCodexThread($0)
                 && (identity(for: $0).isMapped || $0.state == "blocked")
         }
     }
@@ -1311,21 +1339,16 @@ struct DecisionDetails: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 11) {
-                ProjectPersona(identity: identity, provider: unit.badge, compact: false)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(identity.name)
-                        .font(.system(size: 14, weight: .semibold))
-                    Text(unit.providerName)
-                        .font(.system(size: 11, weight: .regular))
-                        .foregroundStyle(.secondary)
-                }
+                ProjectPersona(identity: identity, compact: false)
+                Text(identity.name)
+                    .font(.system(size: 14, weight: .semibold))
                 Spacer(minLength: 0)
             }
             Text("\(unit.attentionPrefix)\(unit.summary ?? "等待你的处理")")
                 .font(.system(size: 13.5, weight: .regular))
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("\(unit.providerName) · \(unit.startedLabel)\(unit.state == "blocked" ? " · 已停 \(unit.elapsed)" : "")")
+            Text("\(unit.startedLabel) · 本轮 \(unit.elapsed)")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
@@ -1334,7 +1357,6 @@ struct DecisionDetails: View {
 
 private struct ProjectPersona: View {
     let identity: ProjectIdentity
-    let provider: String
     let compact: Bool
 
     // Mockup persona measurements: 38px normally, 30px in compact rows.
@@ -1364,20 +1386,7 @@ private struct ProjectPersona: View {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .stroke(JingleVisual.panelLine, lineWidth: 1)
             }
-            .overlay(alignment: .bottomTrailing) {
-                Text(provider)
-                    .font(.system(size: 8, weight: .heavy, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 3)
-                    .padding(.vertical, 1)
-                    .background(JingleVisual.panelFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .stroke(JingleVisual.panelLine, lineWidth: 1)
-                    }
-                    .offset(x: 4, y: 4)
-            }
-            .accessibilityLabel("\(identity.name)，\(provider)")
+            .accessibilityLabel(identity.name)
     }
 }
 
@@ -1424,9 +1433,6 @@ struct AttentionGroupItem: View {
             HStack(spacing: 7) {
                 Text(group.identity.name).font(.system(size: 13, weight: .bold))
                 Spacer()
-                Text(group.units.map(\.badge).joined(separator: " · "))
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.secondary)
             }
             ForEach(group.units) { unit in
                 QueueItem(unit: unit, model: model, open: open, acknowledge: acknowledge)
@@ -1447,10 +1453,10 @@ private struct RunningItem: View {
 
     var body: some View {
         HStack(spacing: 11) {
-            ProjectPersona(identity: identity, provider: unit.badge, compact: true)
+            ProjectPersona(identity: identity, compact: true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(identity.name).font(.system(size: 13, weight: .semibold))
-                Text("\(unit.providerName) 工作中")
+                Text("工作中")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -1538,6 +1544,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var item: NSStatusItem!
     private var panel: NSPanel?
     private var calledUnitIDs: Set<String> = []
+    private var callUnitID: String?
     private var frontmostApplicationBeforePanel: pid_t?
 
     private enum PanelMode {
@@ -1619,8 +1626,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         frontmostApplicationBeforePanel = NSWorkspace.shared.frontmostApplication?.processIdentifier
         switch mode {
         case .settlement:
+            callUnitID = nil
             panel.contentViewController = settlement(height: frame.height)
         case .call(let unit):
+            callUnitID = unit.id
             panel.contentViewController = call(unit, height: frame.height)
         }
         panel.setFrame(frame, display: true)
@@ -1633,12 +1642,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel?.close()
         panel = nil
         frontmostApplicationBeforePanel = nil
+        callUnitID = nil
     }
 
     func refresh() {
         let count = model.pendingCount
         item.button?.title = count == 0 ? "•" : "\(count)"
         item.button?.contentTintColor = count == 0 ? .secondaryLabelColor : (model.blocked.isEmpty ? .labelColor : .systemOrange)
+        if let callUnitID, !model.callableBlocked.contains(where: { $0.id == callUnitID }) { dismissPanel() }
         if !model.hasSettlementContent { dismissPanel() }
         if let first = model.callableBlocked.first(where: { !calledUnitIDs.contains($0.id) }), !(panel?.isVisible ?? false) {
             if present(.call(first)) { calledUnitIDs.insert(first.id) }
