@@ -97,6 +97,19 @@ class JingleLifecycleTests(unittest.TestCase):
         self.assertEqual(ended["status"], lifecycle.STATE_BLOCKED)
         self.assertEqual(ended["unit"]["outcome_reason"], "claude_stop_failure")
 
+    def test_claude_session_end_reconciles_an_unfinished_unit_as_blocked(self) -> None:
+        lifecycle.begin_work_unit("claude", self.payload("UserPromptSubmit"))
+        ended = lifecycle.finish_work_unit("claude", self.payload("SessionEnd"), classifier)
+        self.assertEqual(ended["status"], lifecycle.STATE_BLOCKED)
+        self.assertEqual(ended["unit"]["outcome_reason"], "claude_session_end")
+        self.assertTrue(ended["delivery_eligible"])
+
+    def test_session_end_after_normal_claude_stop_is_ignored(self) -> None:
+        lifecycle.begin_work_unit("claude", self.payload("UserPromptSubmit"))
+        lifecycle.finish_work_unit("claude", self.payload("Stop", last_assistant_message="Completed."), classifier)
+        ignored = lifecycle.finish_work_unit("claude", self.payload("SessionEnd"), classifier)
+        self.assertEqual(ignored["status"], "ignored_missing_start")
+
     def test_claude_uses_active_session_unit_when_hook_has_no_turn_id(self) -> None:
         start = self.payload("UserPromptSubmit")
         start.pop("turn_id")

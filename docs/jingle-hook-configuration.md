@@ -36,7 +36,9 @@ same turn id and its existing at-most-once lock suppresses the duplicate.
 
 ## Claude Code
 
-Claude Code 2.1.220 supports `UserPromptSubmit`, `Stop`, and `StopFailure`.
+Claude Code 2.1.220 supports `UserPromptSubmit`, `Stop`, `StopFailure`, and
+`SessionEnd`. `SessionEnd` is the process-level terminal fallback when Claude
+ends before it can emit a turn-level stop event.
 Add these command handlers to the `hooks` object in `~/.claude/settings.json`
 or an opted-in project settings file:
 
@@ -45,7 +47,8 @@ or an opted-in project settings file:
   "hooks": {
     "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "/usr/bin/python3 $HOME/.codex/hooks/jingle_hook.py --provider claude"}]}],
     "Stop": [{"hooks": [{"type": "command", "command": "/usr/bin/python3 $HOME/.codex/hooks/jingle_hook.py --provider claude"}]}],
-    "StopFailure": [{"hooks": [{"type": "command", "command": "/usr/bin/python3 $HOME/.codex/hooks/jingle_hook.py --provider claude"}]}]
+    "StopFailure": [{"hooks": [{"type": "command", "command": "/usr/bin/python3 $HOME/.codex/hooks/jingle_hook.py --provider claude"}]}],
+    "SessionEnd": [{"hooks": [{"type": "command", "command": "/usr/bin/python3 $HOME/.codex/hooks/jingle_hook.py --provider claude"}]}]
   }
 }
 ```
@@ -53,10 +56,12 @@ or an opted-in project settings file:
 Claude's `UserPromptSubmit`/`Stop` payloads do not include a turn ID, so Jingle
 links the active Work Unit by provider + session. `StopFailure` always becomes
 `blocked`; `Stop` normally becomes `done` unless the deterministic fallback
-finds an unfinished/needs-input marker. Explicit subagent/teammate payloads are
-ignored before they touch the state file. The same detached delivery is launched
-with the immutable Claude Work Unit id, so Claude has the same two-sound contract
-without needing Codex's old `notify` callback.
+finds an unfinished/needs-input marker. `SessionEnd` is only consulted when the
+Work Unit is still running: it marks that interrupted task `blocked`; following
+a normal `Stop` it is a no-op. Explicit subagent/teammate payloads are ignored
+before they touch the state file. The same detached delivery is launched with the
+immutable Claude Work Unit id, so Claude has the same two-sound contract without
+needing Codex's old `notify` callback.
 
 ## Local verification without changing global configuration
 

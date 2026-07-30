@@ -92,6 +92,22 @@ class JingleHookTests(unittest.TestCase):
             running["unit"]["id"], "claude-session", "brief：处理中…", "jingle_lifecycle", codex_spoken_notify.STATUS_ATTENTION
         )
 
+    def test_claude_session_end_is_a_blocked_terminal_fallback(self) -> None:
+        start = {"hook_event_name": "UserPromptSubmit", "session_id": "claude-session", "cwd": "/tmp/brief"}
+        end = {**start, "hook_event_name": "SessionEnd", "reason": "other"}
+        with (
+            mock.patch.object(jingle_hook, "collect_accounting", return_value={"provider": "claude", "status": "unavailable"}),
+            mock.patch.object(jingle_summary, "launch"),
+            mock.patch.object(codex_spoken_notify, "launch_worker") as notify,
+        ):
+            running = jingle_hook.handle("claude", start)
+            ended = jingle_hook.handle("claude", end)
+        self.assertEqual(ended["status"], "blocked")
+        self.assertEqual(ended["unit"]["outcome_reason"], "claude_session_end")
+        notify.assert_called_once_with(
+            running["unit"]["id"], "claude-session", "brief：处理中…", "jingle_lifecycle", codex_spoken_notify.STATUS_ATTENTION
+        )
+
     def test_workflow_and_blocked_only_done_turns_never_launch_a_sound(self) -> None:
         workflow_start = {"hook_event_name": "UserPromptSubmit", "session_id": "workflow", "turn_id": "one", "cwd": "/tmp/flow"}
         workflow_stop = {**workflow_start, "hook_event_name": "Stop", "last_assistant_message": "Completed."}
