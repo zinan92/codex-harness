@@ -1130,28 +1130,37 @@ final class JingleModel: ObservableObject {
     }
 
     // Park's queue contains either a blocked decision or the terminal result
-    // of an independent task. Workflow and blocked-only completion stay silent.
+    // of an independent mapped task. A blocked result remains actionable even
+    // when it is not mapped; normal unmapped completions fail closed so stale
+    // ledger flags cannot recreate a project card.
     private var visible: [WorkUnit] {
         units.filter {
             $0.needsAttention && $0.seenAt == nil && $0.supersededAt == nil
+                && (identity(for: $0).isMapped || $0.state == "blocked")
         }
     }
     private var currentBySession: [WorkUnit] {
         Dictionary(grouping: visible, by: { "\($0.provider):\($0.sessionID)" })
             .compactMap { $0.value.max { $0.startedAt < $1.startedAt } }
     }
+    private func preferredUnit(in items: [WorkUnit]) -> WorkUnit? {
+        items.sorted {
+            let leftBlocked = $0.state == "blocked"
+            let rightBlocked = $1.state == "blocked"
+            if leftBlocked != rightBlocked { return leftBlocked }
+            let leftAt = $0.endedAt ?? $0.startedAt
+            let rightAt = $1.endedAt ?? $1.startedAt
+            return leftAt == rightAt ? $0.id > $1.id : leftAt > rightAt
+        }.first
+    }
     var attentionGroups: [AttentionGroup] {
         Dictionary(grouping: currentBySession, by: { identity(for: $0).id })
             .compactMap { groupID, items in
-                guard let unit = items.first else { return nil }
+                guard let preferred = preferredUnit(in: items) else { return nil }
                 return AttentionGroup(
                     id: groupID,
-                    identity: identity(for: unit),
-                    units: items.sorted {
-                        let leftWaitingAt = $0.endedAt ?? $0.startedAt
-                        let rightWaitingAt = $1.endedAt ?? $1.startedAt
-                        return leftWaitingAt == rightWaitingAt ? $0.id < $1.id : leftWaitingAt < rightWaitingAt
-                    }
+                    identity: identity(for: preferred),
+                    units: [preferred]
                 )
             }
             .sorted { left, right in
@@ -1165,7 +1174,11 @@ final class JingleModel: ObservableObject {
             .filter { $0.state == "running" && identity(for: $0).isMapped }
             .sorted { $0.startedAt < $1.startedAt }
     }
-    var blocked: [WorkUnit] { currentBySession.filter { $0.state == "blocked" }.sorted { ($0.endedAt ?? 0) < ($1.endedAt ?? 0) } }
+    var blocked: [WorkUnit] {
+        attentionGroups.flatMap(\.units)
+            .filter { $0.state == "blocked" }
+            .sorted { ($0.endedAt ?? 0) < ($1.endedAt ?? 0) }
+    }
     var callableBlocked: [WorkUnit] { blocked.filter { ($0.snoozedUntil ?? 0) <= Date().timeIntervalSince1970 } }
     var pendingCount: Int { attentionGroups.count }
     var hasSettlementContent: Bool { pendingCount > 0 || !runningUnits.isEmpty }
@@ -1339,10 +1352,6 @@ struct AttentionGroupItem: View {
     @ObservedObject var model: JingleModel
     let open: (WorkUnit) -> Void
     let acknowledge: (WorkUnit) -> Void
-    @State private var expanded = false
-
-    private var displayedUnits: [WorkUnit] { expanded ? group.units : Array(group.units.prefix(3)) }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 7) {
@@ -1352,21 +1361,8 @@ struct AttentionGroupItem: View {
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
-            ForEach(Array(displayedUnits.enumerated()), id: \.element.id) { index, unit in
-                if index > 0 { Divider() }
+            ForEach(group.units) { unit in
                 QueueItem(unit: unit, model: model, open: open, acknowledge: acknowledge)
-            }
-            if group.units.count > 3 {
-                HStack {
-                    Text(expanded ? "已显示全部 \(group.units.count) 条" : "还有 \(group.units.count - 3) 条")
-                    Spacer()
-                    Button(expanded ? "收起" : "点开展开") { expanded.toggle() }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(JingleVisual.accentDeep)
-                }
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(.secondary)
-                .padding(.top, 2)
             }
         }
         .padding(14)
