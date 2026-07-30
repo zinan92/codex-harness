@@ -110,7 +110,7 @@ cd codex-jingle
 
 1. 把通知引擎安装到 `~/.codex/hooks/codex_spoken_notify.py`。
 2. 把 CC0 音效安装到 `~/.codex/hooks/sounds/`。
-3. 在本机编译并签名 `~/Applications/Codex 通知设置.app`，并安装用户级 LaunchAgent 以便登录和异常退出后恢复菜单栏 App。
+3. 在本机编译并签名 `~/Applications/Codex 通知设置.app`。
 4. 备份现有 `~/.codex/config.toml`，再写入 Codex `notify` callback。
 
 打开设置：

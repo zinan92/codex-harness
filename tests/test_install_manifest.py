@@ -20,19 +20,6 @@ class InstallManifestTests(unittest.TestCase):
         self.assertIn('accounting_path="$hook_dir/jingle_accounting.py"', uninstaller)
         self.assertIn('"$accounting_path"', uninstaller)
 
-    def test_installer_and_uninstaller_manage_one_user_launch_agent(self) -> None:
-        installer = (ROOT / "scripts" / "install.sh").read_text(encoding="utf-8")
-        uninstaller = (ROOT / "scripts" / "uninstall.sh").read_text(encoding="utf-8")
-        template = (ROOT / "assets" / "io.github.zinan92.codex-jingle.plist.template").read_text(encoding="utf-8")
-        self.assertIn('launch_agent_label="io.github.zinan92.codex-jingle"', installer)
-        self.assertIn('launchctl bootstrap "gui/$user_id" "$launch_agent_path"', installer)
-        self.assertIn('launchctl kickstart -k "gui/$user_id/$launch_agent_label"', installer)
-        self.assertIn('launchctl bootout "gui/$user_id/$launch_agent_label"', uninstaller)
-        self.assertIn('rm -f "$launch_agent_path"', uninstaller)
-        self.assertIn('<key>RunAtLoad</key>', template)
-        self.assertIn('<key>KeepAlive</key>', template)
-        self.assertIn('__JINGLE_APP_PATH__', template)
-
 
 if __name__ == "__main__":
     unittest.main()
