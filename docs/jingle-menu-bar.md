@@ -5,12 +5,12 @@
 「卡住了」会自动展开单张卡片。
 
 项目人格从 `~/.codex/jingle/projects.json` 读取。每个项目必须有显式 `project_id`
-和 aliases；同一个项目可以配置 Codex/Claude 各自的 cwd 前缀。文件首次安装时由
+和 Codex cwd aliases。文件首次安装时由
 `assets/jingle-projects.json` 初始化、之后绝不覆盖。未匹配 cwd 使用完整路径作为
 内部 identity，只显示 basename，因此两个同名目录绝不会被自动合并。示例：
 
 ```json
-{"projects":[{"project_id":"research","name":"投研面板","color":"blue","aliases":[{"provider":"codex","prefix":"/Users/me/work/research"},{"provider":"claude","prefix":"/Users/me/work/research"}]}]}
+{"projects":[{"project_id":"research","name":"投研面板","color":"blue","aliases":[{"provider":"codex","prefix":"/Users/me/work/research"}]}]}
 ```
 
 `color` 可选值为 `blue`、`orange`、`green`、`red`。同一 provider + session 的新任务

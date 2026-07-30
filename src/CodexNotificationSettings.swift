@@ -1129,12 +1129,17 @@ final class JingleModel: ObservableObject {
         return ProjectIdentity(id: "unmapped:\(normalized)", name: name.isEmpty ? "未命名项目" : name, color: lookColor, isMapped: false)
     }
 
+    // The ledger is append-only and may contain history from providers Jingle
+    // no longer observes. Projection is Codex-only rather than deleting that
+    // history, so an old Claude row can never affect the menu bar.
+    private var codexUnits: [WorkUnit] { units.filter { $0.provider == "codex" } }
+
     // Park's queue contains either a blocked decision or the terminal result
     // of an independent mapped task. A blocked result remains actionable even
     // when it is not mapped; normal unmapped completions fail closed so stale
     // ledger flags cannot recreate a project card.
     private var visible: [WorkUnit] {
-        units.filter {
+        codexUnits.filter {
             $0.needsAttention && $0.seenAt == nil && $0.supersededAt == nil
                 && (identity(for: $0).isMapped || $0.state == "blocked")
         }
@@ -1170,7 +1175,7 @@ final class JingleModel: ObservableObject {
             }
     }
     var runningUnits: [WorkUnit] {
-        units
+        codexUnits
             .filter { $0.state == "running" && identity(for: $0).isMapped }
             .sorted { $0.startedAt < $1.startedAt }
     }

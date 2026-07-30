@@ -1,6 +1,6 @@
 # Jingle lifecycle hook configuration
 
-Jingle uses the current lifecycle hooks offered by each CLI. The hook command
+Jingle currently uses Codex lifecycle hooks. The hook command
 persists only provider, session/turn IDs, cwd, timestamps, state, and a short
 deterministic outcome reason. It does not persist prompts or assistant output.
 
@@ -34,34 +34,12 @@ hook launches Jingle's detached local delivery after it has made that decision:
 If the existing Codex `notify` callback is still installed, both paths use the
 same turn id and its existing at-most-once lock suppresses the duplicate.
 
-## Claude Code
+## Claude Code is intentionally not connected
 
-Claude Code 2.1.220 supports `UserPromptSubmit`, `Stop`, `StopFailure`, and
-`SessionEnd`. `SessionEnd` is the process-level terminal fallback when Claude
-ends before it can emit a turn-level stop event.
-Add these command handlers to the `hooks` object in `~/.claude/settings.json`
-or an opted-in project settings file:
-
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "/usr/bin/python3 $HOME/.codex/hooks/jingle_hook.py --provider claude"}]}],
-    "Stop": [{"hooks": [{"type": "command", "command": "/usr/bin/python3 $HOME/.codex/hooks/jingle_hook.py --provider claude"}]}],
-    "StopFailure": [{"hooks": [{"type": "command", "command": "/usr/bin/python3 $HOME/.codex/hooks/jingle_hook.py --provider claude"}]}],
-    "SessionEnd": [{"hooks": [{"type": "command", "command": "/usr/bin/python3 $HOME/.codex/hooks/jingle_hook.py --provider claude"}]}]
-  }
-}
-```
-
-Claude's `UserPromptSubmit`/`Stop` payloads do not include a turn ID, so Jingle
-links the active Work Unit by provider + session. `StopFailure` always becomes
-`blocked`; `Stop` normally becomes `done` unless the deterministic fallback
-finds an unfinished/needs-input marker. `SessionEnd` is only consulted when the
-Work Unit is still running: it marks that interrupted task `blocked`; following
-a normal `Stop` it is a no-op. Explicit subagent/teammate payloads are ignored
-before they touch the state file. The same detached delivery is launched with the
-immutable Claude Work Unit id, so Claude has the same two-sound contract without
-needing Codex's old `notify` callback.
+Jingle currently ignores `--provider claude` before it reads or writes lifecycle
+state. Remove any Jingle-owned commands from `~/.claude/settings.json`; existing
+Claude ledger rows remain as local history but cannot affect Jingle's count,
+cards, audio, or call panel.
 
 ## Local verification without changing global configuration
 

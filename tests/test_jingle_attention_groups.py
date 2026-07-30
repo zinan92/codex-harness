@@ -29,7 +29,7 @@ class AttentionGroupContractTests(unittest.TestCase):
 
         def visible(unit: dict[str, object]) -> bool:
             identity = project_id(unit)
-            return unit.get("needs_attention") is True and (
+            return unit.get("provider") == "codex" and unit.get("needs_attention") is True and (
                 identity == "token-router" or unit.get("state") == "blocked"
             )
 
@@ -42,7 +42,7 @@ class AttentionGroupContractTests(unittest.TestCase):
             for identity, items in groups.items()
         }
         self.assertEqual(set(cards), {"token-router"})
-        self.assertEqual(cards["token-router"]["id"], "cl-blocked")
+        self.assertEqual(cards["token-router"]["id"], "cx-current")
         self.assertEqual(len(cards), 1)
 
         unmapped_blocked = {"id": "unmapped-blocked", "state": "blocked", "needs_attention": True, "cwd": "/workspace/a/shared", "provider": "codex"}
@@ -78,6 +78,8 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertNotIn('Array(group.units.prefix(3))', source)
         self.assertNotIn('Button(expanded ? "收起" : "点开展开")', source)
         self.assertIn("var runningUnits", source)
+        self.assertIn('private var codexUnits: [WorkUnit]', source)
+        self.assertIn('codexUnits.filter {', source)
         self.assertIn('$0.state == "running" && identity(for: $0).isMapped', source)
         self.assertIn("private struct RunningItem", source)
         self.assertIn('running(title: "还在跑", units: model.runningUnits)', source)
@@ -114,7 +116,7 @@ class AttentionGroupContractTests(unittest.TestCase):
                 latest[key] = unit
         groups: dict[str, list[dict[str, object]]] = {}
         for unit in latest.values():
-            if unit.get("needs_attention") is True and (
+            if unit.get("provider") == "codex" and unit.get("needs_attention") is True and (
                 project_id(unit) == "token-router" or unit.get("state") == "blocked"
             ):
                 groups.setdefault(project_id(unit), []).append(unit)
@@ -128,10 +130,7 @@ class AttentionGroupContractTests(unittest.TestCase):
             ),
         )
         self.assertEqual([project for project, _ in ordered], ["token-router"])
-        self.assertEqual(
-            [unit["id"] for unit in sorted(ordered[0][1], key=lambda unit: (unit["ended_at"], unit["id"]))],
-            ["cl-current", "cx-current", "cl-blocked"],
-        )
+        self.assertEqual([unit["id"] for unit in ordered[0][1]], ["cx-current"])
 
 
 if __name__ == "__main__":

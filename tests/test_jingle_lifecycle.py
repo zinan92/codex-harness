@@ -322,7 +322,7 @@ class JingleLifecycleTests(unittest.TestCase):
             env={**os.environ, **self.environ},
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(json.loads(completed.stdout)["status"], "ignored_subagent")
+        self.assertEqual(json.loads(completed.stdout)["status"], "ignored_provider")
 
 
 if __name__ == "__main__":
