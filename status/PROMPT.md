@@ -10,7 +10,7 @@
    - `light`：`green`（能用/收口）｜`yellow`（机制在但有缺口）｜`red`（瓶颈/未动）
    - `verdict`：≤6 字判词（如「最强」「卡在④」「几乎未动」）
    - `note`：一句依据，**必须可溯源**（写明来自哪个文件/命令）
-3. **tracking 三问**：`now`（现在在哪里）、`working_on`（正在做哪个 story）、`next`（下一步）。
+3. **tracking 三问**：`now`、`working_on`、`next` 都必须以项目 repo 的 `REGISTRY.md` / `NORTH_STAR.md` 为状态权威；本 JSON 只提供带来源的成本、活跃度与证据视角，不得成为第二份项目计划。
 4. 顶部写 `assessed_at`（今天日期）、`assessor`（你的模型名）、`sources`（你实际读过的文件）。
 
 ## 规矩
