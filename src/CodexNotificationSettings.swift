@@ -294,8 +294,9 @@ private let lookColor = Color(red: 89 / 255, green: 166 / 255, blue: 240 / 255)
 private let savedColor = Color(red: 73 / 255, green: 210 / 255, blue: 159 / 255)
 
 private enum JingleVisual {
-    // Measured from docs/jingle-direction-d.html: --radius, --radius-sm,
-    // --panel and the 28px/140% frosted material treatment.
+    // The A-direction reference is a quiet, solid monitoring surface. It is
+    // deliberately not translucent: a menu item must remain legible over any
+    // wallpaper or application below it.
     static let panelRadius: CGFloat = 18
     static let itemRadius: CGFloat = 11
     static let accent = Color(red: 228 / 255, green: 163 / 255, blue: 59 / 255)
@@ -304,8 +305,8 @@ private enum JingleVisual {
     static let dangerDeep = Color(red: 142 / 255, green: 68 / 255, blue: 54 / 255)
     static let panelFill = Color(nsColor: NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            ? NSColor(red: 24 / 255, green: 31 / 255, blue: 40 / 255, alpha: 0.90)
-            : NSColor(red: 249 / 255, green: 250 / 255, blue: 251 / 255, alpha: 0.88)
+            ? NSColor(red: 20 / 255, green: 28 / 255, blue: 37 / 255, alpha: 1)
+            : NSColor(red: 249 / 255, green: 250 / 255, blue: 251 / 255, alpha: 1)
     })
     static let panelLine = Color(nsColor: NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
@@ -314,8 +315,18 @@ private enum JingleVisual {
     })
     static let itemFill = Color(nsColor: NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            ? NSColor(red: 35 / 255, green: 44 / 255, blue: 55 / 255, alpha: 0.90)
-            : NSColor(red: 237 / 255, green: 240 / 255, blue: 243 / 255, alpha: 0.92)
+            ? NSColor(red: 35 / 255, green: 43 / 255, blue: 53 / 255, alpha: 1)
+            : NSColor(red: 237 / 255, green: 240 / 255, blue: 243 / 255, alpha: 1)
+    })
+    static let divider = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(calibratedWhite: 1, alpha: 0.10)
+            : NSColor(red: 43 / 255, green: 54 / 255, blue: 66 / 255, alpha: 0.12)
+    })
+    static let attentionFill = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(red: 62 / 255, green: 49 / 255, blue: 29 / 255, alpha: 1)
+            : NSColor(red: 252 / 255, green: 244 / 255, blue: 226 / 255, alpha: 1)
     })
 }
 
@@ -324,7 +335,6 @@ private struct JinglePanelSurface: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial)
             .background(JingleVisual.panelFill)
             .clipShape(RoundedRectangle(cornerRadius: JingleVisual.panelRadius, style: .continuous))
             .overlay {
@@ -336,7 +346,7 @@ private struct JinglePanelSurface: ViewModifier {
                             .padding(1)
                     }
             }
-            .shadow(color: .black.opacity(calling ? 0.26 : 0.18), radius: calling ? 28 : 20, y: 8)
+            .shadow(color: .black.opacity(calling ? 0.28 : 0.24), radius: calling ? 28 : 18, y: 8)
     }
 }
 
@@ -1280,8 +1290,14 @@ final class JingleModel: ObservableObject {
             }
     }
     var runningUnits: [WorkUnit] {
-        Dictionary(grouping: codexUnits.filter { $0.state == "running" && hasLiveCodexThread($0) }, by: \.sessionID)
-            .compactMap { $0.value.max { $0.startedAt < $1.startedAt } }
+        // A project is a destination, not a chronological work log. Its latest
+        // live session replaces an older concurrent session in this surface.
+        Dictionary(grouping: codexUnits.filter { $0.state == "running" && hasLiveCodexThread($0) }, by: { identity(for: $0).id })
+            .compactMap { $0.value.max { left, right in
+                let leftUpdated = activity(for: left)?.updatedAt ?? left.startedAt
+                let rightUpdated = activity(for: right)?.updatedAt ?? right.startedAt
+                return leftUpdated < rightUpdated
+            } }
             .sorted { left, right in
                 let leftUpdated = activity(for: left)?.updatedAt ?? 0
                 let rightUpdated = activity(for: right)?.updatedAt ?? 0
@@ -1296,6 +1312,22 @@ final class JingleModel: ObservableObject {
     var callableBlocked: [WorkUnit] { blocked.filter { ($0.snoozedUntil ?? 0) <= Date().timeIntervalSince1970 } }
     var pendingCount: Int { attentionGroups.count }
     var hasSettlementContent: Bool { pendingCount > 0 || !runningUnits.isEmpty }
+
+    // Token accounting is intentionally terminal-only. The headline therefore
+    // sums only recorded Work Units completed today, never a live estimate.
+    var todayTokenTotal: Int? {
+        let startOfToday = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
+        let recorded = codexUnits.compactMap { unit -> Int? in
+            guard let endedAt = unit.endedAt,
+                  endedAt >= startOfToday,
+                  let total = unit.tokenAccounting?.totalTokens else { return nil }
+            return total
+        }
+        guard !recorded.isEmpty else { return nil }
+        return recorded.reduce(0, +)
+    }
+
+    var featuredAttentionGroup: AttentionGroup? { attentionGroups.first }
 
     func acknowledge(_ unit: WorkUnit) { runControl(["--acknowledge", unit.id], success: "已看") }
     func snooze(_ unit: WorkUnit) { runControl(["--snooze", unit.id, "--seconds", "600"], success: "10 分钟后再喊你") }
@@ -1449,19 +1481,15 @@ struct AttentionGroupItem: View {
     let acknowledge: (WorkUnit) -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 7) {
-                Text(group.identity.name).font(.system(size: 13, weight: .bold))
-                Spacer()
-            }
             ForEach(group.units) { unit in
                 QueueItem(unit: unit, model: model, open: open, acknowledge: acknowledge)
             }
         }
         .padding(14)
-        .background(JingleVisual.itemFill, in: RoundedRectangle(cornerRadius: JingleVisual.itemRadius, style: .continuous))
+        .background(JingleVisual.attentionFill, in: RoundedRectangle(cornerRadius: JingleVisual.itemRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: JingleVisual.itemRadius, style: .continuous)
-                .stroke(JingleVisual.panelLine, lineWidth: 1)
+                .stroke(JingleVisual.accent.opacity(0.46), lineWidth: 1)
         }
     }
 }
@@ -1475,18 +1503,38 @@ private struct RunningItem: View {
             ProjectPersona(identity: identity, compact: true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(identity.name).font(.system(size: 13, weight: .semibold))
-                Text("工作中")
-                    .font(.system(size: 11))
+                Text("工作中  ·  \(unit.startedLabel)")
+                    .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Text("已跑 \(unit.elapsed)")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(unit.elapsed)
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                Text("进行中")
+                    .font(.system(size: 9.5, design: .monospaced))
+                    .foregroundStyle(JingleVisual.accent)
+            }
+        }
+        .padding(.vertical, 9)
+    }
+}
+
+private struct MetricBlock: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(.system(size: 22, weight: .bold, design: .monospaced))
+                .foregroundStyle(.primary)
+            Text(label)
+                .font(.system(size: 10.5, weight: .medium))
                 .foregroundStyle(.secondary)
         }
-        .opacity(0.72)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 12)
     }
 }
 
@@ -1498,35 +1546,92 @@ struct SettlementView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 13) {
-                HStack { Text("JINGLE").font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(.secondary); Spacer(); Text("等你").font(.headline) }
-                if !model.attentionGroups.isEmpty { queue(title: "等你", color: .primary, groups: model.attentionGroups) }
-                if !model.runningUnits.isEmpty { running(title: "还在跑", units: model.runningUnits) }
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                metrics
+                if !model.runningUnits.isEmpty { running }
+                if let group = model.featuredAttentionGroup { attention(group) }
                 if model.pendingCount == 0 && model.runningUnits.isEmpty {
                     Text("现在没有待处理任务").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 30).frame(maxWidth: .infinity)
                 }
-                if let message = model.actionMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
+                if let message = model.actionMessage {
+                    Divider().overlay(JingleVisual.divider)
+                    Text(message).font(.caption).foregroundStyle(.secondary).padding(.top, 10)
+                }
             }
-            .padding(14)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
         }
         .frame(width: 380, height: panelHeight)
         .jinglePanelSurface()
     }
 
-    @ViewBuilder private func queue(title: String, color: Color, groups: [AttentionGroup]) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(color)
-            ForEach(groups) { AttentionGroupItem(group: $0, model: model, open: open, acknowledge: acknowledge) }
+    private var header: some View {
+        HStack(spacing: 8) {
+            BrandMark()
+            Text("JINGLE")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .tracking(1.2)
+            Spacer()
+            if model.pendingCount > 0 {
+                Text("待检查  \(model.pendingCount)")
+                    .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(JingleVisual.accent)
+            } else {
+                Text("监控中")
+                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.bottom, 12)
+    }
+
+    private var metrics: some View {
+        HStack(spacing: 0) {
+            MetricBlock(value: "\(model.runningUnits.count)", label: "个任务正在工作")
+            if let tokens = model.todayTokenTotal {
+                Divider().overlay(JingleVisual.divider).padding(.vertical, 8)
+                MetricBlock(value: tokenTotalLabel(tokens), label: "今日已结算 Token")
+            }
+        }
+        .overlay(alignment: .bottom) { Divider().overlay(JingleVisual.divider) }
+    }
+
+    private var running: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionLabel("当前任务", trailing: "耗时")
+            ForEach(model.runningUnits) { unit in
+                RunningItem(unit: unit, identity: model.identity(for: unit))
+                if unit.id != model.runningUnits.last?.id { Divider().overlay(JingleVisual.divider) }
+            }
+        }
+        .padding(.vertical, 10)
+    }
+
+    private func attention(_ group: AttentionGroup) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Divider().overlay(JingleVisual.divider)
+            sectionLabel("等你检查", trailing: "最高优先级")
+                .padding(.top, 8)
+            AttentionGroupItem(group: group, model: model, open: open, acknowledge: acknowledge)
+        }
+        .padding(.bottom, 4)
+    }
+
+    private func sectionLabel(_ title: String, trailing: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(trailing)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.secondary)
         }
     }
 
-    @ViewBuilder private func running(title: String, units: [WorkUnit]) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(JingleVisual.accentDeep)
-            ForEach(units) { unit in
-                RunningItem(unit: unit, identity: model.identity(for: unit))
-            }
-        }
+    private func tokenTotalLabel(_ total: Int) -> String {
+        total >= 1_000 ? String(format: "%.1fk", Double(total) / 1_000) : "\(total)"
     }
 }
 
@@ -1572,7 +1677,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         var preferredHeight: CGFloat {
             switch self {
-            case .settlement: return 460
+            case .settlement: return 448
             case .call: return 280
             }
         }

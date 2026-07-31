@@ -65,7 +65,8 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertIn("endPoint: UnitPoint(x: 0.85, y: 1)", source)
         self.assertIn("static let panelRadius: CGFloat = 18", source)
         self.assertIn("static let itemRadius: CGFloat = 11", source)
-        self.assertIn(".ultraThinMaterial", source)
+        self.assertNotIn(".ultraThinMaterial", source)
+        self.assertIn("deliberately not translucent", source)
         self.assertIn("panel.isOpaque = false", source)
         self.assertIn("panel.backgroundColor = .clear", source)
         self.assertIn("var settlementLabel", source)
@@ -78,6 +79,10 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertNotIn('Array(group.units.prefix(3))', source)
         self.assertNotIn('Button(expanded ? "收起" : "点开展开")', source)
         self.assertIn("var runningUnits", source)
+        self.assertIn("by: { identity(for: $0).id }", source)
+        self.assertIn("var todayTokenTotal: Int?", source)
+        self.assertIn("var featuredAttentionGroup: AttentionGroup?", source)
+        self.assertIn("Token accounting is intentionally terminal-only", source)
         self.assertIn('private var codexUnits: [WorkUnit]', source)
         self.assertIn('codexUnits.filter {', source)
         self.assertIn('private func hasLiveCodexThread(_ unit: WorkUnit)', source)
@@ -93,13 +98,16 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertIn('Dictionary(grouping: codexUnits.filter', source)
         self.assertIn('"thread:\\(unit.sessionID)"', source)
         self.assertIn("private struct RunningItem", source)
-        self.assertIn('running(title: "还在跑", units: model.runningUnits)', source)
-        self.assertIn(".opacity(0.72)", source)
+        self.assertIn('sectionLabel("当前任务", trailing: "耗时")', source)
+        self.assertIn('if let group = model.featuredAttentionGroup { attention(group) }', source)
+        self.assertIn('sectionLabel("等你检查", trailing: "最高优先级")', source)
+        self.assertIn("private struct MetricBlock", source)
+        self.assertIn("JingleVisual.attentionFill", source)
         self.assertIn("model.pendingCount == 0 && model.runningUnits.isEmpty", source)
         self.assertIn("var hasSettlementContent: Bool", source)
         self.assertIn("guard model.hasSettlementContent", source)
         self.assertIn("struct DecisionDetails", source)
-        self.assertIn('Text("工作中")', source)
+        self.assertIn('Text("工作中  ·  \\(unit.startedLabel)")', source)
         self.assertIn('Text("\\(unit.startedLabel) · 本轮 \\(unit.elapsed)")', source)
         self.assertNotIn("providerName", source)
         self.assertNotIn(".badge", source)
@@ -136,6 +144,21 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertEqual([unit["id"] for unit in attention], ["inactive-blocked"])
         self.assertEqual(set(running), {"trade", "research"})
         self.assertEqual(running["trade"]["id"], "trade-running")
+
+    def test_monitor_strip_keeps_only_the_latest_live_session_per_project(self) -> None:
+        live = [
+            {"id": "trade-old", "project": "trading", "updated_at": 100},
+            {"id": "trade-current", "project": "trading", "updated_at": 140},
+            {"id": "research-current", "project": "research", "updated_at": 130},
+        ]
+        latest: dict[str, dict[str, object]] = {}
+        for unit in live:
+            project = str(unit["project"])
+            if unit["updated_at"] > latest.get(project, {}).get("updated_at", -1):
+                latest[project] = unit
+
+        self.assertEqual({unit["id"] for unit in latest.values()}, {"trade-current", "research-current"})
+        self.assertEqual(len(latest), 2)
 
     def test_replay_orders_blocked_groups_before_oldest_done_groups(self) -> None:
         data = json.loads((ROOT / "tests/fixtures/jingle-attention-work-units.json").read_text(encoding="utf-8"))
