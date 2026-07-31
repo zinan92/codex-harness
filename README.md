@@ -137,13 +137,7 @@ bash scripts/refresh.sh   # ledger.json → outputs.json → snapshots/<日期>.
 
 `set -euo pipefail` + 原子写(先写 `.tmp` 再 `mv`):任一步失败即非零退出、错误进 stderr,**且不会毁掉上一次的好文件**。
 
-**自动化(可选,需你确认后自己装)**:每天凌晨刷新的 launchd 模板在 `scripts/com.wendy.tokenrouter-refresh.plist`。装载:
-
-```bash
-cp scripts/com.wendy.tokenrouter-refresh.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.wendy.tokenrouter-refresh.plist
-launchctl kickstart -k gui/$(id -u)/com.wendy.tokenrouter-refresh   # 立即试跑一次
-```
+**手动结算**:不安装定时刷新。Park 在 Good Night 显式触发 `bash scripts/refresh.sh`；该命令的成功输出和生成时间是当天 Token 截止值的依据。旧 launchd 模板已归档到 `scripts/archive/`，仅作历史回滚记录，不得重新安装。
 
 **快照 vs 派生数据的关键区别**:`ledger.json`/`outputs.json`/`trend.json` 是派生数据(随时可重算,已 gitignore);
 `snapshots/<日期>.json` 是**历史事实**——会话日志会滚动清理,过去某天的数字之后重算不出来,所以快照**入库**。

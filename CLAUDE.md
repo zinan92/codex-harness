@@ -28,4 +28,4 @@ python3 -m http.server 8790 --bind 127.0.0.1     # 本地看页面（fetch 需 H
 node assets/tests/pure.test.js                   # 只跑页面纯函数测试
 ```
 
-每日 3:15 由 launchd（`com.wendy.tokenrouter-refresh`）自动跑 refresh.sh。
+不设每日定时刷新。由 Park 显式发起 Good Night 时运行 `bash scripts/refresh.sh`，并把结果作为当天 Token 截止值的来源。
