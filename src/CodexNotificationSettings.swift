@@ -1158,7 +1158,7 @@ final class JingleModel: ObservableObject {
 
     private func refreshCodexActivity() {
         guard !activityRefreshInFlight else { return }
-        let sessionIDs = Array(Set(codexUnits.map(\.sessionID).filter { !$0.isEmpty })).sorted()
+        let sessionIDs = Array(Set(trackedCodexUnits.map(\.sessionID).filter { !$0.isEmpty })).sorted()
         guard !sessionIDs.isEmpty else {
             threadActivity = [:]
             return
@@ -1169,7 +1169,7 @@ final class JingleModel: ObservableObject {
             defer { DispatchQueue.main.async { self.activityRefreshInFlight = false } }
             do {
                 var transcripts: [String: String] = [:]
-                for unit in self.codexUnits {
+                for unit in self.trackedCodexUnits {
                     guard !unit.sessionID.isEmpty, let transcriptPath = unit.transcriptPath, !transcriptPath.isEmpty else { continue }
                     transcripts[unit.sessionID] = transcriptPath
                 }
@@ -1198,7 +1198,7 @@ final class JingleModel: ObservableObject {
     }
 
     private func sessionHasLiveCodexThread(_ sessionID: String) -> Bool {
-        codexUnits.contains { $0.sessionID == sessionID && $0.state == "running" && hasLiveCodexThread($0) }
+        trackedCodexUnits.contains { $0.sessionID == sessionID && $0.state == "running" && hasLiveCodexThread($0) }
     }
 
     private func terminalWasSupersededBySessionCompletion(_ unit: WorkUnit) -> Bool {
@@ -1247,16 +1247,20 @@ final class JingleModel: ObservableObject {
     // history, so an old Claude row can never affect the menu bar.
     private var codexUnits: [WorkUnit] { units.filter { $0.provider == "codex" && !isIgnored($0) } }
 
-    // Park's queue contains either a blocked decision or the terminal result
-    // of an independent mapped task. A blocked result remains actionable even
-    // when it is not mapped; normal unmapped completions fail closed so stale
-    // ledger flags cannot recreate a project card.
+    // The menu is a project navigator, not a ledger browser. An unconfigured
+    // cwd remains in the append-only ledger but cannot create a count, card,
+    // token contribution, or activity probe in the user-facing projection.
+    private var trackedCodexUnits: [WorkUnit] { codexUnits.filter { identity(for: $0).isMapped } }
+
+    // A project can only surface one state. A live session wins over a stale
+    // terminal result from another session in the same project, while normal
+    // and blocked units outside the explicit project map remain ledger-only.
     private var visible: [WorkUnit] {
-        codexUnits.filter {
+        trackedCodexUnits.filter {
             $0.needsAttention && $0.seenAt == nil && $0.supersededAt == nil
                 && activityIsResolved(for: $0) && !sessionHasLiveCodexThread($0.sessionID)
                 && !terminalWasSupersededBySessionCompletion($0)
-                && (identity(for: $0).isMapped || $0.state == "blocked")
+                && !liveProjectIDs.contains(identity(for: $0).id)
         }
     }
     private var currentBySession: [WorkUnit] {
@@ -1292,7 +1296,7 @@ final class JingleModel: ObservableObject {
     var runningUnits: [WorkUnit] {
         // A project is a destination, not a chronological work log. Its latest
         // live session replaces an older concurrent session in this surface.
-        Dictionary(grouping: codexUnits.filter { $0.state == "running" && hasLiveCodexThread($0) }, by: { identity(for: $0).id })
+        Dictionary(grouping: trackedCodexUnits.filter { $0.state == "running" && hasLiveCodexThread($0) }, by: { identity(for: $0).id })
             .compactMap { $0.value.max { left, right in
                 let leftUpdated = activity(for: left)?.updatedAt ?? left.startedAt
                 let rightUpdated = activity(for: right)?.updatedAt ?? right.startedAt
@@ -1304,6 +1308,7 @@ final class JingleModel: ObservableObject {
                 return leftUpdated == rightUpdated ? left.id < right.id : leftUpdated > rightUpdated
             }
     }
+    private var liveProjectIDs: Set<String> { Set(runningUnits.map { identity(for: $0).id }) }
     var blocked: [WorkUnit] {
         attentionGroups.flatMap(\.units)
             .filter { $0.state == "blocked" }
@@ -1317,7 +1322,7 @@ final class JingleModel: ObservableObject {
     // sums only recorded Work Units completed today, never a live estimate.
     var todayTokenTotal: Int? {
         let startOfToday = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
-        let recorded = codexUnits.compactMap { unit -> Int? in
+        let recorded = trackedCodexUnits.compactMap { unit -> Int? in
             guard let endedAt = unit.endedAt,
                   endedAt >= startOfToday,
                   let total = unit.tokenAccounting?.totalTokens else { return nil }

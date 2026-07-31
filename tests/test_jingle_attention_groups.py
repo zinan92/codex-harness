@@ -29,9 +29,7 @@ class AttentionGroupContractTests(unittest.TestCase):
 
         def visible(unit: dict[str, object]) -> bool:
             identity = project_id(unit)
-            return unit.get("provider") == "codex" and unit.get("needs_attention") is True and (
-                identity == "token-router" or unit.get("state") == "blocked"
-            )
+            return unit.get("provider") == "codex" and unit.get("needs_attention") is True and identity == "token-router"
 
         groups: dict[str, list[dict[str, object]]] = {}
         for unit in latest.values():
@@ -46,7 +44,7 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertEqual(len(cards), 1)
 
         unmapped_blocked = {"id": "unmapped-blocked", "state": "blocked", "needs_attention": True, "cwd": "/workspace/a/shared", "provider": "codex"}
-        self.assertTrue(visible(unmapped_blocked))
+        self.assertFalse(visible(unmapped_blocked))
 
     def test_native_model_uses_explicit_group_identity_and_supersession(self) -> None:
         source = (ROOT / "src/CodexNotificationSettings.swift").read_text(encoding="utf-8")
@@ -72,7 +70,7 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertIn("var settlementLabel", source)
         self.assertIn("var waitingLabel", source)
         self.assertIn('Text(unit.settlementLabel)', source)
-        self.assertIn('identity(for: $0).isMapped || $0.state == "blocked"', source)
+        self.assertNotIn('identity(for: $0).isMapped || $0.state == "blocked"', source)
         self.assertIn('private func preferredUnit(in items: [WorkUnit])', source)
         self.assertIn('units: [preferred]', source)
         self.assertNotIn('@State private var expanded = false', source)
@@ -80,6 +78,9 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertNotIn('Button(expanded ? "收起" : "点开展开")', source)
         self.assertIn("var runningUnits", source)
         self.assertIn("by: { identity(for: $0).id }", source)
+        self.assertIn("private var trackedCodexUnits", source)
+        self.assertIn("private var liveProjectIDs", source)
+        self.assertIn("!liveProjectIDs.contains(identity(for: $0).id)", source)
         self.assertIn("var todayTokenTotal: Int?", source)
         self.assertIn("var featuredAttentionGroup: AttentionGroup?", source)
         self.assertIn("Token accounting is intentionally terminal-only", source)
@@ -95,7 +96,7 @@ class AttentionGroupContractTests(unittest.TestCase):
         self.assertIn('private func isIgnored(_ unit: WorkUnit)', source)
         self.assertIn('activityResolvedSessionIDs = Set(sessionIDs)', source)
         self.assertIn('$0.state == "running" && hasLiveCodexThread($0)', source)
-        self.assertIn('Dictionary(grouping: codexUnits.filter', source)
+        self.assertIn('Dictionary(grouping: trackedCodexUnits.filter', source)
         self.assertIn('"thread:\\(unit.sessionID)"', source)
         self.assertIn("private struct RunningItem", source)
         self.assertIn('sectionLabel("当前任务", trailing: "耗时")', source)
@@ -159,6 +160,21 @@ class AttentionGroupContractTests(unittest.TestCase):
 
         self.assertEqual({unit["id"] for unit in latest.values()}, {"trade-current", "research-current"})
         self.assertEqual(len(latest), 2)
+
+    def test_live_session_suppresses_attention_from_another_session_in_the_same_project(self) -> None:
+        units = [
+            {"id": "research-running", "project": "research", "session": "research-live", "state": "running"},
+            {"id": "research-old-attention", "project": "research", "session": "research-finished", "state": "done", "needs_attention": True},
+            {"id": "trade-attention", "project": "trading", "session": "trade-finished", "state": "blocked", "needs_attention": True},
+        ]
+        live_projects = {unit["project"] for unit in units if unit["state"] == "running"}
+        attention = [
+            unit for unit in units
+            if unit.get("needs_attention") is True and unit["project"] not in live_projects
+        ]
+
+        self.assertEqual(live_projects, {"research"})
+        self.assertEqual([unit["id"] for unit in attention], ["trade-attention"])
 
     def test_replay_orders_blocked_groups_before_oldest_done_groups(self) -> None:
         data = json.loads((ROOT / "tests/fixtures/jingle-attention-work-units.json").read_text(encoding="utf-8"))
