@@ -83,6 +83,25 @@ class TokenCounterTests(unittest.TestCase):
         self.assertEqual(row["cumulative_reset_count"], 1)
         self.assertEqual(row["total_tokens"], 29)
 
+    def test_last_token_usage_is_preferred_over_cumulative_snapshots(self) -> None:
+        self.write("increment.jsonl", [
+            line("2026-08-01T10:00:00Z", "session_meta", {"id": "increment", "cwd": "/work"}),
+            line("2026-08-01T10:01:00Z", "event_msg", {"type": "token_count", "info": {"total_token_usage": {"input_tokens": 100, "cached_input_tokens": 70, "output_tokens": 5}, "last_token_usage": {"input_tokens": 100, "cached_input_tokens": 70, "output_tokens": 5}}}),
+            line("2026-08-01T10:02:00Z", "event_msg", {"type": "token_count", "info": {"total_token_usage": {"input_tokens": 150, "cached_input_tokens": 90, "output_tokens": 11}, "last_token_usage": {"input_tokens": 50, "cached_input_tokens": 20, "output_tokens": 6}}}),
+        ])
+        row = counter.extract_threads(counter.session_files((self.sessions,)), self.projects)["increment"]
+        self.assertEqual(row["total_tokens"], 161)
+        self.assertEqual(row["sources"], ["last_token_usage"])
+
+    def test_repeated_last_token_usage_without_cumulative_progress_is_not_a_second_turn(self) -> None:
+        self.write("repeat.jsonl", [
+            line("2026-08-01T10:00:00Z", "session_meta", {"id": "repeat", "cwd": "/work"}),
+            line("2026-08-01T10:01:00Z", "event_msg", {"type": "token_count", "info": {"total_token_usage": {"input_tokens": 8, "cached_input_tokens": 3, "output_tokens": 2}, "last_token_usage": {"input_tokens": 8, "cached_input_tokens": 3, "output_tokens": 2}}}),
+            line("2026-08-01T10:02:00Z", "event_msg", {"type": "token_count", "info": {"total_token_usage": {"input_tokens": 8, "cached_input_tokens": 3, "output_tokens": 2}, "last_token_usage": {"input_tokens": 8, "cached_input_tokens": 3, "output_tokens": 2}}}),
+        ])
+        row = counter.extract_threads(counter.session_files((self.sessions,)), self.projects)["repeat"]
+        self.assertEqual(row["total_tokens"], 10)
+
     def test_summary_counts_threads_once(self) -> None:
         state = {"threads": {"a": {"status": "available", "fresh_input_tokens": 1, "cached_input_tokens": 2, "output_tokens": 3, "reasoning_output_tokens": 0, "total_tokens": 6, "daily": {"2026-08-01": {"total_tokens": 6}}}, "b": {"status": "unavailable"}}}
         self.assertEqual(counter.summary(state), {"threads": 2, "available_threads": 1, "reporting_timezone": "Asia/Shanghai", "tokens": {"fresh_input_tokens": 1, "cached_input_tokens": 2, "output_tokens": 3, "reasoning_output_tokens": 0, "total_tokens": 6}, "daily_total_tokens": {"2026-08-01": 6}})

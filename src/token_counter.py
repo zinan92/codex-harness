@@ -145,13 +145,23 @@ def extract_threads(paths: Iterable[Path], projects: list[dict[str, Any]]) -> di
                 if not isinstance(payload, dict) or payload.get("type") != "token_count":
                     continue
                 info = payload.get("info")
-                snapshot = normalized_snapshot(info.get("total_token_usage") if isinstance(info, dict) else None)
-                if snapshot is None:
+                if not isinstance(info, dict):
                     continue
-                signature = (active_id, timestamp, tuple(snapshot.values()))
+                incremental = normalized_snapshot(info.get("last_token_usage"))
+                snapshot = normalized_snapshot(info.get("total_token_usage"))
+                usage = incremental or snapshot
+                if usage is None:
+                    continue
+                signature = (active_id, timestamp, tuple(usage.values()))
                 if signature not in seen:
                     seen.add(signature)
-                    events[active_id].append({"kind": "snapshot", "timestamp": timestamp, "snapshot": snapshot, "cwd": active_cwd})
+                    events[active_id].append({
+                    "kind": "increment" if incremental is not None else "snapshot",
+                    "timestamp": timestamp,
+                    "snapshot": usage,
+                    "cumulative": snapshot,
+                        "cwd": active_cwd,
+                    })
 
     rows: dict[str, dict[str, Any]] = {}
     for thread_id, thread_events in events.items():
@@ -175,29 +185,52 @@ def extract_threads(paths: Iterable[Path], projects: list[dict[str, Any]]) -> di
             "total_tokens": None,
             "daily": {},
             "cumulative_reset_count": 0,
+            "sources": [],
         }
         prior: dict[str, int] | None = None
+        prior_cumulative: dict[str, int] | None = None
+        recorded = False
         totals = {"fresh_input_tokens": 0, "cached_input_tokens": 0, "output_tokens": 0, "reasoning_output_tokens": 0, "total_tokens": 0}
         daily: dict[str, dict[str, int]] = {}
         for event in ordered:
-            if event["kind"] != "snapshot":
+            if event["kind"] not in {"snapshot", "increment"}:
                 continue
             current = event["snapshot"]
-            delta = current if prior is None else {key: current[key] - prior[key] for key in current}
-            if min(delta.values()) < 0:
+            if event["kind"] == "increment":
+                cumulative = event.get("cumulative")
+                if isinstance(cumulative, dict) and prior_cumulative is not None:
+                    if cumulative["total_tokens"] == prior_cumulative["total_tokens"]:
+                        # Codex can repeat a token_count while only status/rate
+                        # metadata changes. It is not another model turn.
+                        prior_cumulative = cumulative
+                        continue
+                    if cumulative["total_tokens"] < prior_cumulative["total_tokens"]:
+                        row["cumulative_reset_count"] += 1
+                if isinstance(cumulative, dict):
+                    prior_cumulative = cumulative
+                delta = current
+                if "last_token_usage" not in row["sources"]:
+                    row["sources"].append("last_token_usage")
+            else:
+                delta = current if prior is None else {key: current[key] - prior[key] for key in current}
+                if "cumulative_delta" not in row["sources"]:
+                    row["sources"].append("cumulative_delta")
+            if event["kind"] == "snapshot" and delta["total_tokens"] < 0:
                 # A resumed Codex transcript can start a new cumulative epoch.
                 # Count that epoch from zero instead of carrying a stale prior.
                 # The reset count makes this transparent for later audit.
                 row["cumulative_reset_count"] += 1
                 delta = current
-            prior = current
+            if event["kind"] == "snapshot":
+                prior = current
             stamp = float(event["timestamp"])
             bucket = daily.setdefault(day_at(stamp), {"fresh_input_tokens": 0, "cached_input_tokens": 0, "output_tokens": 0, "reasoning_output_tokens": 0, "total_tokens": 0})
             for key, value in delta.items():
                 totals[key] += value
                 bucket[key] += value
             row["ended_at"] = stamp
-        if prior is not None:
+            recorded = True
+        if recorded:
             row.update(totals)
             row["total_tokens"] = totals["total_tokens"]
             row["daily"] = daily
