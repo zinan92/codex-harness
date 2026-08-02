@@ -65,6 +65,24 @@ class TokenCounterTests(unittest.TestCase):
         counter.freeze_attribution(rows, old)
         self.assertEqual(rows["missing"]["project"]["project_id"], "historic")
 
+    def test_scanner_skips_prompt_bodies_without_parsing_them(self) -> None:
+        self.write("privacy.jsonl", [
+            '{"timestamp":"2026-08-01T10:00:00Z","type":"response_item","payload":not-json}',
+            line("2026-08-01T10:01:00Z", "session_meta", {"id": "safe", "cwd": "/work"}),
+        ])
+        rows = counter.extract_threads(counter.session_files((self.sessions,)), self.projects)
+        self.assertEqual(rows["safe"]["status"], "unavailable")
+
+    def test_cumulative_reset_starts_a_new_auditable_epoch(self) -> None:
+        self.write("reset.jsonl", [
+            line("2026-08-01T10:00:00Z", "session_meta", {"id": "reset", "cwd": "/work"}),
+            line("2026-08-01T10:01:00Z", "event_msg", {"type": "token_count", "info": {"total_token_usage": {"input_tokens": 20, "cached_input_tokens": 5, "output_tokens": 3}}}),
+            line("2026-08-01T10:02:00Z", "event_msg", {"type": "token_count", "info": {"total_token_usage": {"input_tokens": 4, "cached_input_tokens": 1, "output_tokens": 2}}}),
+        ])
+        row = counter.extract_threads(counter.session_files((self.sessions,)), self.projects)["reset"]
+        self.assertEqual(row["cumulative_reset_count"], 1)
+        self.assertEqual(row["total_tokens"], 29)
+
     def test_summary_counts_threads_once(self) -> None:
         state = {"threads": {"a": {"status": "available", "fresh_input_tokens": 1, "cached_input_tokens": 2, "output_tokens": 3, "reasoning_output_tokens": 0, "total_tokens": 6, "daily": {"2026-08-01": {"total_tokens": 6}}}, "b": {"status": "unavailable"}}}
         self.assertEqual(counter.summary(state), {"threads": 2, "available_threads": 1, "reporting_timezone": "Asia/Shanghai", "tokens": {"fresh_input_tokens": 1, "cached_input_tokens": 2, "output_tokens": 3, "reasoning_output_tokens": 0, "total_tokens": 6}, "daily_total_tokens": {"2026-08-01": 6}})

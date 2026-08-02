@@ -115,37 +115,43 @@ def extract_threads(paths: Iterable[Path], projects: list[dict[str, Any]]) -> di
         active_id: str | None = None
         active_cwd = ""
         try:
-            lines = path.read_text(encoding="utf-8").splitlines()
+            handle = path.open("r", encoding="utf-8")
         except OSError:
             continue
-        for line in lines:
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if not isinstance(record, dict):
-                continue
-            timestamp = parse_timestamp(record.get("timestamp"))
-            if record.get("type") == "session_meta":
+        with handle:
+            for line in handle:
+                # Skip raw prompt/response records before JSON parsing. This is
+                # both the privacy boundary and the only practical way to scan
+                # large local session histories without loading their bodies.
+                if '"session_meta"' not in line and '"token_count"' not in line:
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(record, dict):
+                    continue
+                timestamp = parse_timestamp(record.get("timestamp"))
+                if record.get("type") == "session_meta":
+                    payload = record.get("payload")
+                    if isinstance(payload, dict) and isinstance(payload.get("id"), str) and payload["id"]:
+                        active_id = payload["id"]
+                        active_cwd = str(payload.get("cwd") or "")
+                        events[active_id].append({"kind": "meta", "timestamp": timestamp, "cwd": active_cwd})
+                    continue
+                if not active_id or record.get("type") != "event_msg" or timestamp is None:
+                    continue
                 payload = record.get("payload")
-                if isinstance(payload, dict) and isinstance(payload.get("id"), str) and payload["id"]:
-                    active_id = payload["id"]
-                    active_cwd = str(payload.get("cwd") or "")
-                    events[active_id].append({"kind": "meta", "timestamp": timestamp, "cwd": active_cwd})
-                continue
-            if not active_id or record.get("type") != "event_msg" or timestamp is None:
-                continue
-            payload = record.get("payload")
-            if not isinstance(payload, dict) or payload.get("type") != "token_count":
-                continue
-            info = payload.get("info")
-            snapshot = normalized_snapshot(info.get("total_token_usage") if isinstance(info, dict) else None)
-            if snapshot is None:
-                continue
-            signature = (active_id, timestamp, tuple(snapshot.values()))
-            if signature not in seen:
-                seen.add(signature)
-                events[active_id].append({"kind": "snapshot", "timestamp": timestamp, "snapshot": snapshot, "cwd": active_cwd})
+                if not isinstance(payload, dict) or payload.get("type") != "token_count":
+                    continue
+                info = payload.get("info")
+                snapshot = normalized_snapshot(info.get("total_token_usage") if isinstance(info, dict) else None)
+                if snapshot is None:
+                    continue
+                signature = (active_id, timestamp, tuple(snapshot.values()))
+                if signature not in seen:
+                    seen.add(signature)
+                    events[active_id].append({"kind": "snapshot", "timestamp": timestamp, "snapshot": snapshot, "cwd": active_cwd})
 
     rows: dict[str, dict[str, Any]] = {}
     for thread_id, thread_events in events.items():
@@ -168,6 +174,7 @@ def extract_threads(paths: Iterable[Path], projects: list[dict[str, Any]]) -> di
             "reasoning_output_tokens": None,
             "total_tokens": None,
             "daily": {},
+            "cumulative_reset_count": 0,
         }
         prior: dict[str, int] | None = None
         totals = {"fresh_input_tokens": 0, "cached_input_tokens": 0, "output_tokens": 0, "reasoning_output_tokens": 0, "total_tokens": 0}
@@ -178,8 +185,11 @@ def extract_threads(paths: Iterable[Path], projects: list[dict[str, Any]]) -> di
             current = event["snapshot"]
             delta = current if prior is None else {key: current[key] - prior[key] for key in current}
             if min(delta.values()) < 0:
-                row["reason"] = "non_monotonic_cumulative_snapshot"
-                continue
+                # A resumed Codex transcript can start a new cumulative epoch.
+                # Count that epoch from zero instead of carrying a stale prior.
+                # The reset count makes this transparent for later audit.
+                row["cumulative_reset_count"] += 1
+                delta = current
             prior = current
             stamp = float(event["timestamp"])
             bucket = daily.setdefault(day_at(stamp), {"fresh_input_tokens": 0, "cached_input_tokens": 0, "output_tokens": 0, "reasoning_output_tokens": 0, "total_tokens": 0})
