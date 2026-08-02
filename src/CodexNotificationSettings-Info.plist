@@ -5,15 +5,15 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>zh_CN</string>
     <key>CFBundleDisplayName</key>
-    <string>Codex Jingle</string>
+    <string>Token Counter (legacy shell)</string>
     <key>CFBundleExecutable</key>
     <string>CodexNotificationSettings</string>
     <key>CFBundleIdentifier</key>
-    <string>io.github.zinan92.codex-jingle</string>
+    <string>io.github.zinan92.token-counter.legacy-shell</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Codex Jingle</string>
+    <string>Token Counter (legacy shell)</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
