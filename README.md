@@ -43,6 +43,18 @@ the ledger.
 The scanner uses only Python's standard library and makes no network request.
 It is intentionally manual in v1: `scan` is the explicit refresh boundary.
 
+### Local UI
+
+After a scan, start the read-only local view:
+
+```bash
+/usr/bin/python3 ~/.codex/token-counter/token_counter_ui.py
+```
+
+Open `http://127.0.0.1:8765`. The process listens only on your computer and
+stops when the terminal command stops; it does not refresh, notify, or call a
+network service.
+
 ## Jingle retirement
 
 Existing Codex Jingle installations are not deleted. After Token Counter has
