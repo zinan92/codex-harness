@@ -8,11 +8,13 @@ repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 codex_dir="$HOME/.codex"
 runtime_dir="$HOME/.codex/token-counter"
 counter_path="$runtime_dir/token_counter.py"
+ui_path="$runtime_dir/token_counter_ui.py"
 projects_path="$runtime_dir/projects.json"
 
 mkdir -p "$runtime_dir"
 chmod 700 "$runtime_dir"
 install -m 700 "$repo_dir/src/token_counter.py" "$counter_path"
+install -m 700 "$repo_dir/src/token_counter_ui.py" "$ui_path"
 legacy_projects_path="$codex_dir/jingle/projects.json"
 /usr/bin/python3 - "$projects_path" "$repo_dir/assets/token-counter-projects.json" "$legacy_projects_path" <<'PY'
 import json
