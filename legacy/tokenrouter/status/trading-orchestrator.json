@@ -1,0 +1,33 @@
+{
+ "project": "trading-orchestrator",
+ "assessed_at": "2026-07-28",
+ "assessor": "claude-opus-5（workbench 会话，人工复核前有效）",
+ "sources": [
+  "ROADMAP.md §1 成熟度表（2026-05-29）",
+  "REGISTRY.md（2026-07-24）",
+  "docs/plans/implementation-progress-2026-07-24.md（26/26 story）"
+ ],
+ "modules": [
+  {"name": "风控与安全闸", "pct": 80, "light": "green", "verdict": "最强",
+   "note": "180s tick 心跳、fail-closed、发布 runbook 固化（M6-03）"},
+  {"name": "数据层（行情/多源/审计）", "pct": 75, "light": "green", "verdict": "稳定",
+   "note": "data_health / preflight / lineage 完备；05-29 评估 70%，此后无结构变化"},
+  {"name": "Paper 执行与账目", "pct": 70, "light": "green", "verdict": "基本可信",
+   "note": "canonical accounting + 每周期硬对账落地；P1 尚余 2 项（badge 上屏、陈旧代码检测）"},
+  {"name": "排行榜与复盘产品", "pct": 65, "light": "green", "verdict": "主体完成",
+   "note": "leaderboard + drill-down + Shadow 推广提案（#310），只读、不自动升级"},
+  {"name": "可观测性与告警", "pct": 55, "light": "yellow", "verdict": "大幅改善",
+   "note": "AlertNotifier + HealthCheck 已接线；TG 推送需配 env；05-29 时仅 10%"},
+  {"name": "回测与评估", "pct": 45, "light": "yellow", "verdict": "引擎有了",
+   "note": "事件驱动回测器可用；chan 步进超线性慢；首轮 14d 结论「无策略有边际」"},
+  {"name": "策略库 / 多策略并行", "pct": 35, "light": "red", "verdict": "最弱·离愿景最远",
+   "note": "愿景 50 策略并行评估；registry+隔离已建，实际在跑的策略个位数——产品主线瓶颈"},
+  {"name": "Live 就绪", "pct": 25, "light": "red", "verdict": "决策门",
+   "note": "真钱路径关闭；live 准入未定义；P5 三项（env 分离/行情源加固/容器化）待拍板"}
+ ],
+ "tracking": {
+  "now": "实施计划 26/26 story 全部验证（基线 main@d3e41a2）；Paper runtime=stopped，0 委托 0 持仓；每次发布须按 runbook 走实时安全闸",
+  "working_on": "积累 Grid 开仓→止盈→原价重挂与 P&L reconciliation 实绩；用 12 小时复盘 + Strategy Shadows 比较网格变体",
+  "next": "样本足够且原因可持续 → 升级主策略；实绩达标 → 定义 live 准入标准；P5 三项等领导拍板"
+ }
+}

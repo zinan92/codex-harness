@@ -1,0 +1,38 @@
+{
+ "project": "tokenrouter",
+ "assessed_at": "2026-07-29",
+ "assessor": "claude-sonnet-5（本会话，从零参与实现与验收，一手证据）",
+ "sources": [
+  "router/PROGRESS.md（本轮全部条目）",
+  "router/BLOCKED.md",
+  "router/config.py / workflow.py / adapters.py / prompts.py",
+  "router/tests/test_router.py（26 用例）",
+  "router/runs/*.json（11 条收据，10 条非 dry-run）",
+  "git log -- router/（17 次提交）",
+  "ARCHITECTURE.md §九 实施切法（v0-v3 路线图，注：与实际实现已部分背离）"
+ ],
+ "note_on_shape": "这不是被评估的外部项目，是本仓库自己的 v0 级联内核。ARCHITECTURE.md 原定 v0 含「失败升级到更贵模型」与「TG 告警」，实际实现主动砍掉了升级链（人工明确否决）、告警从未做——评估按实际形态打分，不按原愿景文档打分。",
+ "modules": [
+  {"name": "分诊（Triage）", "pct": 80, "light": "green", "verdict": "稳定",
+   "note": "Fable 固定输出 simple/medium/complex 三选一；11 条真实收据的 triage_complete 事件均结构合法，未见误判"},
+  {"name": "固定 SOP + 有界重试", "pct": 75, "light": "green", "verdict": "补齐且真验证",
+   "note": "config.py 的 SIMPLE_MAX_ATTEMPTS/MEDIUM_IMPL_MAX_ATTEMPTS/MEDIUM_REVIEW_MAX_ROUNDS=2；workflow.py 把失败上下文带回下一次重试；4 个重试场景各有单测，且真实 complex 收据 c4cb166e 用 4 条 story 各自独立提交验证了边界不越界"},
+  {"name": "机器闸", "pct": 75, "light": "green", "verdict": "可配置",
+   "note": "MachineGate 支持 --gate 显式传参 > <workspace>/.router-gate 文件 > 默认 config.MACHINE_GATE 三级优先；真实收据 1840f451 证明了 .router-gate 自动发现在完全不传 --gate 时生效"},
+  {"name": "Opus 审核", "pct": 70, "light": "green", "verdict": "真抓到过 bug",
+   "note": "非只是形式关卡：run-20260729T030604Z-86ed3383 真实审核判定失败，抓到 story 提交越界的实现缺陷，未被伪装成功；随后该缺陷已修复并有新收据验证"},
+  {"name": "成本记账", "pct": 70, "light": "green", "verdict": "可用",
+   "note": "ledger.py 写 runs/*.json 与 ledger.jsonl；--summary 聚合命令实测输出 {\"succeeded\":4,\"failed_review\":1} 等真实结构；成本取不到时记 null，未见编造"},
+  {"name": "真实外部落地", "pct": 30, "light": "red", "verdict": "样本极小·最弱",
+   "note": "10 条真实收据里只有 1 条发生在 tokenrouter 仓库之外（input-to-park，补一条测试，零风险改动），其余全部改自己或仓内 fixture；没验证过安全地改别人项目的真实业务逻辑"},
+  {"name": "CLI 易用性", "pct": 35, "light": "red", "verdict": "手感糙",
+   "note": "每次要手打 python3 -m router \"...\" --workspace ... [--gate ...]，无简写命令；BLOCKED.md 已解决记录里明确放弃了裸命令 tr（与系统命令撞名），至今没有替代方案"},
+  {"name": "告警/可观测性", "pct": 5, "light": "red", "verdict": "几乎未动",
+   "note": "ARCHITECTURE.md 原定 v0 含 TG 推送，人工决策阶段明确「不做，本轮先跑通主干」；至今没有任何失败通知机制，任务失败只能靠人盯终端输出发现"}
+ ],
+ "tracking": {
+  "now": "v0 内核主干可用：分诊→固定SOP→机器闸→审核→记账全链路有真实调用证据（10 条非 dry-run 收据），story 越界、机器闸写死两个已知 bug 均已修复并有真实回归证据；今天唯一一次真实外部使用（input-to-park）已验证成功并 push",
+  "working_on": "无正在进行的开发任务；上一步是把长期停摆/非产品的 workbench 项目归档完，正在补齐 8 个活跃项目的 status 评估（本文件即其一）",
+  "next": "两条路口未定，需要人工拍板：(a) 继续按 ARCHITECTURE.md 走 v1（访谈与拆解）——但该文档已部分背离实际实现，需先确认是否仍是目标；(b) 留在 v0 把用得薄的地方补厚（告警、CLI 手感、更多真实外部项目验证），暂不叠加新阶段"
+ }
+}

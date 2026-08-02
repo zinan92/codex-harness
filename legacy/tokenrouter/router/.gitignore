@@ -1,0 +1,3 @@
+# Runtime receipts are local accounting data, not source code.
+ledger.jsonl
+runs/

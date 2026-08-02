@@ -1,0 +1,39 @@
+{
+ "project": "trading-co",
+ "assessed_at": "2026-07-29",
+ "assessor": "claude-sonnet-5（workbench 会话）",
+ "sources": [
+  "ls -la /Users/wendy/work/trading-co/（顶层目录结构，无 .git、无顶层 README；本会话复核 ashare/gold-trading 均无 .git，park-intel 有 .git）",
+  "/Users/wendy/work/trading-co/ashare/docs/daily_review/README.md、TEST_RESULTS.md",
+  "find ... -exec stat（ashare/gold-trading 全部文件 mtime，最新 2026-05-29）",
+  "sqlite3 gold-trading/data/gold_trading.db 'SELECT name FROM sqlite_master...'（本会话复核：无任何表）",
+  "cd park-intel && git log / git status / git remote -v / git branch -a（本会话复核：git status 6 处 M + 1 处 D + 7 处 ??，git remote 指向 github.com/zinan92/intel.git，最近两条提交 fa7f6e9/5502ce3 与 agent 报告一致）",
+  "park-intel/README.md、.planning/STATE.md（本会话复核 status=unknown, milestone=v1.0, stopped_at=2026-03-31）、.planning/MILESTONES.md",
+  "~/Library/LaunchAgents/com.ashare.api.plist、com.gold-trading.api.plist",
+  "launchctl print gui/$(id -u)/com.ashare.api、com.gold-trading.api（本会话复核顶层 active count=0）",
+  "crontab -l（本会话复核仅 park-intel 的 rss collector，每4小时，命令与路径完全一致）",
+  "launchctl list | grep park-intel（本会话复核 com.park-intel.agent 与 com.park-intel.api 均带活跃 PID，PID 数值随进程重启会变属正常）"
+ ],
+ "note_on_shape": "trading-co 不是一个软件项目，是一个没有顶层 .git、没有顶层 README 的工作目录，里面松散放着三个彼此独立、成熟度和活跃度天差地别的东西：ashare（无 git，脚本类复盘生成器，5 月起停更）、gold-trading（无 git，只剩一个空 sqlite 库和两个空日志文件，代码已不在）、park-intel（有独立 git 仓库+GitHub remote，持续开发到今天，实为一个新闻/舆情聚合与 newsletter 产品，和\"trading\"这个目录名并无实质关系）。ledger/registry.py 把三者算作同一个项目 trading-co（同一工作目录路径），所以本文件按此口径合并评估，但模块拆分沿子项目边界走，不强行拉平。给全绿是可疑的——这里恰恰是三种截然不同的健康状态并存：1 个活跃产品、1 个停更脚本、1 个已失效的空壳。",
+ "modules": [
+  {"name": "ashare · 复盘生成脚本", "pct": 40, "light": "yellow", "verdict": "能跑但停更",
+   "note": "docs/daily_review/ 下最新产出为 final_outputs/20260508.toml 与 alpha_snapshots/20260508.json（文件 mtime 2026-05-09），src/services/daily_review_html/* 最后改动 2026-05-12，此后无任何新文件；README.md 描述的 generate_snapshot→generate_daily_alpha→generate_review 全流程齐全，但目录下无 .venv，未跑通验证当前是否仍可执行"},
+  {"name": "ashare · Web API 服务", "pct": 5, "light": "red", "verdict": "服务已失效",
+   "note": "~/Library/LaunchAgents/com.ashare.api.plist 的 ProgramArguments 指向 /Users/wendy/work/trading-co/ashare/.venv/bin/uvicorn web.app:app，但该目录下没有 .venv/ 也没有 web/；launchctl 本会话复核 active count=0，配置为开机自启但实际启动会因程序不存在而失败"},
+  {"name": "gold-trading · 数据与服务", "pct": 5, "light": "red", "verdict": "空壳",
+   "note": "目录下只剩 data/gold_trading.db（本会话复核 sqlite_master 无任何表）和两个空的 uvicorn 日志文件，没有任何源码目录；com.gold-trading.api.plist 指向的 .venv/bin/uvicorn backend.main:app 同样不存在，launchctl 本会话复核 active count=0；同机另一个独立项目 goldbot-gateway 有自己的 git 仓库且在跑，说明真正在用的黄金相关服务与本目录无代码关联，本目录是被架空的旧壳"},
+  {"name": "park-intel · 采集与聚合", "pct": 70, "light": "green", "verdict": "在跑",
+   "note": "crontab -l 本会话复核有一条每4小时跑 park-intel/scripts/run_collectors.py --source rss 的常驻任务，命令路径完全匹配；launchctl list 本会话复核 com.park-intel.agent 带活跃 PID；.planning/MILESTONES.md 记录 v1.0（2026-03-31 shipped）交付了 retry/健康检查/collector reliability 三个阶段"},
+  {"name": "park-intel · API/前端与健康监控", "pct": 65, "light": "green", "verdict": "服务在跑",
+   "note": "launchctl list 本会话复核 com.park-intel.api 带活跃 PID；git log 里 ef0894c『serve frontend static files from FastAPI』把前端并入了同一服务；.planning/STATE.md 本会话复核 status 字段仍是『unknown』且 stopped_at 停在 2026-03-31，未跟上之后 4 个月的实际变化"},
+  {"name": "park-intel · Newsletter 发布链路", "pct": 55, "light": "yellow", "verdict": "活跃但未收口",
+   "note": "git log 最近两条提交（本会话复核 fa7f6e9『use DeepSeek for finance brief generation』、5502ce3『scope stale gold brief validation』）都落在这条链路；当前分支有未提交改动（含 scripts/publish_finance_daily_newsletter.py、api/event_routes.py），尚未合并回 main"},
+  {"name": "park-intel · 项目治理", "pct": 30, "light": "red", "verdict": "流程掉线",
+   "note": ".planning/STATE.md 的 status 字段为『unknown』、milestone 停在 v1.0（2026-03-31），但 git log 显示提交持续到近期，说明结构化 GSD 流程已停用、进入自由迭代；git status 本会话复核有 6 处修改+1 处删除的已跟踪文件未提交、另有 7 处未跟踪文件（含指向 park-io 的符号链接 AGENTS.md、frontend/vercel.json）；目录同级还存在若干 .park-intel-security-*-20260717 副本/裸仓库，从命名与 HEAD 内容看是一次 2026-07-17 的 git 历史重写留下的痕迹，具体清理了什么未查证"}
+ ],
+ "tracking": {
+  "now": "trading-co 不是单一项目：park-intel 有独立 git 仓库、两个常驻 launchd 服务都在跑，是三者里唯一活的产品；ashare 无 git，只剩一套 5 月起停更的复盘生成脚本，其 Web API 服务因 .venv/web/ 已不存在而无法启动；gold-trading 无 git，仅剩一个空数据库和空日志，代码已完全不在，对应的 launchd 服务同样无法启动，真正的黄金交易服务已迁到同机另一个独立项目 goldbot-gateway，与本目录脱钩",
+  "working_on": "唯一有进行中工作痕迹的是 park-intel：当前分支有未提交改动，正把 finance daily newsletter 的生成模型切到 DeepSeek（fa7f6e9），尚未合并 main；ashare 和 gold-trading 在过去 60 天内没有任何文件改动痕迹",
+  "next": "park-intel：提交/合并 DeepSeek newsletter 分支，补上已经停在 v1.0（2026-03-31）的 .planning/STATE.md，视需要核实 7 月17日那次安全相关的历史重写具体清理了什么；ashare/gold-trading：两个 launchd 服务指向的代码已不存在，需要人工决定是找回/重写源码恢复服务，还是正式下线这两个失效的 plist 与残留数据"
+ }
+}

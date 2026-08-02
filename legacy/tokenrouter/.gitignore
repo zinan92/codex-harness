@@ -1,0 +1,9 @@
+ledger.jsonl
+*.pyc
+__pycache__/
+.DS_Store
+ledger.json
+outputs.json
+trend.json
+ledger.json.tmp
+logs/

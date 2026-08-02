@@ -1,0 +1,19 @@
+{
+  "projects": [
+    {
+      "project_id": "token-counter",
+      "name": "Token Counter",
+      "aliases": [
+        {"prefix": "/Users/wendy/token-counter"},
+        {"prefix": "/Users/wendy/codex-jingle"}
+      ]
+    },
+    {
+      "project_id": "token-router-legacy",
+      "name": "TokenRouter (legacy)",
+      "aliases": [
+        {"prefix": "/Users/wendy/tokenrouter"}
+      ]
+    }
+  ]
+}

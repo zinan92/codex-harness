@@ -1,0 +1,30 @@
+{
+ "project": "投研面板",
+ "assessed_at": "2026-07-28",
+ "assessor": "claude-opus-5（workbench 会话，人工复核前有效）",
+ "sources": [
+  "~/Documents/投研面板/README.md（能力合同、226 product tests 徽章）",
+  "~/Documents/投研面板/REGISTRY.md「现在在哪里」（L1-A/L1-B/C/N1/N5 逐条进度）"
+ ],
+ "modules": [
+  {"name": "数据基座 L1-A", "pct": 90, "light": "green", "verdict": "最成熟",
+   "note": "REGISTRY：A1 数据契约→A5 编排/质量/不可变快照全链完成，含 PIT 基本面、官方公司行动锚点、离线重放校验"},
+  {"name": "证据摄取 L1-B", "pct": 85, "light": "green", "verdict": "六段收口",
+   "note": "REGISTRY：B1 官方 PDF→B6 冻结证据集与只读 Research Context Pack，B3 强制引用绑定文档 ID/页码/原始哈希"},
+  {"name": "研报生成 C 段", "pct": 70, "light": "green", "verdict": "契约已定",
+   "note": "REGISTRY：C1 十八节报告契约（32–50 页预算）、C2 哈希化 DCF 三情景、C3 页级引用券商观点；C4+ 未见记述"},
+  {"name": "基准复现 N1", "pct": 80, "light": "green", "verdict": "已出 Go",
+   "note": "REGISTRY N1-6：30 家六板块金标集、字段覆盖 84/90(93.33%)，结论是 E1/N2 的 Go，非全市场实时覆盖"},
+  {"name": "前端 Atlas N5", "pct": 35, "light": "yellow", "verdict": "首片切完",
+   "note": "REGISTRY N5：六条 hash 路由 + 649 公司虚拟表已跑通，但数据是 2026-07-02 归档 fixture，js/data.js 仅为未来 N2 API 预留接缝"},
+  {"name": "N2 规范化建模", "pct": 10, "light": "red", "verdict": "最弱·下一关",
+   "note": "REGISTRY 仅出现在 N1-6 的「Go for E1/N2」表述里，无任何实现条目——前端要脱离 fixture 全看它"},
+  {"name": "治理与可审计", "pct": 75, "light": "green", "verdict": "缺口已补",
+   "note": "REGISTRY：#79–#89 缺失引用重建为 Issues #90–#100 并绑定 main commit（docs/governance/audit-lineage-v1.json）"}
+ ],
+ "tracking": {
+  "now": "private beta。L1-A/L1-B 数据与证据链完成，C1–C3 报告契约就位，N1 基准复现出 Go；前端 Atlas 首片跑在归档 fixture 上",
+  "working_on": "未在 REGISTRY 中明确标注当前进行项——最近记述停在 N5 首片与 GitHub 审计谱系重建",
+  "next": "N2 规范化 API（前端脱离 fixture 的前置）；REGISTRY 已把 E1/N2 列为 N1-6 之后的下一关"
+ }
+}
