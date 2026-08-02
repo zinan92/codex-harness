@@ -65,6 +65,7 @@ class TokenCounterTests(unittest.TestCase):
         counter.freeze_attribution(rows, old)
         self.assertEqual(rows["missing"]["project"]["project_id"], "historic")
         old["threads"]["missing"]["project"]["project_id"] = "uncategorized"
+        rows = counter.extract_threads(counter.session_files((self.sessions,)), self.projects)
         counter.freeze_attribution(rows, old, remap_uncategorized=True)
         self.assertEqual(rows["missing"]["project"]["project_id"], "root")
 

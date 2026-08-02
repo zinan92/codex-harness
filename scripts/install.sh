@@ -5,6 +5,7 @@ set -euo pipefail
 # and mapping file only. It registers no Codex callback, hook, notification,
 # LaunchAgent, network client, or recurring job.
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+codex_dir="$HOME/.codex"
 runtime_dir="$HOME/.codex/token-counter"
 counter_path="$runtime_dir/token_counter.py"
 projects_path="$runtime_dir/projects.json"
