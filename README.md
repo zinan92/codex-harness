@@ -22,6 +22,11 @@ The ledger never stores prompt text, response text, or an LLM-generated summary.
 `~/.codex/token-counter/projects.json`; unknown paths remain visible as
 `Uncategorized`.
 
+On first installation, existing `~/.codex/jingle/projects.json` aliases are
+merged into the Token Counter mapping. The installer performs one explicit
+remap of historic `Uncategorized` rows after that merge; later scans preserve
+the recorded project attribution.
+
 When Codex supplies `last_token_usage`, Token Counter uses that event's exact
 increment. Older records without it use a cumulative-delta fallback and carry
 their source in the private row, so cache re-estimation cannot silently inflate

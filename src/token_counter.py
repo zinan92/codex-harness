@@ -248,11 +248,13 @@ def load_state(path: Path = STATE_PATH) -> dict[str, Any]:
     return candidate if isinstance(candidate, dict) and isinstance(candidate.get("threads"), dict) else {"schema_version": 1, "threads": {}}
 
 
-def freeze_attribution(rows: dict[str, dict[str, Any]], existing: dict[str, Any]) -> None:
+def freeze_attribution(rows: dict[str, dict[str, Any]], existing: dict[str, Any], *, remap_uncategorized: bool = False) -> None:
     old_threads = existing.get("threads", {}) if isinstance(existing, dict) else {}
     for thread_id, row in rows.items():
         old = old_threads.get(thread_id)
-        if isinstance(old, dict) and isinstance(old.get("project"), dict):
+        if isinstance(old, dict) and isinstance(old.get("project"), dict) and not (
+            remap_uncategorized and old["project"].get("project_id") == "uncategorized"
+        ):
             row["project"] = old["project"]
 
 
@@ -298,12 +300,13 @@ def main() -> int:
     parser.add_argument("--state", type=Path, default=STATE_PATH, help="ledger path (default: ~/.codex/token-counter/threads.json)")
     parser.add_argument("--projects", type=Path, default=None, help="project mapping JSON")
     parser.add_argument("--sessions-root", type=Path, action="append", help="override session root; repeatable")
+    parser.add_argument("--remap-uncategorized", action="store_true", help="explicitly reattribute only historic Uncategorized rows")
     args = parser.parse_args()
     if args.command == "scan":
         roots = tuple(args.sessions_root) if args.sessions_root else SESSION_ROOTS
         rows = extract_threads(session_files(roots), load_projects(args.projects))
         existing = load_state(args.state)
-        freeze_attribution(rows, existing)
+        freeze_attribution(rows, existing, remap_uncategorized=args.remap_uncategorized)
         state = save_state(rows, args.state)
     else:
         state = load_state(args.state)

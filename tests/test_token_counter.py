@@ -64,6 +64,9 @@ class TokenCounterTests(unittest.TestCase):
         old = {"threads": {"missing": {"project": {"project_id": "historic", "name": "Historic", "source": "cwd_prefix"}}}}
         counter.freeze_attribution(rows, old)
         self.assertEqual(rows["missing"]["project"]["project_id"], "historic")
+        old["threads"]["missing"]["project"]["project_id"] = "uncategorized"
+        counter.freeze_attribution(rows, old, remap_uncategorized=True)
+        self.assertEqual(rows["missing"]["project"]["project_id"], "root")
 
     def test_scanner_skips_prompt_bodies_without_parsing_them(self) -> None:
         self.write("privacy.jsonl", [
