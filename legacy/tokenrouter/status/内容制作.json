@@ -1,0 +1,28 @@
+{
+ "project": "内容制作",
+ "assessed_at": "2026-07-28",
+ "assessor": "claude-opus-5（workbench 会话，人工复核前有效）",
+ "sources": [
+  "~/Documents/内容制作/ 目录清单（159 项，大量 .png/.md 快照）",
+  "~/Documents/内容制作/decision-log.md（2026-07-06 COMEX/TradingView 采购决策）",
+  "git log（仓库已 init 但零提交）"
+ ],
+ "note_on_shape": "这个项目不是软件产品，是**研究与设计决策工作区**：产出物为截图对比、视觉方案、决策记录，服务于 trading-system 的界面与数据源选型。用软件成熟度衡量它会失真，故模块按「研究工作的完成度」拆。",
+ "modules": [
+  {"name": "界面方案探索", "pct": 80, "light": "green", "verdict": "选型已定",
+   "note": "目录中 command-center-visual-a/b/c 三套视觉方案（institutional-terminal / financial-paper / glass-cockpit）+ compare-snapshot-20260704.md 对比记录"},
+  {"name": "行情数据源选型", "pct": 75, "light": "green", "verdict": "结论清晰",
+   "note": "decision-log 2026-07-06：明确 TradingView Widget 不适合做自有图表内核，拆成 Data API / Charting / Broker API 三层，并列出 IBKR/Sierra/AMP/dxFeed 低成本路径"},
+  {"name": "移动端与响应式验收", "pct": 60, "light": "yellow", "verdict": "有证据",
+   "note": "目录含 2026-07-16-nautilus-migration-gate-{desktop,mobile}-{v2,final2}.png 四张迁移闸截图"},
+  {"name": "TradingView Advanced Charts 申请", "pct": 30, "light": "red", "verdict": "卡在表单",
+   "note": "decision-log Gotchas：申请需签署 License Agreement PDF 并填公司邮箱/电话/注册地，当前轮无法提交——**外部依赖，非技术问题**"},
+  {"name": "成果沉淀为可复用资产", "pct": 20, "light": "red", "verdict": "最弱",
+   "note": "git 仓库已 init 但 `git log` 无任何提交；159 项散落文件未版本化，研究结论只存在于 decision-log 与截图中"}
+ ],
+ "tracking": {
+  "now": "研究工作区。已完成界面三方案对比与行情数据源三层拆解（decision-log 2026-07-06），产出以截图与决策记录形式存在",
+  "working_on": "未查证——无提交历史可判断当前进行项，最近文件时间戳为 2026-07-16 的 nautilus 迁移闸截图",
+  "next": "两个明确卡点：TradingView Advanced Charts 申请需你本人签署 License 并填公司信息；159 项研究产出尚未版本化"
+ }
+}

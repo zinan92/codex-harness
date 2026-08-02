@@ -1,0 +1,41 @@
+{
+ "project": "电商工作台",
+ "assessed_at": "2026-07-29",
+ "assessor": "claude-sonnet-5（workbench 会话）",
+ "sources": [
+  "README.md（main@07be786，2026-07-22）",
+  "REGISTRY.md（main@07be786，2026-07-22，M1–M18 全量）",
+  "decision-log.md（main@07be786，2026-07-22）",
+  "docs/outcome-contract-email-auth.md",
+  "docs/outcome-contract-provider-model-selection.md",
+  "docs/outcome-contract-account-credits.md",
+  "evidence/README.md（evidence manifest 全表，含 happyhorse-full-chain-success.jpg 等实物）",
+  "git log --all --since='30 days ago'（本会话复核为 100 次提交/44 分支去重，非 agent 报告的 59，取本会话复核值；日期范围 2026-07-16~07-22 一致）",
+  "git ls-tree main -- tests src supabase/migrations（15 个测试文件、24 个迁移文件）",
+  "git status / git branch --show-current（工作树 clean；当前签出 codex/product-assets-to-video@4a35a29，落后 main 同日提交 07be786）",
+  "grep 复核 README.md/decision-log.md 的 ModelNotOpen / INSUFFICIENT_QUOTA / npm test 47/47 原文，均属实"
+ ],
+ "modules": [
+  {"name": "账号与积分管理（多租户）", "pct": 80, "light": "green", "verdict": "生产已验证",
+   "note": "evidence/README.md『正式 Production 验收』：真实 Supabase RLS、邮箱 OTP 登录、加密 Key、A/B/C 邀请授权、积分原子预扣/退款均在 Production 环境验证并清理测试数据"},
+  {"name": "商品档案与素材库", "pct": 75, "light": "green", "verdict": "主体完成",
+   "note": "REGISTRY.md main M1/M6/M7；decision-log 2026-07-21 Issue#6：真实 qwen-vl-plus 结构化建议、RLS+私有 Bucket 一小时签名 URL、每商品 1–8 张素材已落地"},
+  {"name": "创意脚本与商家确认闸", "pct": 70, "light": "green", "verdict": "闸门已落地",
+   "note": "REGISTRY.md M2/M5；decision-log Issue#8/#14：3 方案+连续分镜、版本追加不覆盖、DB 事务锁保证『未确认不进生成』"},
+  {"name": "HappyHorse 主链路生成", "pct": 70, "light": "green", "verdict": "唯一全链路",
+   "note": "README.md『当前真实联调状态』：HappyHorse 真实 Key→任务→轮询→MP4（5.16s/832×1108/H.264+AAC）→刷新恢复全部验证；evidence/happyhorse-full-chain-success.jpg 与对应 mp4 实物存在"},
+  {"name": "多供应商真实产能（Seedance/Vidu/MiniMax/Wan）", "pct": 30, "light": "red", "verdict": "多数未开通",
+   "note": "decision-log.md 逐条记录：方舟 Seedance 2.0/1.5 多次真实提交反复返回 ModelNotOpen（含充值 100 元后复测仍未开通）；Wan 真实付费请求在 taskId 前被拒、归一化为 INSUFFICIENT_QUOTA；Vidu/MiniMax 仅协议级接入、无真实成片证据——五供应商切换愿景的实际瓶颈"},
+  {"name": "批量预检计划（M9–M15）", "pct": 45, "light": "yellow", "verdict": "预检未接生成",
+   "note": "decision-log 2026-07-22 多条：命名为『批量生成计划』实为预检，反复声明『不创建任务、不扣积分』；模板/快速组装/复核/执行前清单均只读，真正付费批量执行未实现"},
+  {"name": "发布包与就绪度总览（M16/M18）", "pct": 50, "light": "yellow", "verdict": "只读浅层",
+   "note": "decision-log 2026-07-22：发布包仅复制标题/文案/分镜概要，不接平台 API；就绪度总览是只读聚合仪表盘（src/components/product-readiness-overview.tsx），M18 为 main 当前最新里程碑"},
+  {"name": "工程节奏与运维", "pct": 40, "light": "red", "verdict": "7天无提交",
+   "note": "main 最后提交 07be786@2026-07-22，距本次评估(2026-07-29)已7天零提交；仓库无 .github/workflows CI；README 称 2026-07-21 npm test 47/47 通过，但 M7–M18 于 07-22 新增大量功能后未见重新验证记录"}
+ ],
+ "tracking": {
+  "now": "main@07be786（2026-07-22）为最新基线，已完成 M1–M18；工作树实际 checkout 在更早的 codex/product-assets-to-video@4a35a29（同日），工作树 clean 无未提交改动；自 07-22 起无新 commit，已连续7天无产品推进",
+  "working_on": "无正在进行中的证据——decision-log.md 与全部分支 git log 的最后条目均为 2026-07-22；REGISTRY.md main『下一步』记录 #24 真实 Wan 首尾帧付费 E2E 已获批准，但因缺可用 Key/连接配置而暂停",
+  "next": "1) 待 Key/连接就绪后执行 #24 付费验收（唯一被点名的下一步）；2) REGISTRY 建议其余非付费工作聚焦商品/创意/批量预检之间的复用体验，避免触发上游模型调用或积分预留；3) 工程侧应补一次 npm install + npm test/build 验证 M7–M18 后测试仍绿，并考虑补 CI 防止回归"
+ }
+}

@@ -1,0 +1,145 @@
+{
+ "date": "2026-07-30",
+ "generated_at": "2026-07-30T01:04:39+08:00",
+ "grand_total_cents": 2138220,
+ "projects": {
+  "tokenrouter": {
+   "cost_cents": 93428,
+   "claude_cents": 92672,
+   "codex_cents": 756,
+   "active_days": 4
+  },
+  "trading-orchestrator": {
+   "cost_cents": 578756,
+   "claude_cents": 573047,
+   "codex_cents": 5709,
+   "active_days": 53
+  },
+  "trading-system": {
+   "cost_cents": 1771,
+   "claude_cents": 1771,
+   "codex_cents": 0,
+   "active_days": 2
+  },
+  "trading-co": {
+   "cost_cents": 153004,
+   "claude_cents": 152649,
+   "codex_cents": 355,
+   "active_days": 33
+  },
+  "input-to-park": {
+   "cost_cents": 150128,
+   "claude_cents": 149947,
+   "codex_cents": 181,
+   "active_days": 18
+  },
+  "park-io": {
+   "cost_cents": 31146,
+   "claude_cents": 29115,
+   "codex_cents": 2031,
+   "active_days": 13
+  },
+  "agent 自管理": {
+   "cost_cents": 38844,
+   "claude_cents": 2653,
+   "codex_cents": 36191,
+   "active_days": 31
+  },
+  "人生 K 线": {
+   "cost_cents": 30163,
+   "claude_cents": 4305,
+   "codex_cents": 25858,
+   "active_days": 5
+  },
+  "New project": {
+   "cost_cents": 341152,
+   "claude_cents": 280326,
+   "codex_cents": 60826,
+   "active_days": 49
+  },
+  "投研面板": {
+   "cost_cents": 216446,
+   "claude_cents": 38367,
+   "codex_cents": 178079,
+   "active_days": 9
+  },
+  "电商工作台": {
+   "cost_cents": 28009,
+   "claude_cents": 3167,
+   "codex_cents": 24842,
+   "active_days": 3
+  },
+  "内容制作": {
+   "cost_cents": 411783,
+   "claude_cents": 0,
+   "codex_cents": 411783,
+   "active_days": 24
+  },
+  "知识库": {
+   "cost_cents": 8457,
+   "claude_cents": 0,
+   "codex_cents": 8457,
+   "active_days": 8
+  },
+  "tokenpulse": {
+   "cost_cents": 1907,
+   "claude_cents": 0,
+   "codex_cents": 1907,
+   "active_days": 7
+  },
+  "a股情报": {
+   "cost_cents": 1085,
+   "claude_cents": 0,
+   "codex_cents": 1085,
+   "active_days": 1
+  },
+  "个人助理": {
+   "cost_cents": 815,
+   "claude_cents": 0,
+   "codex_cents": 815,
+   "active_days": 1
+  },
+  "产品工厂": {
+   "cost_cents": 416,
+   "claude_cents": 0,
+   "codex_cents": 416,
+   "active_days": 3
+  },
+  "关系管理": {
+   "cost_cents": 376,
+   "claude_cents": 0,
+   "codex_cents": 376,
+   "active_days": 1
+  },
+  "repo-evals": {
+   "cost_cents": 0,
+   "claude_cents": 0,
+   "codex_cents": 0,
+   "active_days": 0
+  },
+  "content-ops": {
+   "cost_cents": 7832,
+   "claude_cents": 7832,
+   "codex_cents": 0,
+   "active_days": 2
+  },
+  "content-toolkit": {
+   "cost_cents": 18,
+   "claude_cents": 0,
+   "codex_cents": 18,
+   "active_days": 1
+  },
+  "videocut": {
+   "cost_cents": 0,
+   "claude_cents": 0,
+   "codex_cents": 0,
+   "active_days": 0
+  },
+  "未归类": {
+   "cost_cents": 42684,
+   "claude_cents": 2062,
+   "codex_cents": 40622,
+   "active_days": 71
+  }
+ }
+}

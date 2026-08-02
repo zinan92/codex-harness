@@ -1,0 +1,32 @@
+{
+ "project": "New project",
+ "assessed_at": "2026-07-28",
+ "assessor": "claude-opus-5（workbench 会话，人工复核前有效）",
+ "sources": [
+  "~/Documents/New project/CEO-OPERATING-BRIEF.md（最后更新 2026-06-14，含项目状态板）",
+  "~/Documents/New project/MORNING-BRIEF.md（晨报例程）",
+  "目录清单：41 份 .html 分析产出 + 96 项文件；无 git 仓库"
+ ],
+ "note_on_shape": "这不是一个软件项目，是**跨项目的上层调度台**（CEO Operating Brief 原话：「Wendy 只看这一页，不进各项目 thread 当 PM」）。模块按「调度机制的成熟度」拆，不按代码。",
+ "modules": [
+  {"name": "主攻方向机制", "pct": 85, "light": "green", "verdict": "机制成立",
+   "note": "BRIEF 强制「本周主攻只能有一个」，2026-06-14 记录了 Park 选 A（loop 引擎）并显式把内容线降级"},
+  {"name": "晨报例程", "pct": 80, "light": "green", "verdict": "已立为正式",
+   "note": "BRIEF：「Morning Brief 已立为正式例程（见 MORNING-BRIEF.md）」，文件存在"},
+  {"name": "分析产出", "pct": 75, "light": "green", "verdict": "产量高",
+   "note": "41 份 .html：codex-assessment、crossproject-audit、discovery-vs-execution、flow-decision 等，覆盖决策与审计"},
+  {"name": "成功标准的定义", "pct": 60, "light": "yellow", "verdict": "有原则无阈值",
+   "note": "BRIEF 写明「安全开机 + 产出价值」并有金句判据，但同页承认「下一步=定义『安全开机产价值』的门槛」——阈值仍未定"},
+  {"name": "loop 引擎点火", "pct": 30, "light": "red", "verdict": "最弱·开关仍 OFF",
+   "note": "BRIEF 状态板：功能 #1–#5 完整、安全经 6 轮审计，但「开关仍 OFF」；2026-06-14 Park 决定当天先不跑"},
+  {"name": "简报时效性", "pct": 25, "light": "red", "verdict": "已过期",
+   "note": "CEO-OPERATING-BRIEF 最后更新 2026-06-14，距评估日 44 天未动——调度台自身停更，其结论已不能代表现状"},
+  {"name": "版本化", "pct": 10, "light": "red", "verdict": "无 git",
+   "note": "目录内无 .git；96 项文件（含 41 份分析产出）全部未版本化"}
+ ],
+ "tracking": {
+  "now": "跨项目调度台。截至 BRIEF 最后更新（2026-06-14）：主攻 AI 工具线 loop 引擎，功能完整且经 6 轮安全审计，但点火开关 OFF",
+  "working_on": "未查证——BRIEF 已 44 天未更新，无法确认当前真实进行项；花费显示本项目仍在持续投入（$3,299）",
+  "next": "BRIEF 自述的下一步：定义「安全开机产价值」的门槛并真跑一轮（候选目标=监督跑 tokenpulse 第一轮真活）。另建议：简报停更 44 天本身是需要处理的信号"
+ }
+}
