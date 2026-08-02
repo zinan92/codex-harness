@@ -22,6 +22,11 @@ The ledger never stores prompt text, response text, or an LLM-generated summary.
 `~/.codex/token-counter/projects.json`; unknown paths remain visible as
 `Uncategorized`.
 
+When Codex supplies `last_token_usage`, Token Counter uses that event's exact
+increment. Older records without it use a cumulative-delta fallback and carry
+their source in the private row, so cache re-estimation cannot silently inflate
+the ledger.
+
 ## Use
 
 ```bash
