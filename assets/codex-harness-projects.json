@@ -1,11 +1,12 @@
 {
   "projects": [
     {
-      "project_id": "token-counter",
-      "name": "Token Counter",
+      "project_id": "codex-harness",
+      "name": "Codex Harness",
       "aliases": [
         {"prefix": "/Users/wendy/token-counter"},
-        {"prefix": "/Users/wendy/codex-jingle"}
+        {"prefix": "/Users/wendy/codex-jingle"},
+        {"prefix": "/Users/wendy/codex-harness"}
       ]
     },
     {

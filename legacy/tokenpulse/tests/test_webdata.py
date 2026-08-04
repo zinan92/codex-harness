@@ -1,0 +1,332 @@
+"""Tests for the stable web widget data bridge contract."""
+import os
+import sys
+from datetime import datetime, timezone
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import webdata  # noqa: E402
+
+
+NOW = datetime(2026, 6, 13, 18, 45, tzinfo=timezone.utc)
+CONFIG = {"active_window": {"start": "09:00", "end": "23:59"}}
+
+
+def _tool(today, expected, mood, *, hit=False):
+    target = 500
+    return {
+        "today": today,
+        "target": target,
+        "percent": round(today / target * 100, 1),
+        "expected_by_now": expected,
+        "deficit_vs_pace": max(0, expected - today),
+        "remaining": max(0, target - today),
+        "active_fraction": 0.5,
+        "hit": hit,
+        "mood": mood,
+        "breakdown": {"source": "claude-jsonl", "available": True, "stale": False},
+    }
+
+
+def _status():
+    return {
+        "tools": {
+            "claude": _tool(120, 100, "ahead"),
+            "codex": _tool(50, 200, "behind"),
+        },
+        "combined": {
+            "today": 170,
+            "target": 1000,
+            "percent": 17.0,
+            "remaining": 830,
+        },
+    }
+
+
+def _ontrack_status():
+    st = _status()
+    st["tools"]["codex"] = _tool(110, 100, "ontrack")
+    st["combined"] = {
+        "today": 230,
+        "target": 1000,
+        "percent": 23.0,
+        "remaining": 770,
+    }
+    return st
+
+
+def _complete_status():
+    return {
+        "tools": {
+            "claude": _tool(500, 400, "done", hit=True),
+            "codex": _tool(500, 400, "done", hit=True),
+        },
+        "combined": {
+            "today": 1000,
+            "target": 1000,
+            "percent": 100.0,
+            "remaining": 0,
+        },
+    }
+
+
+def _patch_core(monkeypatch, *, active_fraction=0.5, combined_mood="ontrack", combined_hit=False):
+    monkeypatch.setattr(webdata.core, "status", lambda now, config: _status())
+    monkeypatch.setattr(
+        webdata.core,
+        "pace",
+        lambda now, config, actual, target: {"mood": combined_mood, "hit": combined_hit},
+    )
+    monkeypatch.setattr(webdata.core, "_active_fraction", lambda now, config: active_fraction)
+
+
+def test_state_maps_core_moods_to_widget_states():
+    assert webdata._state("behind") == "behind"
+    assert webdata._state("ontrack") == "ontrack"
+    assert webdata._state("ahead") == "ahead"
+    assert webdata._state("done") == "hit"
+    assert webdata._state("rocket") == "rocket"
+    assert webdata._state("unknown") == "ontrack"
+
+
+def test_core_payload_shape_and_available_plan_fields(monkeypatch):
+    _patch_core(monkeypatch)
+    monkeypatch.setattr(
+        webdata.limits,
+        "plan_limits",
+        lambda: {
+            "claude": {
+                "available": True,
+                "stale": False,
+                "windows": [
+                    {"name": "session", "left_percent": 80, "reset_in": "2h"},
+                    {"name": "weekly", "left_percent": 44, "reset_in": "4d"},
+                ],
+            },
+            "codex": {
+                "available": True,
+                "stale": True,
+                "windows": [
+                    {"name": "session", "left_percent": 12, "reset_in": "30m"},
+                    {"name": "weekly", "left_percent": 91, "reset_in": "6d"},
+                ],
+            },
+        },
+    )
+
+    payload = webdata.core_payload(now=NOW, config=CONFIG)
+
+    assert set(payload) == {"generated_at", "clock", "active_fraction", "combined", "tools", "decisions"}
+    assert payload["generated_at"] == NOW.isoformat()
+    assert payload["clock"] == "18:45"
+    assert payload["active_fraction"] == 0.5
+
+    assert set(payload["tools"]) == {"claude", "codex"}
+    assert set(payload["tools"]["claude"]) == {
+        "today",
+        "target",
+        "percent",
+        "expected",
+        "deficit",
+        "remaining",
+        "active_fraction",
+        "hit",
+        "state",
+        "pace_ratio",
+        "session",
+        "weekly",
+        "plan_available",
+        "plan_stale",
+        "provenance",
+    }
+    assert payload["tools"]["claude"]["state"] == "ahead"
+    assert payload["tools"]["claude"]["pace_ratio"] == 1.2
+    assert payload["tools"]["claude"]["session"] == {"left": 80, "reset": "2h"}
+    assert payload["tools"]["claude"]["weekly"] == {"left": 44, "reset": "4d"}
+    assert payload["tools"]["claude"]["plan_available"] is True
+    assert payload["tools"]["claude"]["plan_stale"] is False
+    assert payload["tools"]["claude"]["provenance"] == {
+        "provider": "Claude", "source": "claude-jsonl", "source_label": "Claude 本地日志",
+        "scope": "今日 · 本地时区", "refreshed_at": NOW.isoformat(), "status": "fresh", "reason": None,
+    }
+
+    assert payload["tools"]["codex"]["state"] == "behind"
+    assert payload["tools"]["codex"]["pace_ratio"] == 0.25
+    assert payload["tools"]["codex"]["session"] == {"left": 12, "reset": "30m"}
+    assert payload["tools"]["codex"]["weekly"] == {"left": 91, "reset": "6d"}
+    assert payload["tools"]["codex"]["plan_available"] is True
+    assert payload["tools"]["codex"]["plan_stale"] is True
+    assert payload["decisions"]["combined"] == {
+        "question": "今天下一步",
+        "action": "继续当前优先级，完成下一个可交付物",
+        "reason": "配速健康；把注意力留在最重要的工作上。",
+        "pace": "合计 · 配速正常",
+    }
+    assert payload["decisions"]["claude"]["pace"] == "Claude · 领先配速"
+    assert payload["decisions"]["codex"]["pace"] == "Codex · 落后配速"
+
+
+def test_core_payload_marks_unavailable_source_without_a_false_zero(monkeypatch):
+    st = _status()
+    st["tools"]["codex"]["today"] = 0
+    st["tools"]["codex"]["breakdown"] = {
+        "source": "codexbar-unavailable", "available": False, "reason": "not-installed",
+    }
+    monkeypatch.setattr(webdata.core, "status", lambda now, config: st)
+    monkeypatch.setattr(webdata.core, "pace", lambda now, config, actual, target: {"mood": "ontrack", "hit": False})
+    monkeypatch.setattr(webdata.core, "_active_fraction", lambda now, config: 0.5)
+    monkeypatch.setattr(webdata.limits, "plan_limits", lambda: {"claude": {"available": False, "windows": []}, "codex": {"available": False, "windows": []}})
+
+    payload = webdata.core_payload(now=NOW, config=CONFIG)
+
+    assert payload["tools"]["codex"]["provenance"] == {
+        "provider": "Codex", "source": "codexbar-unavailable", "source_label": "CodexBar 本地扫描",
+        "scope": "今日 · 本地时区", "refreshed_at": NOW.isoformat(), "status": "unavailable", "reason": "not-installed",
+    }
+
+    assert payload["combined"] == {
+        "today": 170,
+        "target": 1000,
+        "percent": 17.0,
+        "remaining": 830,
+        "expected": 300,
+        "deficit": 130,
+        "state": "ontrack",
+        "hit": False,
+        "pace_ratio": 0.57,
+        "operator": "behind - start the next AI-work session now to catch up; 830 tokens remain today.",
+        "impact": "turn lag into useful AI-work before the day slips.",
+    }
+    assert payload["decisions"]["codex"] == {
+        "question": "今天下一步",
+        "action": "先等待可信本地扫描完成",
+        "reason": "Codex 数据未完整，不能把未读取当作 0 来安排工作。",
+        "pace": "数据状态：未读取",
+    }
+    assert payload["decisions"]["combined"]["action"] == "先等待可信本地扫描完成"
+
+
+def test_core_payload_unavailable_plan_fields_are_null(monkeypatch):
+    _patch_core(monkeypatch)
+    monkeypatch.setattr(
+        webdata.limits,
+        "plan_limits",
+        lambda: {
+            "claude": {"available": False, "reason": "codexbar-not-found", "windows": []},
+            "codex": {"available": False, "reason": "codexbar-not-found", "windows": []},
+        },
+    )
+
+    payload = webdata.core_payload(now=NOW, config=CONFIG)
+
+    for tool in ("claude", "codex"):
+        assert payload["tools"][tool]["session"] is None
+        assert payload["tools"][tool]["weekly"] is None
+        assert payload["tools"][tool]["plan_available"] is False
+        assert payload["tools"][tool]["plan_stale"] is False
+
+
+def test_core_payload_combined_state_is_early_before_active_window(monkeypatch):
+    _patch_core(monkeypatch, active_fraction=0, combined_mood="ahead", combined_hit=False)
+    monkeypatch.setattr(
+        webdata.limits,
+        "plan_limits",
+        lambda: {
+            "claude": {"available": False, "windows": []},
+            "codex": {"available": False, "windows": []},
+        },
+    )
+
+    payload = webdata.core_payload(now=NOW, config=CONFIG)
+
+    assert payload["active_fraction"] == 0
+    assert payload["combined"]["hit"] is False
+    assert payload["combined"]["state"] == "early"
+
+
+def test_core_payload_operator_and_impact_for_ontrack_state(monkeypatch):
+    monkeypatch.setattr(webdata.core, "status", lambda now, config: _ontrack_status())
+    monkeypatch.setattr(
+        webdata.core,
+        "pace",
+        lambda now, config, actual, target: {"mood": "ontrack", "hit": False},
+    )
+    monkeypatch.setattr(webdata.core, "_active_fraction", lambda now, config: 0.5)
+    monkeypatch.setattr(
+        webdata.limits,
+        "plan_limits",
+        lambda: {
+            "claude": {"available": False, "windows": []},
+            "codex": {"available": False, "windows": []},
+        },
+    )
+
+    payload = webdata.core_payload(now=NOW, config=CONFIG)
+
+    assert payload["combined"]["operator"] == (
+        "on track - keep the next AI-work session aligned to priority; "
+        "770 tokens remain today."
+    )
+    assert payload["combined"]["impact"] == (
+        "stay on the priority session while runway is healthy."
+    )
+
+
+def test_core_payload_operator_and_impact_for_complete_state(monkeypatch):
+    monkeypatch.setattr(webdata.core, "status", lambda now, config: _complete_status())
+    monkeypatch.setattr(
+        webdata.core,
+        "pace",
+        lambda now, config, actual, target: {"mood": "done", "hit": True},
+    )
+    monkeypatch.setattr(webdata.core, "_active_fraction", lambda now, config: 0.5)
+    monkeypatch.setattr(
+        webdata.limits,
+        "plan_limits",
+        lambda: {
+            "claude": {"available": False, "windows": []},
+            "codex": {"available": False, "windows": []},
+        },
+    )
+
+    payload = webdata.core_payload(now=NOW, config=CONFIG)
+
+    assert payload["combined"]["operator"] == (
+        "complete - daily target is done; choose the next AI-work session by priority."
+    )
+    assert payload["combined"]["impact"] == (
+        "priority decides because today's token target is done."
+    )
+
+
+def test_cost_payload_rounds_costs_and_preserves_token_counts(monkeypatch):
+    summaries = {
+        "claude": {
+            "cost_today": 12.345,
+            "cost_30d": 456.789,
+            "tokens_30d": 987654321,
+            "tokens_today": 12345,
+        },
+        "codex": {
+            "cost_today": 0.004,
+            "cost_30d": 1.005,
+            "tokens_30d": 42,
+            "tokens_today": 7,
+        },
+    }
+    monkeypatch.setattr(webdata.cost, "usage_summary", lambda tool: summaries[tool])
+
+    assert webdata.cost_payload() == {
+        "claude": {
+            "cost_today": 12.35,
+            "cost_30d": 456.79,
+            "tokens_30d": 987654321,
+            "tokens_today": 12345,
+        },
+        "codex": {
+            "cost_today": 0.0,
+            "cost_30d": 1.0,
+            "tokens_30d": 42,
+            "tokens_today": 7,
+        },
+        "combined": {"cost_30d": 457.79},   # 456.789 + 1.005, the headline spend
+    }

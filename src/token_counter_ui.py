@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A local-only visual projection of Token Counter's private thread ledger."""
+"""A local-only visual projection of Codex Harness's private thread ledger."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_STATE_PATH = Path.home() / ".codex" / "token-counter" / "threads.json"
+DEFAULT_STATE_PATH = Path.home() / ".codex" / "harness" / "threads.json"
 
 
 def read_state(path: Path) -> dict[str, Any] | None:
@@ -63,8 +63,8 @@ def daily_totals(threads: list[dict[str, Any]]) -> list[tuple[str, int]]:
 
 def render(state: dict[str, Any] | None, state_path: Path) -> str:
     if state is None:
-        body = f"""<main class=\"empty\"><p class=\"eyebrow\">LOCAL LEDGER</p><h1>No ledger found.</h1><p>Run <code>token_counter.py scan</code> first. Expected: <code>{escape(str(state_path))}</code></p></main>"""
-        return page("Token Counter", body)
+        body = f"""<main class=\"empty\"><p class=\"eyebrow\">LOCAL LEDGER</p><h1>No ledger found.</h1><p>Run <code>codex_harness.py scan</code> first. Expected: <code>{escape(str(state_path))}</code></p></main>"""
+        return page("Codex Harness", body)
     threads = [row for row in state["threads"].values() if isinstance(row, dict)]
     available = [row for row in threads if row.get("status") == "available"]
     total = sum(int(row.get("total_tokens") or 0) for row in available)
@@ -91,12 +91,12 @@ def render(state: dict[str, Any] | None, state_path: Path) -> str:
     generated = escape(str(state.get("generated_at") or "unknown"))
     body = f"""
 <main>
-  <header><div><p class=\"eyebrow\">TOKEN COUNTER / LOCAL ONLY</p><h1>Thread ledger</h1><p class=\"sub\">A quiet accounting surface for completed Codex work.</p></div><div class=\"stamp\">Last scan<br><b>{generated}</b></div></header>
+  <header><div><p class=\"eyebrow\">CODEX HARNESS / LOCAL ONLY</p><h1>Thread ledger</h1><p class=\"sub\">A quiet accounting surface for completed Codex work.</p></div><div class=\"stamp\">Last scan<br><b>{generated}</b></div></header>
   <section class=\"metrics\"><div><span>Tracked threads</span><strong>{len(threads):,}</strong></div><div><span>Usage available</span><strong>{len(available):,}</strong></div><div><span>Total tokens</span><strong>{token_label(total)}</strong></div><div><span>Timezone</span><strong>{escape(str(state.get('reporting_timezone') or 'Asia/Shanghai'))}</strong></div></section>
   <section class=\"grid\"><article><h2>Seven-day trace</h2><div class=\"bars\">{daily_rows}</div></article><article><h2>By product</h2><table><thead><tr><th>Product</th><th>Threads</th><th>Known</th><th>Tokens</th></tr></thead><tbody>{projects}</tbody></table></article></section>
   <section class=\"ledger\"><div class=\"section-head\"><div><h2>Recent threads</h2><p>Thread IDs and deterministic product attribution only. No prompt or response text is rendered.</p></div><span class=\"badge\">READ ONLY</span></div><table><thead><tr><th>Thread</th><th>Product</th><th>Status</th><th>Tokens</th><th>Last event</th></tr></thead><tbody>{thread_rows}</tbody></table></section>
 </main>"""
-    return page("Token Counter", body)
+    return page("Codex Harness", body)
 
 
 def page(title: str, body: str) -> str:
@@ -123,17 +123,17 @@ def serve(state_path: Path, host: str, port: int) -> None:
             return
 
     server = ThreadingHTTPServer((host, port), Handler)
-    print(f"Token Counter UI: http://{host}:{port}")
+    print(f"Codex Harness UI: http://{host}:{port}")
     server.serve_forever()
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Serve the private local Token Counter ledger")
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Serve the private local Codex Harness ledger")
     parser.add_argument("--state", type=Path, default=DEFAULT_STATE_PATH)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--html", action="store_true", help="print the static projection and exit")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.html:
         print(render(read_state(args.state), args.state))
     else:

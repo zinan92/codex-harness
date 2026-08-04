@@ -10,8 +10,8 @@ ROOT = Path(__file__).parents[1]
 class InstallManifestTests(unittest.TestCase):
     def test_installer_is_a_passive_local_scanner_install(self) -> None:
         installer = (ROOT / "scripts" / "install.sh").read_text(encoding="utf-8")
-        self.assertIn('"$repo_dir/src/token_counter.py"', installer)
-        self.assertIn('"$repo_dir/assets/token-counter-projects.json"', installer)
+        self.assertIn('"$repo_dir/src/codex_harness.py"', installer)
+        self.assertIn('"$repo_dir/assets/codex-harness-projects.json"', installer)
         for forbidden in ("jingle_hook.py", "codex_spoken_notify.py", "launchctl", "notify =", "urlopen"):
             self.assertNotIn(forbidden, installer)
 

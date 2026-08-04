@@ -19,10 +19,10 @@ from typing import Any, Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
-RUNTIME_DIR = Path.home() / ".codex" / "token-counter"
+RUNTIME_DIR = Path.home() / ".codex" / "harness"
 STATE_PATH = RUNTIME_DIR / "threads.json"
 PROJECTS_PATH = RUNTIME_DIR / "projects.json"
-PACKAGE_PROJECTS_PATH = Path(__file__).parents[1] / "assets" / "token-counter-projects.json"
+PACKAGE_PROJECTS_PATH = Path(__file__).parents[1] / "assets" / "codex-harness-projects.json"
 SESSION_ROOTS = (Path.home() / ".codex" / "sessions", Path.home() / ".codex" / "archived_sessions")
 UNCLASSIFIED = {"project_id": "uncategorized", "name": "Uncategorized", "source": "unmapped_cwd"}
 
@@ -100,7 +100,22 @@ def load_projects(path: Path | None = None) -> list[dict[str, Any]]:
     except (OSError, json.JSONDecodeError):
         return []
     projects = result.get("projects") if isinstance(result, dict) else None
-    return projects if isinstance(projects, list) else []
+    if not isinstance(projects, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for project in projects:
+        if not isinstance(project, dict):
+            continue
+        item = dict(project)
+        if item.get("project_id") == "token-counter":
+            item["project_id"] = "codex-harness"
+            item["name"] = "Codex Harness"
+            aliases = list(item.get("aliases") or [])
+            if not any(isinstance(alias, dict) and alias.get("prefix") == "/Users/wendy/codex-harness" for alias in aliases):
+                aliases.append({"prefix": "/Users/wendy/codex-harness"})
+            item["aliases"] = aliases
+        normalized.append(item)
+    return normalized
 
 
 def session_files(roots: Iterable[Path] = SESSION_ROOTS) -> list[Path]:
@@ -255,7 +270,11 @@ def freeze_attribution(rows: dict[str, dict[str, Any]], existing: dict[str, Any]
         if isinstance(old, dict) and isinstance(old.get("project"), dict) and not (
             remap_uncategorized and old["project"].get("project_id") == "uncategorized"
         ):
-            row["project"] = old["project"]
+            project = dict(old["project"])
+            if project.get("project_id") == "token-counter":
+                project["project_id"] = "codex-harness"
+                project["name"] = "Codex Harness"
+            row["project"] = project
 
 
 def save_state(rows: dict[str, dict[str, Any]], path: Path = STATE_PATH) -> dict[str, Any]:
@@ -294,14 +313,14 @@ def summary(state: dict[str, Any]) -> dict[str, Any]:
     return {"threads": len(state.get("threads", {})), "available_threads": available, "reporting_timezone": state.get("reporting_timezone", os.environ.get("TOKEN_COUNTER_TIMEZONE", "Asia/Shanghai")), "tokens": totals, "daily_total_tokens": dict(sorted(daily.items()))}
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Local, read-only Codex thread token ledger")
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Local, read-only Codex Harness thread token ledger")
     parser.add_argument("command", choices=("scan", "summary"), nargs="?", default="summary")
-    parser.add_argument("--state", type=Path, default=STATE_PATH, help="ledger path (default: ~/.codex/token-counter/threads.json)")
+    parser.add_argument("--state", type=Path, default=STATE_PATH, help="ledger path (default: ~/.codex/harness/threads.json)")
     parser.add_argument("--projects", type=Path, default=None, help="project mapping JSON")
     parser.add_argument("--sessions-root", type=Path, action="append", help="override session root; repeatable")
     parser.add_argument("--remap-uncategorized", action="store_true", help="explicitly reattribute only historic Uncategorized rows")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.command == "scan":
         roots = tuple(args.sessions_root) if args.sessions_root else SESSION_ROOTS
         rows = extract_threads(session_files(roots), load_projects(args.projects))

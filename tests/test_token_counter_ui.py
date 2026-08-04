@@ -22,6 +22,7 @@ class TokenCounterUiTests(unittest.TestCase):
     def test_projection_contains_accounting_without_activity_content(self) -> None:
         html = ui.render(self.state(), Path("/private/threads.json"))
         self.assertIn("Thread ledger", html)
+        self.assertIn("CODEX HARNESS / LOCAL ONLY", html)
         self.assertIn("Research", html)
         self.assertIn("1.5K", html)
         self.assertIn("Uncategorized", html)

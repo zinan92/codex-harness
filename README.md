@@ -1,76 +1,104 @@
-# Token Counter
+# Codex Harness
 
-Token Counter is a local, read-only ledger for Codex threads. Its job is narrow:
-for every discoverable Codex thread, record token usage and the product it worked
-on. It does not route model work, estimate costs, send notifications, open tasks,
-summarise with an external model, or keep a background service alive.
+Codex Harness is the local accounting layer for work done in the Codex App.
+Its primary job is simple: for every discoverable Codex thread, record how many
+tokens were used and which product/workspace the thread belonged to. The same
+repository also carries the historical Jingle, Token Router, and TokenPulse
+modules so the product has one name and one migration path.
 
-## What is recorded
+## Active product
 
-`python3 src/token_counter.py scan` scans `~/.codex/sessions` and
-`~/.codex/archived_sessions`. It writes `~/.codex/token-counter/threads.json`
-with one row per `session_meta.payload.id`:
+The active v1 surface is intentionally local and read-only:
 
-- `thread_id`, `cwd`, start/end timestamp, and a frozen project mapping;
-- fresh input, cached input, output, reasoning output, and Codex-declared total;
-- daily token increments allocated to the timestamp of each cumulative snapshot
-  in `Asia/Shanghai` (override with `TOKEN_COUNTER_TIMEZONE`);
-- an honest `unavailable` status when a session has no usable usage snapshot.
+- one row per Codex `session_meta.payload.id`;
+- fresh, cached, output, reasoning, and Codex-declared total tokens;
+- daily increments in `Asia/Shanghai` by default;
+- deterministic longest-CWD-prefix project attribution;
+- explicit `available`/`unavailable` accounting status;
+- a local HTML view of totals, seven-day activity, projects, and recent thread IDs.
 
-The ledger never stores prompt text, response text, or an LLM-generated summary.
-`project` is a deterministic longest-cwd-prefix match from
-`~/.codex/token-counter/projects.json`; unknown paths remain visible as
-`Uncategorized`.
+Codex Harness does not route model work, predict future cost, upload prompts or
+responses, call an external summariser, or make an autonomous model choice.
+Cost and quota displays are reporting features only when a future module adds
+them; they never affect routing.
 
-On first installation, existing `~/.codex/jingle/projects.json` aliases are
-merged into the Token Counter mapping. The installer performs one explicit
-remap of historic `Uncategorized` rows after that merge; later scans preserve
-the recorded project attribution.
-
-When Codex supplies `last_token_usage`, Token Counter uses that event's exact
-increment. Older records without it use a cumulative-delta fallback and carry
-their source in the private row, so cache re-estimation cannot silently inflate
-the ledger.
-
-## Use
+## Install and run
 
 ```bash
+git clone https://github.com/zinan92/codex-harness.git
+cd codex-harness
 ./scripts/install.sh
-/usr/bin/python3 ~/.codex/token-counter/token_counter.py scan
-/usr/bin/python3 ~/.codex/token-counter/token_counter.py summary
+
+# Scan local Codex history and print a JSON summary.
+/usr/bin/python3 ~/.codex/harness/codex_harness.py scan
+/usr/bin/python3 ~/.codex/harness/codex_harness.py summary
+
+# Serve the read-only local view at http://127.0.0.1:8765.
+/usr/bin/python3 ~/.codex/harness/codex_harness_ui.py
+# or: /usr/bin/python3 ~/.codex/harness/codex_harness.py ui
 ```
 
-The scanner uses only Python's standard library and makes no network request.
-It is intentionally manual in v1: `scan` is the explicit refresh boundary.
+The installer has no LaunchAgent, hook, notification, network client, or
+recurring job. It copies the old `~/.codex/token-counter/threads.json` and
+`projects.json` into `~/.codex/harness/` only when the new files do not exist;
+the old directory is left intact for rollback. Existing
+`~/.codex/jingle/projects.json` aliases are merged into the new project map.
 
-### Local UI
+## Data and privacy contract
 
-After a scan, start the read-only local view:
+The scanner reads `~/.codex/sessions` and
+`~/.codex/archived_sessions`. It parses only `session_meta` and `token_count`
+records, never stores prompt/response bodies, and makes no network request.
+Project names come from `~/.codex/harness/projects.json`; unknown paths remain
+visible as `Uncategorized`. Historic attribution is frozen unless the caller
+explicitly requests `--remap-uncategorized`.
+
+The private ledger lives at:
+
+```text
+~/.codex/harness/threads.json
+~/.codex/harness/projects.json
+```
+
+Both files are owner-only. The scanner writes atomically and records its source
+(`last_token_usage` or cumulative delta) so repeated Codex snapshots cannot be
+silently counted twice.
+
+## One repository, clear module boundaries
+
+```text
+src/codex_harness.py          # canonical CLI
+src/token_counter.py          # audited ledger implementation/compatibility import
+src/codex_harness_ui.py       # canonical UI entry point
+src/token_counter_ui.py       # UI implementation/compatibility import
+legacy/tokenrouter/            # archived model-routing history; never active
+legacy/tokenpulse/             # imported TokenPulse history; opt-in/legacy modules
+```
+
+The former TokenPulse capabilities (Claude accounting, Telegram nudges,
+game-like levels, share cards, ranking, and furnace automation) remain under
+`legacy/tokenpulse` for history and selective future extraction. They are not
+installed or started by Codex Harness v1. The former Jingle callback and
+notification files remain for forensic recovery; the retirement script removes
+only their known registrations and keeps backups.
+
+## Development
 
 ```bash
-/usr/bin/python3 ~/.codex/token-counter/token_counter_ui.py
+python3 -m unittest discover tests -v
 ```
 
-Open `http://127.0.0.1:8765`. The process listens only on your computer and
-stops when the terminal command stops; it does not refresh, notify, or call a
-network service.
+The accounting contract must be reconciled against representative real Codex
+sessions before changing the ingestion path. A green unit-test run does not
+replace the local scan and UI smoke checks.
 
-## Jingle retirement
+## Migration and rollback
 
-Existing Codex Jingle installations are not deleted. After Token Counter has
-scanned real local sessions successfully, run this one-time cutover:
+The GitHub repository is now `zinan92/codex-harness`. GitHub redirects the old
+`token-counter` URL, and the repository retains the Jingle and Token Router
+history. Token Router is archived; TokenPulse is retained as imported legacy
+source until the Codex Harness runtime acceptance gate is complete.
 
-```bash
-./scripts/retire-jingle.sh
-```
-
-It backs up `~/.codex/config.toml` and `~/.codex/hooks.json`, removes only the
-known Jingle notification/lifecycle registrations, and unloads the Jingle
-LaunchAgent. The old app, helpers, plist, and historic state remain available
-for forensic recovery.
-
-## Legacy
-
-`legacy/tokenrouter` preserves TokenRouter's original Git history and source.
-It is archived context only: its model-routing CLI is not imported, installed,
-or called by Token Counter.
+To roll back the local runtime, stop using `~/.codex/harness/` and run the
+preserved files under `~/.codex/token-counter/`. No historic ledger or local
+configuration is deleted by the installer or retirement scripts.
