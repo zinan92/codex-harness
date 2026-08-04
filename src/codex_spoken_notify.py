@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """Play a status sound and optionally announce a Codex task when a turn completes.
 
 The Codex `notify` callback returns quickly after launching a detached worker.
@@ -25,7 +25,10 @@ from typing import Any
 
 
 CODEX_DIR = Path.home() / ".codex"
-RUNTIME_DIR = CODEX_DIR / "spoken-notify"
+# The notifier is now an optional Codex Harness module. Keep the old
+# ~/.codex/spoken-notify directory readable through the installer migration,
+# but make all new state belong to the unified Harness namespace.
+RUNTIME_DIR = CODEX_DIR / "harness" / "notifications"
 STATE_PATH = RUNTIME_DIR / "state.json"
 LOCK_PATH = RUNTIME_DIR / "sound.lock"
 EVENT_LOG_PATH = RUNTIME_DIR / "events.jsonl"
@@ -980,7 +983,10 @@ def launch_worker(
     classification: str,
 ) -> None:
     command = [
-        "/usr/bin/python3",
+        # Keep the detached worker on the same interpreter that executed the
+        # callback.  macOS's /usr/bin/python3 may be 3.9 and lacks tomllib,
+        # while Codex Harness uses the user's current Python 3.11+ runtime.
+        sys.executable,
         str(Path(__file__).resolve()),
         "--worker",
         "--turn-id",

@@ -31,6 +31,11 @@ No Codex Harness LaunchAgent is installed. The former TokenPulse widget and
 former Jingle LaunchAgent must be stopped during final cutover; their source
 and local state remain available for rollback.
 
+The Jingle completion sound/speech engine remains available as an explicit
+opt-in through `scripts/enable-alert.sh`. It is chained behind the existing
+Computer Use `turn-ended` callback and does not use `hooks.json` or a
+LaunchAgent.
+
 ## Accounting receipt
 
 The scan completed on 2026-08-04 with 981 discovered threads and 877 threads
