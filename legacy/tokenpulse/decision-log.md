@@ -1,0 +1,48 @@
+# Decision log — issue #34
+
+## 2026-07-22 — Codex accuracy and compact presentation
+
+- **Decision:** When available, TokenPulse reads the installed `codexbar cost`
+  local result for Codex token/cost totals instead of independently summing
+  `last_token_usage` rows.
+- **Why:** On the user's live logs, the old raw sum was about `4.48B` tokens
+  while CodexBar's lineage-aware local scan reported about `825.6M`. Current
+  Codex rollouts emit cumulative `total_token_usage` snapshots and forked-agent
+  streams, so a simple row sum is not a trustworthy accounting model.
+- **Fallback:** Without CodexBar, TokenPulse stays local and keeps its existing
+  parser; it does not add telemetry, API login, or log upload.
+- **Presentation:** Keep the full desktop widget as the default. Add two
+  explicit, reversible display settings: one-line compact mode and a native
+  macOS menu-bar status item.
+
+## Gotchas
+
+- CodexBar totals change while agents are active; tests must use fixtures and
+  production verification must compare a same-time snapshot, not a stale value.
+- The native status item must be optional and macOS-only; imports stay inside
+  the controller so CLI/tests do not require AppKit on other platforms.
+- Menu-bar mode hides the desktop widget but its menu must still expose a way
+  to open the full settings panel.
+- `pywebview.start` invokes its startup callback on a worker thread. Creating
+  an `NSStatusBar` item there fails; create it from `main()` before starting the
+  GUI loop, and persist placement changes for the next app launch.
+- Compact mode must never hide the only route back to settings; retain a
+  visible control that restores the full widget before opening its panel.
+- An expanded frameless panel must scroll inside a bounded viewport; otherwise
+  content accessibility depends on users discovering an invisible resize edge.
+- AppKit menu actions are Objective-C selectors (`name:`), not Python method
+  spellings (`name_`); a missing colon silently disables the entire menu.
+- Live Codex accounting must fail closed when the trusted local scanner is
+  unavailable; the legacy raw-log fallback is known to multiply cumulative
+  snapshots into invalid billions.
+- A compact menu-bar title must name its provider.  A combined total cannot be
+  compared to CodexBar's Codex-only ledger without creating false alarms.
+- launchd does not inherit the interactive shell PATH.  Resolve local helpers
+  from standard executable locations or the GUI process will falsely report
+  unavailable usage despite the terminal working.
+- A menu item named "open" must show the complete card.  Revealing the saved
+  34px compact window is technically an action but indistinguishable from no
+  response in normal menu-bar use.
+- A token count without provider, scope, scanner, refresh time, and freshness
+  is not an auditable product metric. An unavailable provider must make the
+  aggregate visibly incomplete rather than looking like a legitimate zero.
