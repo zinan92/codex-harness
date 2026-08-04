@@ -66,11 +66,12 @@ python3 ~/.codex/harness/notifications/codex_harness_notify.py \
 ```
 
 After enabling, every main Codex turn that reaches `turn-ended` produces the
-success sound and local speech. A final message containing a deterministic
+success sound without speech. A final message containing a deterministic
 failure, blocked, missing-evidence, or pending-confirmation marker uses the
-attention sound. Subagent completions are ignored. The notifier reads/writes
-only local metadata and keeps its settings, deduplication state, and event log
-under `~/.codex/harness/notifications/`. Existing
+attention sound and, when speech is enabled, announces the task/status.
+Subagent completions are ignored. The notifier reads/writes only local metadata
+and keeps its settings, deduplication state, and event log under
+`~/.codex/harness/notifications/`. Existing
 `~/.codex/spoken-notify/` data is copied only when the new files are absent;
 nothing is deleted.
 
