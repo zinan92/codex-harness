@@ -1,25 +1,35 @@
-# Token Counter Registry
+# Codex Harness Registry
 
 ## Now
 
-Token Counter is the canonical local, read-only Codex thread ledger. Its source
-of truth is timestamped `session_meta` and `token_count` events in Codex JSONL
-history. The active projection is one thread row per session ID, with snapshot
-deltas allocated to event day and product attribution frozen at ingestion.
+Codex Harness is the canonical local, read-only accounting surface for Codex
+App work. It records one row per Codex thread, token usage by day, and a frozen
+deterministic project attribution. The active runtime is `~/.codex/harness/`.
 
-It has no Jingle notification, voice, attention queue, popup, callback, hook,
-LaunchAgent, network summariser, routing model, cost prediction, or autonomous
-refresh path.
+The canonical commands are:
+
+```text
+/usr/bin/python3 ~/.codex/harness/codex_harness.py scan
+/usr/bin/python3 ~/.codex/harness/codex_harness.py summary
+/usr/bin/python3 ~/.codex/harness/codex_harness.py ui
+```
+
+There is no active router, notification callback, Telegram nudge, voice
+surface, LaunchAgent, network summariser, autonomous refresh, or cost-based
+model decision.
+
+## Lineage
+
+- Codex Jingle history is the original lineage of this repository.
+- Token Router history is retained at `legacy/tokenrouter` and is archived
+  context only.
+- TokenPulse history is retained at `legacy/tokenpulse`; its provider,
+  motivation, sharing, ranking, and furnace modules are legacy/opt-in and are
+  not part of the default runtime.
 
 ## Next
 
-Use `python3 src/token_counter.py scan` after work, then inspect the summary or
-the private `~/.codex/token-counter/threads.json` ledger. Add project aliases in
-`~/.codex/token-counter/projects.json` when a product should not be
-`Uncategorized`.
-
-## Legacy boundary
-
-The old TokenRouter code is retained below `legacy/tokenrouter` only for history
-and evidence. It must not become an import, command, scheduled job, or default
-runtime dependency of Token Counter.
+Keep the accounting source of truth singular. Any future provider or UI module
+must consume the Codex Harness ledger or declare a separate, reconciled source;
+it must not silently introduce a second token summation path. Runtime changes
+require a real-session scan, UI smoke evidence, and a rollback note.

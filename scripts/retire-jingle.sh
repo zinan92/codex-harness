@@ -7,7 +7,7 @@ set -euo pipefail
 codex_dir="$HOME/.codex"
 config_path="$codex_dir/config.toml"
 hooks_path="$codex_dir/hooks.json"
-backup_dir="$codex_dir/token-counter/backups/$(date +%Y%m%d-%H%M%S)-jingle-retirement"
+backup_dir="$codex_dir/harness/backups/$(date +%Y%m%d-%H%M%S)-jingle-retirement"
 mkdir -p "$backup_dir"
 chmod 700 "$backup_dir"
 [[ -f "$config_path" ]] && cp -p "$config_path" "$backup_dir/config.toml"

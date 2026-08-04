@@ -110,6 +110,16 @@ class TokenCounterTests(unittest.TestCase):
         state = {"threads": {"a": {"status": "available", "fresh_input_tokens": 1, "cached_input_tokens": 2, "output_tokens": 3, "reasoning_output_tokens": 0, "total_tokens": 6, "daily": {"2026-08-01": {"total_tokens": 6}}}, "b": {"status": "unavailable"}}}
         self.assertEqual(counter.summary(state), {"threads": 2, "available_threads": 1, "reporting_timezone": "Asia/Shanghai", "tokens": {"fresh_input_tokens": 1, "cached_input_tokens": 2, "output_tokens": 3, "reasoning_output_tokens": 0, "total_tokens": 6}, "daily_total_tokens": {"2026-08-01": 6}})
 
+    def test_old_token_counter_attribution_is_canonicalized(self) -> None:
+        self.write("legacy.jsonl", [line("2026-08-01T10:00:00Z", "session_meta", {"id": "legacy", "cwd": "/work"})])
+        projects_path = self.root / "projects.json"
+        projects_path.write_text(json.dumps({"projects": [{"project_id": "token-counter", "name": "Token Counter", "aliases": [{"prefix": "/work"}]}]}), encoding="utf-8")
+        rows = counter.extract_threads(counter.session_files((self.sessions,)), counter.load_projects(projects_path))
+        old = {"threads": {"legacy": {"project": {"project_id": "token-counter", "name": "Token Counter"}}}}
+        counter.freeze_attribution(rows, old)
+        self.assertEqual(rows["legacy"]["project"]["project_id"], "codex-harness")
+        self.assertEqual(rows["legacy"]["project"]["name"], "Codex Harness")
+
 
 if __name__ == "__main__":
     unittest.main()
