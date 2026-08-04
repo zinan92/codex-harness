@@ -14,9 +14,13 @@ The canonical commands are:
 /usr/bin/python3 ~/.codex/harness/codex_harness.py ui
 ```
 
-There is no active router, notification callback, Telegram nudge, voice
+By default there is no active router, notification callback, Telegram nudge, voice
 surface, LaunchAgent, network summariser, autonomous refresh, or cost-based
 model decision.
+
+Completion alert is an explicit opt-in module. `scripts/enable-alert.sh` adds
+the local sound/speech callback while preserving the existing Computer Use
+notify chain; `scripts/disable-alert.sh` removes only the Harness callback.
 
 ## Lineage
 

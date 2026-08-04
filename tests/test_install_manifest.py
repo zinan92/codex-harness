@@ -28,6 +28,16 @@ class InstallManifestTests(unittest.TestCase):
         self.assertIn("refusing to edit an unrecognised", retirement)
         self.assertNotIn("rm -", retirement)
 
+    def test_completion_alert_is_opt_in_and_keeps_config_boundaries(self) -> None:
+        enable = (ROOT / "scripts" / "enable-alert.sh").read_text(encoding="utf-8")
+        disable = (ROOT / "scripts" / "disable-alert.sh").read_text(encoding="utf-8")
+        self.assertIn("harness/notifications", enable)
+        self.assertIn("harness_alert_config import add_notifier", enable)
+        self.assertIn("--previous-notify", (ROOT / "src" / "harness_alert_config.py").read_text(encoding="utf-8"))
+        self.assertIn("harness_alert_config import remove_notifier", disable)
+        self.assertNotIn("hooks.json", enable)
+        self.assertNotIn("launchctl bootstrap", enable)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -44,6 +44,40 @@ recurring job. It copies the old `~/.codex/token-counter/threads.json` and
 the old directory is left intact for rollback. Existing
 `~/.codex/jingle/projects.json` aliases are merged into the new project map.
 
+## Optional completion alert
+
+The former Jingle “真狗” alert is still available as a Codex Harness module,
+but it is opt-in. It is a local `turn-ended` callback, not a LaunchAgent:
+
+```bash
+# Enable the callback and preserve the existing Computer Use notification.
+./scripts/enable-alert.sh
+
+# Restart Codex once, then play a real local test sound/speech.
+python3 ~/.codex/harness/notifications/codex_harness_notify.py \
+  --test-title "Codex Harness 测试" --status success
+
+# Failed/blocked/needs-confirmation style alert.
+python3 ~/.codex/harness/notifications/codex_harness_notify.py \
+  --test-title "需要确认" --status attention
+
+# Disable only the Harness callback and keep the other notify command.
+./scripts/disable-alert.sh
+```
+
+After enabling, every main Codex turn that reaches `turn-ended` produces the
+success sound and local speech. A final message containing a deterministic
+failure, blocked, missing-evidence, or pending-confirmation marker uses the
+attention sound. Subagent completions are ignored. The notifier reads/writes
+only local metadata and keeps its settings, deduplication state, and event log
+under `~/.codex/harness/notifications/`. Existing
+`~/.codex/spoken-notify/` data is copied only when the new files are absent;
+nothing is deleted.
+
+If enabling refuses to modify the current `notify` shape, stop and inspect the
+timestamped backup rather than overwriting an unrelated callback. Restart
+Codex after either enable or disable so it reloads `config.toml`.
+
 ## Data and privacy contract
 
 The scanner reads `~/.codex/sessions` and
